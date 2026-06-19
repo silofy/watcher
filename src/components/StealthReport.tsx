@@ -1,22 +1,70 @@
 import { useReport, activeSeq } from "../store/report";
 import { AXIS_W } from "../lib/scale";
-import { episodeNoise } from "../lib/metrics";
+import { episodeNoise, NOISE_BASELINE } from "../lib/metrics";
 import { Section, tierColor, Chip } from "./ui";
+import { useAxisZoom } from "./useAxisZoom";
+import { ZoomControls } from "./ZoomControls";
+import { fmtClock } from "../lib/format";
 
-const H = 70;
-const BASE_Y = 52;
-const MAX_BAR = 44;
+const H = 84;
+const TOP = 10;
+const BASE_Y = 74;
 
 export function StealthReport() {
   const s = useReport();
-  const { report, timeline, metrics, scale, playheadMs } = s;
+  const { report, timeline, phaseWindows, metrics, playheadMs } = s;
   const focus = activeSeq(s);
   const hovered = focus != null ? timeline.bySeq.get(focus) : null;
 
-  const maxNoise = Math.max(...report.episodes.map(episodeNoise), 1);
+  const { w0, w1, span, zx, zoomed, zoomOut, reset, sel, handlers } = useAxisZoom(timeline.totalMs);
+
   const loudSeqs = new Set(metrics.loud_moments.map((l) => l.seq));
   const stealth = Math.round(metrics.stealth_score);
-  const noisePct = Math.round(100 - metrics.stealth_score);
+
+  // cumulative noise "burn" over the run — the actual metric: Σ noise vs the lab baseline (400).
+  let cum = 0;
+  const pts = timeline.items.map(({ ep, t1 }) => {
+    const n = episodeNoise(ep);
+    cum += n;
+    return { ms: t1, cum, n, seq: ep.seq, binary: ep.binary, loud: loudSeqs.has(ep.seq) };
+  });
+  const finalCum = cum;
+  // anchored against this box's loud reference solve when present, else the global default
+  const baseline = report.noise_baseline?.total ?? NOISE_BASELINE;
+  const yMax = Math.max(finalCum, baseline) * 1.04;
+  const yOf = (v: number) => BASE_Y - (v / yMax) * (BASE_Y - TOP);
+
+  // rolling exposure: each command's noise decays over ~TAU, so quiet time lowers your CURRENT
+  // exposure (what a defender with a fading memory still "sees"). Same noise units → same y-axis.
+  const TAU = Math.max(timeline.totalMs / 8, 120_000);
+  const events = pts.filter((p) => p.n > 0);
+  const expPath = (() => {
+    const times = new Set<number>();
+    const STEPS = 90;
+    for (let i = 0; i <= STEPS; i++) times.add((i / STEPS) * timeline.totalMs);
+    for (const e of events) times.add(e.ms);
+    let d = "";
+    for (const t of [...times].sort((a, b) => a - b)) {
+      let v = 0;
+      for (const e of events) if (e.ms <= t) v += e.n * Math.exp(-(t - e.ms) / TAU);
+      d += `${d ? " L" : "M"} ${zx(t).toFixed(1)} ${yOf(v).toFixed(1)}`;
+    }
+    return d;
+  })();
+
+  // stepped path (flat, then a vertical jump at each command) + a closed area under it
+  let line = `M ${zx(0).toFixed(1)} ${yOf(0).toFixed(1)}`;
+  let prev = 0;
+  for (const p of pts) {
+    const x = zx(p.ms).toFixed(1);
+    line += ` L ${x} ${yOf(prev).toFixed(1)} L ${x} ${yOf(p.cum).toFixed(1)}`;
+    prev = p.cum;
+  }
+  const lastX = pts.length ? zx(pts[pts.length - 1].ms) : 0;
+  const area = `${line} L ${lastX.toFixed(1)} ${BASE_Y} L ${zx(0).toFixed(1)} ${BASE_Y} Z`;
+
+  const loudPts = pts.filter((p) => p.loud);
+  const ceilingY = yOf(baseline);
 
   const loudList = metrics.loud_moments
     .slice(0, 4)
@@ -25,7 +73,7 @@ export function StealthReport() {
   return (
     <Section
       title="Stealth & Noise"
-      subtitle="noise on the wire vs the lab baseline"
+      subtitle="footprint over the run — cumulative builds, exposure decays"
       right={
         <span>
           Stealth{" "}
@@ -36,70 +84,106 @@ export function StealthReport() {
         </span>
       }
     >
-      {/* legend + overall noise — taught once, like the other charts */}
-      <div className="mb-1.5 flex items-center gap-3 text-xs text-faint">
+      <ZoomControls zoomed={zoomed} w0={w0} w1={w1} zoomOut={zoomOut} reset={reset} />
+
+      {/* legend + the headline number */}
+      <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-[1px]" style={{ background: "var(--color-tool)" }} />
-          steady
+          <span className="inline-block h-2 w-3 rounded-[1px]" style={{ background: "color-mix(in oklch, var(--color-loud) 45%, transparent)" }} />
+          cumulative noise
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-[1px]" style={{ background: "var(--color-loud)" }} />
-          loud moment
+          <span className="inline-block h-0 w-4 border-t-2" style={{ borderColor: "var(--color-tool)" }} />
+          rolling exposure
         </span>
-        <span className="mono ml-auto" style={{ color: noisePct >= 50 ? "var(--color-loud)" : "var(--color-tool)" }}>
-          noise {noisePct}% of baseline
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-0 w-4 border-t border-dashed" style={{ borderColor: "var(--color-loud)" }} />
+          lab baseline (stealth 0)
+        </span>
+        <span className="mono ml-auto" style={{ color: finalCum >= baseline * 0.5 ? "var(--color-loud)" : "var(--color-tool)" }} title="how much of the noise budget you spent">
+          {Math.round(finalCum)} / {Math.round(baseline)} budget spent
         </span>
       </div>
 
-      {/* noise on a true zero baseline; bar height ∝ loudness. No floating labels (they collided). */}
-      <div className="relative" style={{ height: 96 }}>
+      {/* the burn-up: area climbs toward the ceiling; steep jumps = loud commands */}
+      <div className="relative cursor-crosshair select-none overflow-hidden rounded-md border border-edge bg-ink/40" style={{ height: 132 }} {...handlers}>
         <svg viewBox={`0 0 ${AXIS_W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          {/* phase boundary separators — where in the run we are */}
+          {phaseWindows.slice(1).map(({ phase, t0 }) => (
+            <line key={`sep-${phase.mitre_tactic}`} x1={zx(t0)} y1={TOP} x2={zx(t0)} y2={BASE_Y} stroke="var(--color-edge)" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+          ))}
+
           <line x1={0} y1={BASE_Y} x2={AXIS_W} y2={BASE_Y} stroke="var(--color-edge)" vectorEffect="non-scaling-stroke" />
-          {timeline.items.map(({ ep, t0, t1 }) => {
-            const noise = episodeNoise(ep);
-            if (noise <= 0) return null;
-            const x = scale((t0 + t1) / 2);
-            const h = (noise / maxNoise) * MAX_BAR;
-            const loud = loudSeqs.has(ep.seq);
-            const dim = focus != null && focus !== ep.seq;
+
+          {/* the ceiling — if the curve reaches it, stealth is 0 */}
+          <line x1={0} y1={ceilingY} x2={AXIS_W} y2={ceilingY} stroke="var(--color-loud)" strokeWidth={1} strokeDasharray="4 3" vectorEffect="non-scaling-stroke" pointerEvents="none" />
+
+          <path d={area} fill="color-mix(in oklch, var(--color-loud) 16%, transparent)" stroke="none" />
+          <path d={line} fill="none" stroke="var(--color-loud)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+
+          {/* rolling exposure — rises at loud moments, decays while you stay quiet */}
+          <path d={expPath} fill="none" stroke="var(--color-tool)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" opacity={0.95} />
+
+          {/* per-command hit areas keep hover/click working on the line chart */}
+          {timeline.items.map(({ ep, gapStart, t1 }) => (
+            <rect
+              key={ep.seq}
+              x={zx(gapStart)}
+              y={TOP}
+              width={Math.max(1, zx(t1) - zx(gapStart))}
+              height={BASE_Y - TOP}
+              fill={focus === ep.seq ? "color-mix(in oklch, var(--color-fg) 8%, transparent)" : "transparent"}
+              className="cursor-pointer"
+              onMouseEnter={() => s.hover(ep.seq)}
+              onMouseLeave={() => s.hover(null)}
+              onClick={() => s.select(s.selectedSeq === ep.seq ? null : ep.seq)}
+            />
+          ))}
+
+          {sel && (
+            <rect x={Math.min(sel[0], sel[1]) * AXIS_W} y={TOP} width={Math.abs(sel[1] - sel[0]) * AXIS_W} height={BASE_Y - TOP} fill="color-mix(in oklch, var(--color-signal) 18%, transparent)" stroke="var(--color-signal)" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+          )}
+
+          <line x1={zx(playheadMs)} y1={TOP} x2={zx(playheadMs)} y2={BASE_Y} stroke="var(--color-fg)" strokeWidth={1} opacity={0.6} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+        </svg>
+
+        {/* loud-jump markers + labels (HTML, crisp). Only the loud moments, so no collisions. */}
+        <div className="pointer-events-none absolute inset-0">
+          {loudPts.map((p) => {
+            const left = (zx(p.ms) / AXIS_W) * 100;
+            if (left < -2 || left > 102) return null;
+            const top = (yOf(p.cum) / H) * 100;
+            const right = left > 82;
             return (
-              <g
-                key={ep.seq}
-                opacity={dim ? 0.3 : 1}
-                className="cursor-pointer"
-                onMouseEnter={() => s.hover(ep.seq)}
-                onMouseLeave={() => s.hover(null)}
-                onClick={() => s.select(s.selectedSeq === ep.seq ? null : ep.seq)}
-              >
-                <rect
-                  x={x - 3}
-                  y={BASE_Y - h}
-                  width={6}
-                  height={h}
-                  rx={1}
-                  fill={loud ? "var(--color-loud)" : "var(--color-tool)"}
-                  stroke={focus === ep.seq ? "var(--color-fg)" : "none"}
-                  strokeWidth={focus === ep.seq ? 1.5 : 0}
-                />
-                <title>{`#${ep.seq} ${ep.binary} — noise ${noise.toFixed(1)}`}</title>
-              </g>
+              <div key={p.seq} className="absolute" style={{ left: `${left}%`, top: `${top}%` }}>
+                <span className="absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: "var(--color-loud)" }} />
+                <span className="mono absolute whitespace-nowrap text-xs text-loud" style={{ transform: right ? "translate(-100%, -150%)" : "translate(-50%, -150%)" }}>
+                  {p.binary}
+                </span>
+              </div>
             );
           })}
-          <line x1={scale(playheadMs)} y1={4} x2={scale(playheadMs)} y2={BASE_Y} stroke="var(--color-fg)" strokeWidth={1} opacity={0.6} vectorEffect="non-scaling-stroke" pointerEvents="none" />
-        </svg>
+        </div>
       </div>
 
-      {/* hover detail */}
+      {/* axis — ticks track the zoom window */}
+      <div className="mono mt-1 flex justify-between text-xs text-faint">
+        {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+          <span key={f}>{fmtClock(w0 + f * span)}</span>
+        ))}
+      </div>
+
+      {/* hover detail — the command under the cursor and its contribution */}
       <div className="mt-2 min-h-[1.75rem]">
         {hovered ? (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="text-faint">#{hovered.ep.seq}</span>
             <span className="mono text-fg">{hovered.ep.binary}</span>
             {loudSeqs.has(hovered.ep.seq) && <Chip color="var(--color-loud)">loud</Chip>}
-            <span className="mono text-xs text-faint">noise {episodeNoise(hovered.ep).toFixed(1)}</span>
+            <span className="mono text-xs text-faint">+{episodeNoise(hovered.ep).toFixed(1)} noise</span>
           </div>
         ) : (
-          <p className="text-xs text-faint">Hover a spike to inspect — or pick a loudest moment below to jump to it.</p>
+          <p className="text-xs text-faint">Hover the curve to inspect a command — or pick a loudest moment below to jump to it.</p>
         )}
       </div>
 
@@ -122,7 +206,7 @@ export function StealthReport() {
                 <span className="mono truncate text-fg">{l.binary}</span>
                 <span className="justify-self-end">
                   <div className="h-1.5 w-12 overflow-hidden rounded-full bg-panel-2">
-                    <div className="h-full rounded-full" style={{ width: `${Math.round((l.noise / maxNoise) * 100)}%`, background: "var(--color-loud)" }} />
+                    <div className="h-full rounded-full" style={{ width: `${Math.round((l.noise / Math.max(...metrics.loud_moments.map((m) => m.noise), 1)) * 100)}%`, background: "var(--color-loud)" }} />
                   </div>
                 </span>
               </button>
@@ -131,6 +215,34 @@ export function StealthReport() {
         </div>
       ) : (
         <p className="mt-1 text-xs text-faint">Quiet run — no standout noise against the lab baseline.</p>
+      )}
+
+      {/* what the baseline actually is — a named loud reference solve, not a magic number */}
+      {report.noise_baseline && (
+        <details className="group mt-2 rounded-lg border border-edge bg-panel-2/30">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
+            <span className="text-faint transition-transform group-open:rotate-90">▸</span>
+            <span className="label text-faint">Why {Math.round(baseline)}?</span>
+            <span className="text-xs text-muted">· the loud reference solve that equals stealth 0</span>
+          </summary>
+          <div className="border-t border-edge px-3 py-2">
+            <p className="mb-2 text-xs text-faint">
+              Stealth = 100 − 100 × (your Σ noise ÷ this). It's the noise of owning this box the <span className="text-muted">loud</span> way — anchored per box, not a global constant.
+            </p>
+            <div className="grid gap-x-6 gap-y-0.5 sm:grid-cols-2">
+              {report.noise_baseline.reference.map((r) => (
+                <div key={r.label} className="grid grid-cols-[1fr_3rem] items-baseline gap-2 text-sm">
+                  <span className="mono truncate text-muted">{r.label}</span>
+                  <span className="mono text-right text-xs text-faint">{r.noise.toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 flex justify-between border-t border-edge pt-1.5 text-sm">
+              <span className="label text-faint">total = stealth 0</span>
+              <span className="mono text-fg">{report.noise_baseline.total.toFixed(1)}</span>
+            </div>
+          </div>
+        </details>
       )}
     </Section>
   );

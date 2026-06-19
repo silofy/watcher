@@ -132,13 +132,15 @@ function cardsFrom(): SessionCard[] {
 const DEFAULT_ID =
   [...cardsFrom()].sort((a, b) => b.episodes - a.episodes || Date.parse(b.ended_at) - Date.parse(a.ended_at))[0]?.id ?? SESSIONS[0].id;
 
-type View = "debrief" | "history";
+type View = "debrief" | "history" | "install";
 
 interface ReportState extends Derived {
   sessions: { id: string; label: string }[];
   sessionCards: SessionCard[];
   activeId: string;
   view: View;
+  /** Dismissed the "needs a write-up" gate for this session (chose run-only). Resets per session. */
+  gateDismissed: boolean;
   /** The active session's full report; `report` is the (possibly trimmed) view. */
   fullReport: WatcherReport;
   /** Retroactive session window as an inclusive seq range, or null for the full session. */
@@ -160,6 +162,8 @@ interface ReportState extends Derived {
   writeup: { source: string; confidence: number } | null;
 
   setView: (v: View) => void;
+  /** Dismiss the write-up gate for this session and show the run-only report. */
+  setGateDismissed: (v: boolean) => void;
   /** Overlay a write-up-sourced golden DAG: re-align the active report against the intended path. */
   applyGoldenDag: (golden: GoldenObjective[], meta?: { source: string; confidence: number }) => void;
   switchSession: (id: string) => void;
@@ -178,7 +182,7 @@ interface ReportState extends Derived {
   setPlaying: (p: boolean) => void;
 }
 
-const RESET = { hoveredSeq: null, selectedSeq: null, zoomWin: null, playheadMs: 0, playing: false } as const;
+const RESET = { hoveredSeq: null, selectedSeq: null, zoomWin: null, playheadMs: 0, playing: false, gateDismissed: false } as const;
 const DEFAULT_ENTRY = SESSIONS.find((s) => s.id === DEFAULT_ID) ?? SESSIONS[0];
 
 export const useReport = create<ReportState>((set, get) => ({
@@ -186,6 +190,7 @@ export const useReport = create<ReportState>((set, get) => ({
   sessionCards: cardsFrom(),
   activeId: DEFAULT_ENTRY.id,
   view: "debrief",
+  gateDismissed: false,
   fullReport: DEFAULT_ENTRY.report,
   trimSeq: null,
   ...derive(DEFAULT_ENTRY.report),
@@ -201,6 +206,7 @@ export const useReport = create<ReportState>((set, get) => ({
   writeup: null,
 
   setView: (view) => set({ view }),
+  setGateDismissed: (gateDismissed) => set({ gateDismissed }),
   switchSession: (id) => {
     const r = REPORTS[id];
     if (!r) return;

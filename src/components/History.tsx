@@ -1,7 +1,8 @@
+import { useRef, useState } from "react";
 import { useReport, type SessionCard } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
-import { PwnboxSync } from "./PwnboxSync";
 import { DIFFICULTY_COLOR } from "../lib/machine";
+import type { WatcherReport } from "../types/report";
 
 function gradeColor(letter: string): string {
   if (letter === "A" || letter === "B") return "var(--color-match)";
@@ -68,7 +69,10 @@ function Card({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
 }
 
 export function History() {
-  const { sessionCards, switchSession } = useReport();
+  const { sessionCards, switchSession, ingestLiveReport } = useReport();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [drag, setDrag] = useState(false);
   const cards = [...sessionCards].sort(
     (a, b) =>
       Number(b.recording) - Number(a.recording) ||
@@ -76,21 +80,55 @@ export function History() {
       Date.parse(b.ended_at) - Date.parse(a.ended_at),
   );
 
+  async function importFile(file: File | undefined) {
+    if (!file) return;
+    setErr(null);
+    try {
+      const rep = JSON.parse((await file.text()).replace(/^﻿/, "")) as WatcherReport;
+      if (!rep?.session?.uuid || !Array.isArray(rep.episodes)) throw new Error("shape");
+      ingestLiveReport(rep);
+      switchSession(`htb:${rep.session.uuid}`);
+    } catch {
+      setErr(`"${file.name}" isn't a Watcher session JSON — it should be a report exported by the capture agent.`);
+    }
+  }
+
   return (
-    <div>
-      <PwnboxSync />
-      <div className="mb-5 flex items-baseline justify-between">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDrag(true);
+      }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDrag(false);
+        void importFile(e.dataTransfer.files[0]);
+      }}
+    >
+      <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => void importFile(e.target.files?.[0])} />
+      <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-3">
           <h2 className="label text-muted">Engagement history</h2>
           <span className="text-xs text-faint">{cards.length} runs · click to open the debrief</span>
         </div>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="label rounded-full border border-signal/50 px-3 py-1.5 text-signal transition-colors hover:bg-signal/15"
+          title="Load a session JSON captured by the agent (or dropped from Pwnbox)"
+        >
+          Import session ↑
+        </button>
       </div>
+      {drag && <div className="mb-4 rounded-lg border-2 border-dashed border-signal bg-signal/10 px-6 py-8 text-center text-sm text-signal">Drop a session JSON to load it</div>}
+      {err && <p className="mb-4 text-xs text-detour">{err}</p>}
 
       {cards.length === 0 ? (
         <div className="rounded-lg border border-dashed border-edge bg-panel px-6 py-16 text-center">
           <div className="font-display text-lg text-muted">No runs yet</div>
-          <p className="mx-auto mt-2 max-w-[40ch] text-sm text-faint">
-            Spawn a machine and capture a session — it lands here as a debrief you can return to.
+          <p className="mx-auto mt-2 max-w-[44ch] text-sm text-faint">
+            Capture a session with the agent — or <span className="text-signal">Import</span> a session JSON (drag it anywhere here) to load a run you captured elsewhere, like Pwnbox.
           </p>
         </div>
       ) : (

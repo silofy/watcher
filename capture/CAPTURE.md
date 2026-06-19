@@ -59,7 +59,7 @@ import the result.
    ```
 
    Hack as normal; type `exit` to finish.
-3. **Auto-pull (no manual copy).** In the Watcher's **History → Pwnbox sync → Configure**, enter your
+3. **Auto-pull (no manual copy).** Open **Pwnbox sync** in the Watcher's top bar, enter your
    Pwnbox SSH host / user / key (the same details HTB gives you for "Connect via SSH") and enable it.
    The Watcher `scp`-pulls `~/.watcher-exports/*.json` into `~/.watcher/sessions/` every 15s and they
    appear in History automatically. Direct PC↔Pwnbox over your SSH key — nothing through a third party.

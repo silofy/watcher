@@ -3,22 +3,31 @@
  * boundary crossing. Auto-fetch (box-name-only egress, opt-in) layers on later behind `fetchWriteup`.
  */
 import type { LlmProvider } from "../llm/provider";
-import { extractGoldenDag, type BoxRef, type WriteupResult } from "./extract";
+import { extractGoldenDag, heuristicGoldenDag, type BoxRef, type WriteupResult } from "./extract";
 
 export * from "./extract";
 
-/** Extract a golden DAG from write-up text the user provided. Source label defaults to "pasted". */
+/**
+ * Extract a golden DAG from write-up text the user provided. Tries the local model first (sharp,
+ * tool-agnostic); with no model, falls back to a keyword heuristic so the comparison still works
+ * offline (rougher, flagged with lower confidence). Source label defaults to "pasted".
+ */
 export async function goldenFromText(text: string, box: BoxRef, provider: LlmProvider, source = "pasted"): Promise<WriteupResult> {
-  const golden = await extractGoldenDag(text, box, provider);
+  let golden = await extractGoldenDag(text, box, provider);
+  let rough = false;
+  if (golden.length === 0) {
+    golden = heuristicGoldenDag(text);
+    rough = golden.length > 0;
+  }
   if (golden.length === 0) {
     return {
       golden,
       source,
       confidence: 0,
-      note: "No objectives extracted — needs a running local model (Ollama). Without one, the report stays self-relative (Layer 1).",
+      note: "Couldn't extract an intended path from that text. Paste a fuller write-up, or enable Local AI (Ollama) for sharper extraction.",
     };
   }
-  // confidence is a rough function of how complete the extracted path looks
-  const confidence = Math.min(0.85, 0.4 + golden.length * 0.07);
-  return { golden, source, confidence };
+  // confidence reflects completeness — and is capped lower for the keyword fallback
+  const confidence = rough ? Math.min(0.5, 0.25 + golden.length * 0.05) : Math.min(0.85, 0.4 + golden.length * 0.07);
+  return { golden, source, confidence, note: rough ? "Rough extraction — no local model, so this is keyword-based. Enable Local AI (Ollama) for a sharper intended path." : undefined };
 }

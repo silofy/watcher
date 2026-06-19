@@ -19,8 +19,9 @@ function Field({ label, value, onChange, placeholder, type = "text", width = "" 
 }
 
 /**
- * Pwnbox SSH auto-pull — config + status. When enabled, polls the Rust `pull_pwnbox` command; pulled
- * exports land in ~/.watcher/sessions/ and the live bridge ingests them automatically.
+ * Pwnbox SSH auto-pull — a header control that lives with the active machine, not buried in History.
+ * Mounted persistently so it keeps polling the Rust `pull_pwnbox` command regardless of the open view;
+ * pulled exports land in ~/.watcher/sessions/ and the live bridge ingests them automatically.
  */
 export function PwnboxSync() {
   const [cfg, setCfg] = useState<PwnboxConfig>(loadPwnboxConfig);
@@ -58,41 +59,60 @@ export function PwnboxSync() {
   }, [cfg.enabled, cfg.host, cfg.user, cfg.port, cfg.identity, cfg.remoteDir]);
 
   const statusColor = sync.kind === "error" ? "var(--color-detour)" : sync.kind === "ok" ? "var(--color-match)" : "var(--color-faint)";
+  const dot = cfg.enabled ? statusColor : "var(--color-faint)";
 
   return (
-    <div className="mb-5 rounded-lg border border-edge bg-panel p-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => set({ enabled: !cfg.enabled })} className="flex items-center gap-2" title="Toggle auto-pull">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: cfg.enabled ? "var(--color-match)" : "var(--color-faint)" }} />
-          <span className="label">Pwnbox sync</span>
-        </button>
-        {cfg.enabled && (
-          <span className="text-xs" style={{ color: statusColor }}>
-            {sync.msg ?? "starting…"}
-            {sync.at ? ` · ${new Date(sync.at).toLocaleTimeString()}` : ""}
-          </span>
-        )}
-        <button type="button" onClick={() => setOpen((v) => !v)} className="label ml-auto text-faint transition-colors hover:text-fg">
-          {open ? "Hide" : "Configure"}
-        </button>
-      </div>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Pwnbox SSH auto-pull — sync a session you're playing in Pwnbox"
+        className={`flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+          cfg.enabled ? "border-match/40 bg-match/10 text-match" : "border-edge text-muted hover:border-signal/60 hover:bg-panel-2 hover:text-fg"
+        }`}
+      >
+        <span className="relative flex h-2 w-2 items-center justify-center">
+          {cfg.enabled && sync.kind === "ok" && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-match opacity-50" />}
+          <span className="relative h-2 w-2 rounded-full" style={{ background: dot }} />
+        </span>
+        <span>Pwnbox sync{cfg.enabled ? " · on" : ""}</span>
+      </button>
 
       {open && (
-        <div className="mt-3 space-y-3">
-          <div className="flex flex-wrap gap-3">
-            <Field label="host" value={cfg.host} onChange={(v) => set({ host: v })} placeholder="pwnbox ip / host" width="grow" />
-            <Field label="user" value={cfg.user} onChange={(v) => set({ user: v })} placeholder="htb-user" />
-            <Field label="port" type="number" value={cfg.port ? String(cfg.port) : ""} onChange={(v) => set({ port: v ? Number(v) : undefined })} placeholder="22" width="w-20" />
+        <>
+          {/* click-away */}
+          <button type="button" aria-label="Close" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-20 mt-2 w-[22rem] rounded-lg border border-edge bg-panel p-3 text-left shadow-xl">
+            <div className="mb-2.5 flex items-center gap-3">
+              <button type="button" onClick={() => set({ enabled: !cfg.enabled })} className="flex items-center gap-2" title="Toggle auto-pull">
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: dot }} />
+                <span className="label text-fg">Auto-pull {cfg.enabled ? "on" : "off"}</span>
+              </button>
+              {cfg.enabled && (
+                <span className="text-xs" style={{ color: statusColor }}>
+                  {sync.msg ?? "starting…"}
+                  {sync.at ? ` · ${new Date(sync.at).toLocaleTimeString()}` : ""}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-3">
+                <Field label="host" value={cfg.host} onChange={(v) => set({ host: v })} placeholder="pwnbox ip / host" width="grow" />
+                <Field label="user" value={cfg.user} onChange={(v) => set({ user: v })} placeholder="htb-user" />
+                <Field label="port" type="number" value={cfg.port ? String(cfg.port) : ""} onChange={(v) => set({ port: v ? Number(v) : undefined })} placeholder="22" width="w-20" />
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Field label="key path (optional)" value={cfg.identity ?? ""} onChange={(v) => set({ identity: v })} placeholder="C:\\Users\\you\\.ssh\\htb_key" width="grow" />
+                <Field label="remote export dir" value={cfg.remoteDir ?? ""} onChange={(v) => set({ remoteDir: v })} placeholder="~/.watcher-exports" width="grow" />
+              </div>
+              <p className="text-xs text-faint">
+                In Pwnbox, run the agent with <span className="mono">--export ~/.watcher-exports/&lt;box&gt;.json</span>. The Watcher scp-pulls those here every 15s using your SSH
+                key — directly, nothing through a third party.
+              </p>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Field label="key path (optional)" value={cfg.identity ?? ""} onChange={(v) => set({ identity: v })} placeholder="C:\\Users\\you\\.ssh\\htb_key" width="grow" />
-            <Field label="remote export dir" value={cfg.remoteDir ?? ""} onChange={(v) => set({ remoteDir: v })} placeholder="~/.watcher-exports" width="grow" />
-          </div>
-          <p className="text-xs text-faint">
-            In Pwnbox, run the agent with <span className="mono">--export ~/.watcher-exports/&lt;box&gt;.json</span>. The Watcher scp-pulls those here every 15s using your
-            SSH key — directly, nothing through a third party.
-          </p>
-        </div>
+        </>
       )}
     </div>
   );

@@ -150,8 +150,10 @@ export function computeMetrics(report: WatcherReport): ComputedMetrics {
   const { episodes, golden_dag } = report;
   const waste = wasteBreakdown(episodes);
 
+  // Anchor against the box's own loud reference solve when present; else the global default baseline.
+  const baseline = report.noise_baseline?.total ?? NOISE_BASELINE;
   const totalNoise = episodes.reduce((a, e) => a + episodeNoise(e), 0);
-  const normalized = Math.min(100, (totalNoise / NOISE_BASELINE) * 100);
+  const normalized = Math.min(100, (totalNoise / baseline) * 100);
   const stealth = Math.max(0, 100 - normalized);
 
   const loud = episodes

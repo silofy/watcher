@@ -8,7 +8,21 @@ const COLS = "0.7rem 2.4rem minmax(0,1fr) 3.4rem 3rem";
 
 export function CommandReplay() {
   const s = useReport();
-  const { timeline, playheadMs, playing, revealSeq, revealNonce } = s;
+  const { report, timeline, playheadMs, playing, revealSeq, revealNonce } = s;
+
+  // loadout — the tools you reached for, by count, loudest flagged. A compact "what was in your kit".
+  const loudestTool = (() => {
+    const seq = report.metrics.loud_moments?.[0]?.seq;
+    return seq != null ? report.episodes.find((e) => e.seq === seq)?.binary : undefined;
+  })();
+  const loadout = (() => {
+    const m = new Map<string, number>();
+    for (const it of timeline.items) {
+      const b = it.ep.binary;
+      if (b) m.set(b, (m.get(b) ?? 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  })();
   const curSeq = episodeAtPlayhead(s);
   const focus = activeSeq(s);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -83,6 +97,26 @@ export function CommandReplay() {
         </span>
       }
     >
+      {/* loadout — the tools used, by count; the loudest on the wire flagged */}
+      {loadout.length > 0 && (
+        <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+          <span className="label mr-1 text-faint">Loadout</span>
+          {loadout.map(([name, count]) => {
+            const loud = name === loudestTool;
+            return (
+              <span
+                key={name}
+                className={`mono rounded px-1.5 py-0.5 text-xs ${loud ? "" : "bg-panel-2 text-muted"}`}
+                style={loud ? { color: "var(--color-loud)", background: "color-mix(in oklch, var(--color-loud) 14%, transparent)" } : undefined}
+                title={loud ? `${name} — loudest tool on the wire` : `${name} — ${count}×`}
+              >
+                {name} ×{count}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       {/* DVR toolbar */}
       <div className="mb-2 flex items-center gap-3">
         <button

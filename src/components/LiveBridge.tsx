@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useReport } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { DIFFICULTY_COLOR } from "../lib/machine";
+import { loadPwnboxConfig } from "../lib/pwnbox";
 import type { WatcherReport } from "../types/report";
 
 function isTauri(): boolean {
@@ -100,6 +101,11 @@ export function LiveBridge() {
             </span>
           )}
           {m?.os && <span className="label rounded border border-edge px-1.5 py-0.5 text-xs">{m.os}</span>}
+          {loadPwnboxConfig().enabled && (
+            <span className="label rounded border border-match/40 bg-match/10 px-1.5 py-0.5 text-xs text-match" title="Pwnbox SSH auto-pull is active — sessions are scp-pulled every 15s">
+              ⟳ Pwnbox sync
+            </span>
+          )}
         </div>
         <div className="ml-auto flex items-center gap-3">
           <button

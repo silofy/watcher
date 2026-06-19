@@ -100,3 +100,32 @@ export async function extractGoldenDag(text: string, box: BoxRef, provider: LlmP
   const raw = await provider.generateJson(buildPrompt(text, box), { schema: GOLDEN_DAG_SCHEMA, temperature: 0 });
   return coerce(raw);
 }
+
+// Keyword detectors → a rough intended path, in write-up reading order. The deterministic fallback for
+// when there's no local model (e.g. the hosted web build): lower fidelity than the LLM, but real.
+const HEURISTIC_DETECTORS: { re: RegExp; objective: string; tactic: string; satisfied_by: string[] }[] = [
+  { re: /\b(nmap|rustscan|masscan|portscan|port scan)\b/i, objective: "enumerate_services", tactic: "TA0007", satisfied_by: ["nmap"] },
+  { re: /\b(gobuster|ffuf|feroxbuster|dirb|wfuzz|vhost|subdomain|directory brute|fuzz)\b/i, objective: "enumerate_web_content", tactic: "TA0007", satisfied_by: ["gobuster"] },
+  { re: /\b(sqlmap|sql injection|union select|blind sql)\b/i, objective: "exploit_sql_injection", tactic: "TA0001", satisfied_by: ["sqlmap"] },
+  { re: /(file upload|webshell|web shell|\.phtml|unrestricted upload)/i, objective: "exploit_file_upload", tactic: "TA0001", satisfied_by: ["malicious upload"] },
+  { re: /(default cred|admin:admin|weak password|hardcoded password|leaked password|credential reuse)/i, objective: "obtain_credentials", tactic: "TA0006", satisfied_by: ["credentials"] },
+  { re: /\b(hydra|brute.?force|rockyou|password spray)\b/i, objective: "brute_force_login", tactic: "TA0001", satisfied_by: ["hydra"] },
+  { re: /(reverse shell|revshell|bash -i|nc -e|foothold|user shell|got a shell|initial access)/i, objective: "gain_foothold", tactic: "TA0002", satisfied_by: ["reverse shell"] },
+  { re: /\b(lateral|pivot|switch user|another user)\b/i, objective: "lateral_movement", tactic: "TA0008", satisfied_by: ["lateral movement"] },
+  { re: /(privilege escalation|privesc|sudo -l|suid|gtfobins|linpeas|winpeas|kernel exploit|writable)/i, objective: "escalate_privileges", tactic: "TA0004", satisfied_by: ["privesc"] },
+  { re: /(root\.txt|proof\.txt|got root|rooted|administrator access|system shell)/i, objective: "capture_root", tactic: "TA0004", satisfied_by: ["read root flag"] },
+];
+
+/** No-LLM fallback: scan a write-up for known tool/keyword signals and build a linear intended path. */
+export function heuristicGoldenDag(text: string): GoldenObjective[] {
+  if (!text.trim()) return [];
+  const found: { idx: number; o: GoldenObjective }[] = [];
+  for (const d of HEURISTIC_DETECTORS) {
+    const m = d.re.exec(text);
+    if (m) found.push({ idx: m.index, o: { objective: d.objective, tactic: d.tactic, satisfied_by: d.satisfied_by, depends_on: [] } });
+  }
+  found.sort((a, b) => a.idx - b.idx);
+  const out = found.map((f) => f.o).slice(0, MAX_OBJECTIVES);
+  for (let i = 1; i < out.length; i++) out[i].depends_on = [out[i - 1].objective]; // recon → … → root
+  return out.length >= 2 ? out : []; // a single hit isn't a path
+}

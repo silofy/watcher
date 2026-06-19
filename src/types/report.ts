@@ -133,6 +133,13 @@ export interface Replay {
   inline_cast?: string | null;
 }
 
+export interface NoiseBaseline {
+  /** Sum of the reference noise — the stealth-0 denominator. */
+  total: number;
+  /** The loud reference solve, broken down so the baseline is inspectable. */
+  reference: { label: string; noise: number }[];
+}
+
 export interface WatcherReport {
   schema_version: "1.0";
   session: Session;
@@ -145,6 +152,10 @@ export interface WatcherReport {
   redaction_profile: RedactionProfile;
   /** True while the session is live (machine spawned, capture ongoing). */
   recording?: boolean;
+  /** Per-box loudness anchor — the noise of a "loud reference solve". Σ noise here = stealth 0.
+   *  Derived per box from its expected loud tooling, so the 0–100 stealth score means something
+   *  per box rather than against a global magic constant. */
+  noise_baseline?: NoiseBaseline;
   /** Raw write-up text the extension pulled from HTB for this box (Layer-2 source). The app
    *  auto-extracts a golden DAG from it when no reference is present yet. */
   writeup_text?: string;

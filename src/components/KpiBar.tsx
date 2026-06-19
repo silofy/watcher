@@ -58,7 +58,7 @@ export function KpiBar() {
       <button
         type="button"
         onClick={() => goTo("bridge")}
-        title="Open “Enterprise Bridge” — the grade rubric"
+        title="Open “Coaching & grade” — the rubric and playbook"
         className="group flex min-w-[15rem] flex-col justify-between rounded-lg border border-edge bg-panel px-5 pt-3 pb-4 text-left transition-colors hover:border-edge-bright hover:bg-panel-2/50 lg:min-w-[17rem]"
       >
         <div className="flex items-center justify-between">

@@ -8,10 +8,13 @@ import { DeviationTimeline } from "./components/DeviationTimeline";
 import { StealthReport } from "./components/StealthReport";
 import { CommandReplay } from "./components/CommandReplay";
 import { PathComparison } from "./components/PathComparison";
-import { CoachingPanel } from "./components/CoachingPanel";
-import { BridgePanel } from "./components/BridgePanel";
+import { Assessment } from "./components/Assessment";
 import { History } from "./components/History";
+import { Install } from "./components/Install";
+import { WriteupGate } from "./components/WriteupGate";
 import { LlmStatusChip } from "./components/LlmStatusChip";
+import { PwnboxSync } from "./components/PwnboxSync";
+import { AiBanner } from "./components/AiBanner";
 import { LiveBridge } from "./components/LiveBridge";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
@@ -22,7 +25,7 @@ function Rise({ i, className, id, children }: { i: number; className?: string; i
   );
 }
 
-function Tab({ id, label }: { id: "debrief" | "history"; label: string }) {
+function Tab({ id, label }: { id: "debrief" | "history" | "install"; label: string }) {
   const { view, setView } = useReport();
   const active = view === id;
   return (
@@ -39,8 +42,9 @@ function Tab({ id, label }: { id: "debrief" | "history"; label: string }) {
 }
 
 export function App() {
-  const { report, view } = useReport();
-  const { session, redaction_profile } = report;
+  const { report, view, gateDismissed } = useReport();
+  const { session } = report;
+  const needsWriteup = report.golden_dag.length === 0 && !gateDismissed;
 
   return (
     <div className="min-h-full">
@@ -51,28 +55,32 @@ export function App() {
               <div className="flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-signal/15 text-signal">◎</span>
                 <span className="font-display font-semibold tracking-tight text-fg">The Watcher</span>
-                <span className="hidden text-xs text-faint sm:inline">flight data recorder</span>
               </div>
               <nav className="flex items-center gap-5">
                 <Tab id="debrief" label="Debrief" />
                 <Tab id="history" label="History" />
+                <Tab id="install" label="Install" />
               </nav>
             </div>
-            <div className="flex items-center gap-2.5 text-xs text-faint">
+            <div className="flex items-center gap-2.5 text-xs">
+              <PwnboxSync />
               <LlmStatusChip />
-              <span className="label rounded border border-edge px-1.5 py-0.5" title="Export redaction profile (§6.3)">
-                {redaction_profile === "public_safe" ? "Public-safe" : "Full"}
-              </span>
             </div>
           </div>
         </div>
+        {/* AI transparency strip — present when the local model is refining coaching */}
+        <AiBanner />
         {/* active machine — separate live content */}
         <LiveBridge />
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-5">
-        {view === "history" ? (
+        {view === "install" ? (
+          <Install />
+        ) : view === "history" ? (
           <History />
+        ) : needsWriteup ? (
+          <WriteupGate />
         ) : (
           <div className="grid grid-cols-1 gap-x-6 gap-y-7 lg:grid-cols-12 lg:items-start">
             {/* 1 — the verdict: who, did you root it, the one lesson, then the scorecard */}
@@ -90,9 +98,9 @@ export function App() {
             <Rise i={3} id="path" className="lg:col-span-12">
               <PathComparison />
             </Rise>
-            {/* 4 — how to improve: skills + concrete next steps */}
-            <Rise i={4} className="lg:col-span-12">
-              <CoachingPanel />
+            {/* 4 — your grade + how to level up: the explainable rubric, skills, and playbook */}
+            <Rise i={4} id="bridge" className="lg:col-span-12">
+              <Assessment />
             </Rise>
             {/* 5 — how the run unfolded: the MITRE swimlane + techniques */}
             <Rise i={5} id="unfolded" className="lg:col-span-12">
@@ -104,16 +112,13 @@ export function App() {
               <span className="label text-faint">Details</span>
               <div className="h-px flex-1 bg-edge" />
             </div>
-            <Rise i={6} id="log" className="lg:col-span-6">
-              <CommandReplay />
-            </Rise>
-            <Rise i={7} id="stealth" className="lg:col-span-6">
+            <Rise i={6} id="stealth" className="lg:col-span-12">
               <StealthReport />
             </Rise>
-            <Rise i={8} id="bridge" className="lg:col-span-12">
-              <BridgePanel />
+            <Rise i={7} id="log" className="lg:col-span-12">
+              <CommandReplay />
             </Rise>
-            <Rise i={9} className="lg:col-span-12">
+            <Rise i={8} className="lg:col-span-12">
               <TrimControl />
             </Rise>
 

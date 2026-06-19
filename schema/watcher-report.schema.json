@@ -214,6 +214,29 @@
     "recording": {
       "type": "boolean",
       "description": "True while the session is live (machine spawned, capture ongoing); the daemon flips it false on session end."
+    },
+
+    "noise_baseline": {
+      "type": "object",
+      "description": "Per-box loudness anchor: the noise of a 'loud reference solve'. Σ noise here = stealth 0. Derived per box from its expected loud tooling, not a global constant — so 0–100 means something per box.",
+      "required": ["total", "reference"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "number", "minimum": 0, "description": "Sum of the reference noise — the stealth-0 denominator." },
+        "reference": {
+          "type": "array",
+          "description": "The loud reference solve, broken down so the baseline is inspectable.",
+          "items": {
+            "type": "object",
+            "required": ["label", "noise"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string", "description": "The loud action, e.g. 'hydra http-form (rockyou)'." },
+              "noise": { "type": "number", "minimum": 0, "description": "Its noise = weight × (1 + log10(volume))." }
+            }
+          }
+        }
+      }
     }
   }
 }

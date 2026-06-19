@@ -92,5 +92,26 @@
     ]
   },
   "replay": { "cast_ref": null, "inline_cast": null },
-  "redaction_profile": "public_safe"
+  "redaction_profile": "public_safe",
+  "noise_baseline": {
+    "total": 400.0,
+    "reference": [
+      { "label": "nmap -p- -A (full aggressive scan)", "noise": 29.1 },
+      { "label": "masscan 1-65535 @10k pps", "noise": 29.1 },
+      { "label": "nikto web scan", "noise": 7.0 },
+      { "label": "gobuster dir /", "noise": 28.0 },
+      { "label": "gobuster dir /admin", "noise": 28.0 },
+      { "label": "feroxbuster -r (recursive)", "noise": 43.8 },
+      { "label": "dirb big.txt", "noise": 31.8 },
+      { "label": "hydra http-form (rockyou)", "noise": 81.6 },
+      { "label": "sqlmap --level 5 --risk 3", "noise": 51.3 },
+      { "label": "wfuzz parameter fuzzing", "noise": 32.9 },
+      { "label": "nmap --script vuln", "noise": 18.0 },
+      { "label": "nmap -sU (UDP scan)", "noise": 5.0 },
+      { "label": "wpscan --enumerate", "noise": 6.0 },
+      { "label": "linpeas.sh", "noise": 3.0 },
+      { "label": "pspy (process snoop)", "noise": 2.0 },
+      { "label": "enum4linux-ng", "noise": 3.4 }
+    ]
+  }
 }
