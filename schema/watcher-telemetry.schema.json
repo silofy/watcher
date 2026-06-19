@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thewatcher.dev/schema/watcher-telemetry-1.0.json",
+  "title": "Watcher Telemetry Message",
+  "description": "The wire contract for the open plugin API (brief §5.4). A plugin is any process that emits valid messages to the daemon's local socket: a leading capability Handshake, then a stream of TelemetryEvents (the §3.3 envelope). One message is either a Handshake or a TelemetryEvent.",
+  "oneOf": [{ "$ref": "#/$defs/Handshake" }, { "$ref": "#/$defs/TelemetryEvent" }],
+
+  "$defs": {
+    "TelemetryEvent": {
+      "type": "object",
+      "required": ["source", "session_uuid", "ts_utc_us", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string", "enum": ["local_pty", "browser_ext", "in_vm_daemon", "plugin"] },
+        "session_uuid": { "type": "string" },
+        "seq": { "type": "integer", "minimum": 0 },
+        "ts_utc_us": { "type": "integer", "minimum": 0, "description": "UTC microseconds; the daemon normalizes per-source skew." },
+        "kind": {
+          "type": "string",
+          "enum": ["command", "output", "stdin_masked", "input", "session_start", "session_end", "session_flag"]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cmd": { "type": "string" },
+            "exit_code": { "type": ["integer", "null"] },
+            "stream": { "type": "string", "enum": ["stdin", "stdout", "stderr"] },
+            "text": { "type": "string" },
+            "line_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "boundary_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "redaction_method": { "type": "string", "enum": ["none", "regex", "termios", "heuristic"] },
+            "context_path": { "type": "string" },
+            "platform": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "Handshake": {
+      "type": "object",
+      "description": "The first message on a plugin connection: declares fidelity so the core knows what it is ingesting (brief §5.4).",
+      "required": ["watcher_handshake", "plugin", "class", "capabilities"],
+      "additionalProperties": false,
+      "properties": {
+        "watcher_handshake": { "type": "string", "description": "Protocol version, e.g. \"1.0\"." },
+        "plugin": { "type": "string", "description": "Plugin identifier, e.g. aws-cloudshell." },
+        "class": { "type": "string", "enum": ["source", "context_resolver", "transform"] },
+        "capabilities": {
+          "type": "object",
+          "required": ["has_exit_codes", "has_stdin", "boundary_confidence", "redaction"],
+          "additionalProperties": false,
+          "properties": {
+            "has_exit_codes": { "type": "boolean" },
+            "has_stdin": { "type": "boolean" },
+            "boundary_confidence": { "type": "string", "enum": ["exact", "inferred"] },
+            "redaction": { "type": "string", "enum": ["none", "regex", "termios"] }
+          }
+        },
+        "context_template": { "type": "string", "description": "e.g. cloud:aws:cloudshell:{region}." }
+      }
+    }
+  }
+}

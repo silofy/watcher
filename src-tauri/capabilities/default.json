@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability set for the report window. The Phase-1 slice needs only the core webview — no filesystem, shell, or network permissions.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

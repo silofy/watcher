@@ -1,0 +1,39 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+
+# Tauri / Rust
+src-tauri/target
+src-tauri/gen
+src-tauri/test.log
+capture/target
+core/target
+store/target
+daemon/target
+
+# build artifacts
+report.html
+tsconfig.tsbuildinfo
+dev.log
+capture/events.ndjson
+capture/run.log
+fixtures/session-live-capture.json
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+capture/*.db
+capture/*.db-*
+store/build.log
+daemon/build.log
+daemon/*.db
+daemon/*.db-*
+
+dogfood-window.png
+daemon/dogfood.db
+daemon/dogfood.db-*
+capture/cap.log
+ui-v2-*.png

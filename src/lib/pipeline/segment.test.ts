@@ -1,0 +1,56 @@
+import { describe, it, expect } from "vitest";
+import { segmentEpisodes } from "./segment";
+import type { RawCommand } from "./types";
+
+const base = 1_000_000;
+
+const stream: RawCommand[] = [
+  // 60s nmap scan, lots of nothing else
+  { cmd: "nmap -sV 10.10.10.5", started_at_ms: base, ended_at_ms: base + 60_000, exit_code: 0, output_line_count: 40, output_digest: "22,80 open" },
+  // quick manual curl, 30s think before it
+  { cmd: "curl -s http://10.10.10.5/", started_at_ms: base + 90_000, ended_at_ms: base + 91_000, exit_code: 0, output_line_count: 12, output_digest: "landing page" },
+  // 6-minute pause, then sudo -l
+  { cmd: "sudo -l", started_at_ms: base + 451_000, ended_at_ms: base + 451_500, exit_code: 0, output_line_count: 3, output_digest: "(ALL) NOPASSWD: /usr/bin/find" },
+];
+
+describe("segmentEpisodes (§4.1)", () => {
+  const eps = segmentEpisodes(stream);
+
+  it("splits the long pause into its own think_pause episode", () => {
+    // nmap, curl, [think_pause], sudo
+    expect(eps).toHaveLength(4);
+    const pause = eps[2];
+    expect(pause.actor).toBe("think_pause");
+    expect(pause.gap_before_ms).toBe(360_000);
+    expect(pause.duration_ms).toBe(0);
+    expect(pause.cmd).toBe("");
+  });
+
+  it("moves the gap onto the think_pause, leaving the command's gap at 0", () => {
+    const sudo = eps[3];
+    expect(sudo.cmd).toBe("sudo -l");
+    expect(sudo.gap_before_ms).toBe(0);
+  });
+
+  it("tags a long scanning command machine_bound and a quick command human_active", () => {
+    expect(eps[0]).toMatchObject({ binary: "nmap", actor: "machine_bound", tactic: "TA0007" });
+    expect(eps[1]).toMatchObject({ binary: "curl", actor: "human_active" });
+  });
+
+  it("carries the MITRE prior through to the episode", () => {
+    expect(eps[3]).toMatchObject({ binary: "sudo", tactic: "TA0004", technique: "T1548" });
+  });
+
+  it("re-sequences episodes from 1", () => {
+    expect(eps.map((e) => e.seq)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("treats a very long gap as idle, not think_pause", () => {
+    const idleStream: RawCommand[] = [
+      { cmd: "id", started_at_ms: base, ended_at_ms: base + 500, exit_code: 0, output_line_count: 1 },
+      { cmd: "ls", started_at_ms: base + 2_400_000, ended_at_ms: base + 2_400_500, exit_code: 0, output_line_count: 5 },
+    ];
+    const r = segmentEpisodes(idleStream);
+    expect(r[1].actor).toBe("idle");
+  });
+});

@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thewatcher.dev/schema/watcher-report-1.0.json",
+  "title": "Watcher Session Report",
+  "description": "The schema-versioned JSON document that every Watcher backend module produces and the report UI consumes. This is the same blob embedded in the portable HTML export (brief §6.3, <script id=\"watcher-data\">) and the unit the Enterprise Bridge signs.",
+  "type": "object",
+  "required": ["schema_version", "session", "episodes", "phases", "golden_dag", "metrics", "coaching", "redaction_profile"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0" },
+
+    "session": {
+      "type": "object",
+      "required": ["uuid", "started_at", "ended_at", "target_scope", "shell", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "uuid": { "type": "string", "format": "uuid" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "ended_at": { "type": "string", "format": "date-time" },
+        "target_scope": { "type": "string", "description": "Authorized scope, e.g. an HTB box label or CIDR." },
+        "context_path": { "type": "string", "description": "host -> vm -> container provenance, e.g. cloud:htb:pwnbox." },
+        "shell": { "type": "string" },
+        "source": { "type": "string", "enum": ["local_pty", "browser_ext", "in_vm_daemon", "plugin"] },
+        "machine": {
+          "type": "object",
+          "description": "Lab/machine identity, surfaced as the report's hero (e.g. the HTB box the browser extension detected on spawn).",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "slug": { "type": "string" },
+            "os": { "type": "string" },
+            "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard", "Insane"] },
+            "avatar": { "type": ["string", "null"], "description": "Avatar URL (e.g. HTB CDN); fetched at render with a generated fallback." },
+            "points": { "type": ["integer", "null"] },
+            "retired": { "type": "boolean" }
+          }
+        }
+      }
+    },
+
+    "episodes": {
+      "type": "array",
+      "description": "The ~40 compressed episode cards (brief §4.1). One machine_bound command is one atomic card.",
+      "items": {
+        "type": "object",
+        "required": ["seq", "cmd", "binary", "duration_ms", "gap_before_ms", "actor", "tactic"],
+        "additionalProperties": false,
+        "properties": {
+          "seq": { "type": "integer", "minimum": 0 },
+          "cmd": { "type": "string", "description": "Redacted command text. Empty for a pure think_pause episode." },
+          "binary": { "type": "string", "description": "Primary binary, e.g. nmap, gobuster, sudo. Empty for think_pause." },
+          "duration_ms": { "type": "integer", "minimum": 0, "description": "Machine working time." },
+          "gap_before_ms": { "type": "integer", "minimum": 0, "description": "Human thinking time before this episode." },
+          "exit_code": { "type": ["integer", "null"] },
+          "actor": { "type": "string", "enum": ["machine_bound", "human_active", "think_pause", "idle"] },
+          "output_digest": { "type": "string", "description": "Compact, LLM-friendly summary of output (never raw bytes)." },
+          "tactic": { "type": "string", "description": "MITRE ATT&CK tactic id, e.g. TA0007.", "pattern": "^TA[0-9]{4}$" },
+          "technique": { "type": "string", "description": "MITRE technique id, e.g. T1046.", "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "noise_weight": { "type": "number", "minimum": 0, "maximum": 10, "description": "1 = quiet/manual, 10 = hydra brute force (brief §6.1)." },
+          "volume": { "type": "integer", "minimum": 0, "description": "Request/line count that scales the noise weight." },
+          "context_path": { "type": "string" },
+          "alignment": {
+            "type": ["string", "null"],
+            "enum": ["match", "alternative", "detour", "skipped", "out_of_order", null],
+            "description": "Result of Needleman-Wunsch alignment vs the golden DAG (brief §4.3)."
+          },
+          "loop_of_seq": {
+            "type": ["integer", "null"],
+            "description": "If set, this episode is a redundant near-duplicate retry of the referenced seq (Loop waste, brief §6.1)."
+          }
+        }
+      }
+    },
+
+    "phases": {
+      "type": "array",
+      "description": "Confidence-weighted MITRE phase map. Phases are not a clean partition; engagements loop.",
+      "items": {
+        "type": "object",
+        "required": ["mitre_tactic", "label", "started_at", "ended_at", "efficiency_pct"],
+        "additionalProperties": false,
+        "properties": {
+          "mitre_tactic": { "type": "string", "pattern": "^TA[0-9]{4}$" },
+          "label": { "type": "string" },
+          "started_at": { "type": "string", "format": "date-time" },
+          "ended_at": { "type": "string", "format": "date-time" },
+          "efficiency_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+
+    "golden_dag": {
+      "type": "array",
+      "description": "The seeded write-up parsed into tool-agnostic objectives (brief §4.3). A DAG, not a list.",
+      "items": {
+        "type": "object",
+        "required": ["objective", "tactic", "satisfied_by"],
+        "additionalProperties": false,
+        "properties": {
+          "objective": { "type": "string" },
+          "tactic": { "type": "string", "pattern": "^TA[0-9]{4}$" },
+          "satisfied_by": { "type": "array", "items": { "type": "string" }, "description": "Tools/methods that satisfy this objective." },
+          "depends_on": { "type": "array", "items": { "type": "string" }, "description": "Objective ids that are true prerequisites." },
+          "user_satisfied_by_seq": { "type": ["integer", "null"], "description": "Episode seq that satisfied this objective, or null if skipped." }
+        }
+      }
+    },
+
+    "metrics": {
+      "type": "object",
+      "required": ["efficiency_pct", "time_waster", "stealth_score", "objective_coverage_pct", "technique_breadth"],
+      "additionalProperties": false,
+      "properties": {
+        "efficiency_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "time_waster": {
+          "type": "object",
+          "required": ["productive_ms", "detour_ms", "stuck_ms", "loop_ms", "t_active_ms"],
+          "additionalProperties": false,
+          "properties": {
+            "productive_ms": { "type": "integer", "minimum": 0 },
+            "detour_ms": { "type": "integer", "minimum": 0 },
+            "stuck_ms": { "type": "integer", "minimum": 0 },
+            "loop_ms": { "type": "integer", "minimum": 0 },
+            "t_active_ms": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "stealth_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "loud_moments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["seq", "noise"],
+            "additionalProperties": false,
+            "properties": {
+              "seq": { "type": "integer" },
+              "noise": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "independence": {
+          "type": "object",
+          "description": "Enterprise signal — routed to a human, never an automated verdict (brief §6.4).",
+          "required": ["score", "signals"],
+          "additionalProperties": false,
+          "properties": {
+            "score": { "type": "number", "minimum": 0, "maximum": 100 },
+            "signals": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "think_pause_presence": { "type": "number" },
+                "typo_entropy": { "type": "number" },
+                "paste_burst_ratio": { "type": "number" },
+                "cohort_uniqueness": { "type": "number" }
+              }
+            }
+          }
+        },
+        "objective_coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "technique_breadth": { "type": "integer", "minimum": 0, "description": "Count of distinct MITRE techniques touched." }
+      }
+    },
+
+    "coaching": {
+      "type": "object",
+      "required": ["skill_radar", "next_steps"],
+      "additionalProperties": false,
+      "properties": {
+        "skill_radar": {
+          "type": "object",
+          "required": ["recon", "web", "exploit", "privesc", "opsec"],
+          "additionalProperties": false,
+          "properties": {
+            "recon": { "type": "number", "minimum": 0, "maximum": 100 },
+            "web": { "type": "number", "minimum": 0, "maximum": 100 },
+            "exploit": { "type": "number", "minimum": 0, "maximum": 100 },
+            "privesc": { "type": "number", "minimum": 0, "maximum": 100 },
+            "opsec": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "next_steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["action", "why", "category"],
+            "additionalProperties": false,
+            "properties": {
+              "action": { "type": "string", "description": "The imperative lead — what to do next time (markdown)." },
+              "why": { "type": "string", "description": "The rationale, grounded in this run (markdown)." },
+              "category": { "type": "string", "enum": ["Recon", "Web", "Access", "PrivEsc", "OpSec", "Tactics", "Recap"] },
+              "evidence_seq": { "type": ["integer", "null"], "description": "The captured step this advice points at, for deep-linking." }
+            }
+          }
+        }
+      }
+    },
+
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cast_ref": { "type": ["string", "null"], "description": "External asciinema cast path (lite export)." },
+        "inline_cast": { "type": ["string", "null"], "description": "Inlined asciinema v2 cast (full export)." }
+      }
+    },
+
+    "redaction_profile": {
+      "type": "string",
+      "enum": ["public_safe", "full"],
+      "description": "public_safe strips active IPs, hostnames, flags, anything credential-adjacent (brief §6.3)."
+    },
+
+    "recording": {
+      "type": "boolean",
+      "description": "True while the session is live (machine spawned, capture ongoing); the daemon flips it false on session end."
+    }
+  }
+}

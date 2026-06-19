@@ -1,0 +1,4 @@
+{"watcher_handshake":"1.0","plugin":"aws-cloudshell","class":"source","capabilities":{"has_exit_codes":false,"has_stdin":true,"boundary_confidence":"inferred","redaction":"none"},"context_template":"cloud:aws:cloudshell:us-east-1"}
+{"source":"plugin","session_uuid":"7c3f1a90-2b4d-4e6a-9f10-aa01bb02cc03","seq":1,"ts_utc_us":1718630400000000,"kind":"command","payload":{"cmd":"aws s3 ls"}}
+{"source":"plugin","session_uuid":"7c3f1a90-2b4d-4e6a-9f10-aa01bb02cc03","seq":1,"ts_utc_us":1718630400850000,"kind":"output","payload":{"stream":"stdout","text":"2024-06-17 09:14:02 my-research-bucket","line_count":1}}
+{"source":"plugin","session_uuid":"7c3f1a90-2b4d-4e6a-9f10-aa01bb02cc03","seq":2,"ts_utc_us":1718630412000000,"kind":"command","payload":{"cmd":"kubectl get pods -n prod"}}

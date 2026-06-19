@@ -1,0 +1,12 @@
+[package]
+name = "watcher-core"
+version = "0.1.0"
+edition = "2021"
+description = "The Watcher — shared daemon core: session lifecycle controller + re-redaction"
+
+[lib]
+name = "watcher_core"
+path = "src/lib.rs"
+
+[dependencies]
+regex = "1"

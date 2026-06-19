@@ -1,0 +1,53 @@
+{
+  "name": "watcher-report",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The Watcher — interactive report UI (Phase 1 vertical slice). Renders a schema-versioned session JSON as the operator's mirror.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "export": "vite build && vite-node scripts/export-html.tsx",
+    "ingest": "vite-node scripts/ingest-capture.tsx",
+    "conformance": "vite-node scripts/conformance.tsx",
+    "attest": "vite-node scripts/attest.tsx",
+    "llm:probe": "vite-node scripts/llm-probe.tsx",
+    "export:capture": "vite build && vite-node scripts/ingest-capture.tsx && vite-node scripts/export-html.tsx --report dist/report-from-capture.json",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --noEmit",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@fontsource-variable/hanken-grotesk": "^5.2.8",
+    "@fontsource-variable/saira": "^5.2.11",
+    "@fontsource-variable/spline-sans-mono": "^5.2.8",
+    "@tauri-apps/api": "^2.1.1",
+    "@xyflow/react": "^12.11.0",
+    "d3-array": "^3.2.4",
+    "d3-scale": "^4.0.2",
+    "d3-shape": "^3.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@tauri-apps/cli": "^2.1.0",
+    "@types/d3-array": "^3.2.1",
+    "@types/d3-scale": "^4.0.8",
+    "@types/d3-shape": "^3.1.6",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "tailwindcss": "^4.0.0",
+    "typescript": "~5.6.3",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}

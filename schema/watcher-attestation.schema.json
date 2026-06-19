@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thewatcher.dev/schema/watcher-attestation-1.0.json",
+  "title": "Watcher Enterprise Attestation",
+  "description": "The signed, hash-chained, manager-profile bundle that crosses to the institution (brief §6.4). Carries scores and evidence digests only — never raw telemetry — so it survives FERPA/GDPR scrutiny while remaining auditable and tamper-evident.",
+  "type": "object",
+  "required": ["content", "prev_hash", "hash", "signature", "pubkey"],
+  "additionalProperties": false,
+  "properties": {
+    "content": {
+      "type": "object",
+      "required": ["schema_version", "session", "grade", "metrics_summary", "evidence_digests", "redaction_profile"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "1.0" },
+        "session": {
+          "type": "object",
+          "required": ["uuid", "target_scope", "started_at", "ended_at"],
+          "additionalProperties": false,
+          "properties": {
+            "uuid": { "type": "string" },
+            "target_scope": { "type": "string" },
+            "started_at": { "type": "string", "format": "date-time" },
+            "ended_at": { "type": "string", "format": "date-time" }
+          }
+        },
+        "grade": {
+          "type": "object",
+          "required": ["score", "letter", "routed_to", "integrity_flag", "components"],
+          "additionalProperties": false,
+          "properties": {
+            "score": { "type": "number", "minimum": 0, "maximum": 100 },
+            "letter": { "type": "string" },
+            "routed_to": { "type": "string", "enum": ["grade", "integrity_queue"] },
+            "integrity_flag": { "type": "boolean" },
+            "components": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["raw", "weight", "weighted"],
+                "additionalProperties": false,
+                "properties": {
+                  "raw": { "type": "number" },
+                  "weight": { "type": "number" },
+                  "weighted": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "metrics_summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "objective_coverage_pct": { "type": "number" },
+            "technique_breadth": { "type": "integer" },
+            "efficiency_pct": { "type": "number" },
+            "stealth_score": { "type": "number" },
+            "independence": { "type": "number" }
+          }
+        },
+        "evidence_digests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["objective", "tactic", "satisfied", "by_seq"],
+            "additionalProperties": false,
+            "properties": {
+              "objective": { "type": "string" },
+              "tactic": { "type": "string" },
+              "satisfied": { "type": "boolean" },
+              "by_seq": { "type": ["integer", "null"] }
+            }
+          }
+        },
+        "redaction_profile": { "const": "manager" }
+      }
+    },
+    "prev_hash": { "type": ["string", "null"], "description": "sha256 of the previous attestation (hash chain), or null for the first." },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "signature": { "type": "string", "description": "base64 ed25519 signature over the hash." },
+    "pubkey": { "type": "string", "description": "base64 SPKI DER of the device public key." }
+  }
+}

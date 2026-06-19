@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thewatcher.dev/schema/watcher-plugin-1.0.json",
+  "title": "Watcher Plugin Manifest",
+  "description": "Describes a plugin for the daemon's supervised, least-privilege, token-gated process lifecycle (brief §5.4). The daemon launches `exec`, grants only the declared permissions, and ingests the plugin's telemetry (which it re-redacts on receipt regardless of the declared redaction).",
+  "type": "object",
+  "required": ["plugin", "version", "class", "capabilities", "exec"],
+  "additionalProperties": false,
+  "properties": {
+    "plugin": { "type": "string", "description": "Plugin identifier, e.g. aws-cloudshell." },
+    "version": { "type": "string" },
+    "description": { "type": "string" },
+    "class": { "type": "string", "enum": ["source", "context_resolver", "transform"] },
+    "capabilities": {
+      "type": "object",
+      "required": ["has_exit_codes", "has_stdin", "boundary_confidence", "redaction"],
+      "additionalProperties": false,
+      "properties": {
+        "has_exit_codes": { "type": "boolean" },
+        "has_stdin": { "type": "boolean" },
+        "boundary_confidence": { "type": "string", "enum": ["exact", "inferred"] },
+        "redaction": { "type": "string", "enum": ["none", "regex", "termios"] }
+      }
+    },
+    "context_template": { "type": "string", "description": "e.g. cloud:aws:cloudshell:{region}." },
+    "exec": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "argv the daemon launches the plugin with (supervised child)."
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Least-privilege grant. Anything not listed is denied.",
+      "properties": {
+        "network": { "type": "boolean", "default": false },
+        "filesystem": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "read": { "type": "array", "items": { "type": "string" } },
+            "write": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "token_gated": { "type": "boolean", "default": true, "description": "Require a per-launch token to connect to the daemon socket." }
+  }
+}

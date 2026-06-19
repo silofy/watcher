@@ -1,0 +1,19 @@
+{
+  "plugin": "aws-cloudshell",
+  "version": "0.1.0",
+  "description": "Captures telemetry from AWS CloudShell sessions.",
+  "class": "source",
+  "capabilities": {
+    "has_exit_codes": false,
+    "has_stdin": true,
+    "boundary_confidence": "inferred",
+    "redaction": "none"
+  },
+  "context_template": "cloud:aws:cloudshell:{region}",
+  "exec": ["python", "plugins/examples/cloudshell_plugin.py"],
+  "permissions": {
+    "network": true,
+    "filesystem": { "read": ["~/.aws/config"], "write": [] }
+  },
+  "token_gated": true
+}

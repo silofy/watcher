@@ -1,0 +1,4 @@
+{"source":"browser_ext","session_uuid":"htb-optimum","seq":0,"ts_utc_us":1000,"kind":"session_start","payload":{"text":"HTB :: Optimum"}}
+{"source":"local_pty","session_uuid":"x","seq":1,"ts_utc_us":2000,"kind":"command","payload":{"cmd":"ssh root@10.10.10.8"}}
+{"source":"local_pty","session_uuid":"x","seq":1,"ts_utc_us":3000,"kind":"output","payload":{"text":"root@10.10.10.8 root.txt 0123456789abcdef0123456789abcdef","line_count":1}}
+{"source":"local_pty","session_uuid":"x","seq":0,"ts_utc_us":4000,"kind":"session_end","payload":{"text":"manual"}}

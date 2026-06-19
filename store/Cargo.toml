@@ -1,0 +1,23 @@
+[package]
+name = "watcher-store"
+version = "0.1.0"
+edition = "2021"
+description = "The Watcher — encrypted SQLite store (SQLCipher), the daemon's single owner of telemetry (brief §8)"
+
+[[bin]]
+name = "watcher-store"
+path = "src/main.rs"
+
+[lib]
+name = "watcher_store"
+path = "src/lib.rs"
+
+[dependencies]
+# SQLCipher: transparent AES-256 page encryption. Vendored OpenSSL is built from source
+# (needs perl + nasm on Windows MSVC).
+rusqlite = { version = "0.31", features = ["bundled-sqlcipher-vendored-openssl"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
