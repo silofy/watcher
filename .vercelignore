@@ -1,0 +1,14 @@
+# Vercel builds only the Vite web app — exclude the Rust workspaces, build artifacts, and binaries.
+node_modules
+dist
+.git
+src-tauri
+capture
+core
+store
+daemon
+*.docx
+*.png
+*.log
+*.db
+*.db-*

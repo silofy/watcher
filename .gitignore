@@ -37,3 +37,5 @@ daemon/dogfood.db
 daemon/dogfood.db-*
 capture/cap.log
 ui-v2-*.png
+
+.vercel
