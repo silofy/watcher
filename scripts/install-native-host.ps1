@@ -6,7 +6,7 @@
 
   Writes a launcher + the host manifest (your extension as the only allowed origin) and the HKCU
   registry key Chrome/Edge reads. Build the daemon first:
-    cargo build --manifest-path daemon/Cargo.toml
+    cargo build --manifest-path crates/daemon/Cargo.toml
 #>
 param(
   [Parameter(Mandatory = $true)][string]$ExtensionId,
@@ -17,9 +17,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$daemon = Join-Path $root "daemon\target\debug\watcher-daemon.exe"
+$daemon = Join-Path $root "crates\daemon\target\debug\watcher-daemon.exe"
 if (-not (Test-Path $daemon)) {
-  throw ("daemon not built. Run: cargo build --manifest-path daemon/Cargo.toml (expected: " + $daemon + ")")
+  throw ("daemon not built. Run: cargo build --manifest-path crates/daemon/Cargo.toml (expected: " + $daemon + ")")
 }
 New-Item -ItemType Directory -Force -Path (Split-Path $DbPath) | Out-Null
 $hostDir = Join-Path $root "extension\native-host"

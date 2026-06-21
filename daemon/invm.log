@@ -1,5 +1,0 @@
-[watcher-daemon] listening on 127.0.0.1:8810 → C:\Users\Tiago Peter\Claude\Projects\Watcher\daemon\invm.db (newline-JSON §3.3 envelopes)
-[daemon] ⌁ plugin 'in_vm_daemon' (source) — exit_codes=true stdin=true boundary=exact redaction=regex
-[daemon] ▶ session_start c5134c58-573a-4c53-b86e-d0b9aab858e6 (capture session)
-[daemon] ⚑ flag nudge — wrap up c5134c58-573a-4c53-b86e-d0b9aab858e6?
-[daemon] ■ session_end c5134c58-573a-4c53-b86e-d0b9aab858e6 (manual)

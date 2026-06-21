@@ -1,3 +1,0 @@
-[watcher-capture] session c5134c58-573a-4c53-b86e-d0b9aab858e6 via conpty (scripted)
-[watcher-capture] transcript -> C:\Users\TIAGOP~1\AppData\Local\Temp\watcher-capture-transcript.txt
-[watcher-capture] forwarded 7 envelopes to 127.0.0.1:8810 (source=in_vm_daemon, context=cloud:htb:pwnbox)

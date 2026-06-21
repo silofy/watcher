@@ -18,7 +18,7 @@ function arg(name: string, fallback: string): string {
   return i >= 0 && i + 1 < process.argv.length ? process.argv[i + 1] : fallback;
 }
 
-const ndjsonPath = resolve(arg("ndjson", "capture/events.ndjson"));
+const ndjsonPath = resolve(arg("ndjson", "crates/capture/events.ndjson"));
 const goldenPath = arg("golden", "");
 const outPath = resolve(arg("out", "dist/report-from-capture.json"));
 

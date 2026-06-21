@@ -9,7 +9,7 @@ extension ID); everything else is done.
 
 ```powershell
 $env:Path = "C:\Strawberry\perl\bin;C:\Strawberry\c\bin;$env:USERPROFILE\.cargo\bin;$env:LOCALAPPDATA\bin\NASM;$env:Path"
-cargo build --manifest-path daemon/Cargo.toml
+cargo build --manifest-path crates/daemon/Cargo.toml
 ```
 
 ## 2. Load the extension (you)

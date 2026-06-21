@@ -19,7 +19,7 @@ telemetry envelope (over Native Messaging / a unix socket); the daemon:
 watcher-capture --label "HTB :: Optimum" -- whoami "cat root.txt" \
   | watcher-daemon --db optimum.db --key <passphrase>
 
-cargo test --manifest-path daemon/Cargo.toml   # process: re-redact + stamp + nudge; auto-start
+cargo test --manifest-path crates/daemon/Cargo.toml   # process: re-redact + stamp + nudge; auto-start
 ```
 
 ## Architecture
@@ -38,4 +38,4 @@ lifecycle is identical whether a boundary comes from HTB spawn/stop, a manual st
 ## Build prerequisites
 
 Depends on `watcher-store`, so the same SQLCipher build prerequisites apply (Strawberry Perl + NASM
-+ MSVC on Windows). See `store/README.md`.
++ MSVC on Windows). See `crates/store/README.md`.

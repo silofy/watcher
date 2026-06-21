@@ -52,7 +52,7 @@ export function Install() {
 
         <Tier n={2} title="Capture in Pwnbox" req={<Req tone="desktop">desktop app + SSH</Req>} unlocks="Pwnbox is a pixel stream — run the agent inside it, pull results over your own key (PC ↔ Pwnbox, no third party).">
           <Code>./watcher-capture --export ~/.watcher-exports/box.json --machine &lt;name&gt;</Code>
-          <Step>Agent: <code>capture/dist/watcher-capture-linux-x86_64</code> (<code>chmod +x</code>). Then top bar → <span className="text-fg">Pwnbox sync</span> → SSH host/user/key. scp-pulls every 15s into History.</Step>
+          <Step>Agent: <code>crates/capture/dist/watcher-capture-linux-x86_64</code> (<code>chmod +x</code>). Then top bar → <span className="text-fg">Pwnbox sync</span> → SSH host/user/key. scp-pulls every 15s into History.</Step>
         </Tier>
 
         <Tier n={3} title="Reference path — the comparison" req={<Req tone="none">paste, no install</Req>} unlocks="Powers coverage, “What you'd do differently”, and the golden-path graph. Without it: your own deviations, time, stealth and techniques — no comparison.">

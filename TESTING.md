@@ -19,12 +19,12 @@ build from source you've read. Specifically:
   `extension/lib/writeup.js`. Don't use it and there is zero egress.
 - **Capture is userspace PTY only** — ConPTY on Windows, `openpty` on Unix (one `portable-pty` call).
   **No eBPF, no ptrace, no `LD_PRELOAD`, no kernel module, no API hooking, no root.** Read
-  `capture/src/main.rs`: it spawns your shell in a PTY and reads OSC-133 markers. That's the whole
+  `crates/capture/src/main.rs`: it spawns your shell in a PTY and reads OSC-133 markers. That's the whole
   mechanism — nothing your EDR will scream about.
 - **Your session never leaves the machine.** Redaction runs before anything hits disk
   (`core` crate / `src/lib/redact.ts`). Optional LLM coaching is a **local** model (Ollama) — no cloud
   inference, ever.
-- **Small enough to audit:** `src/` (report UI, TypeScript) + `capture/` (the agent, Rust). Read it in
+- **Small enough to audit:** `src/` (report UI, TypeScript) + `crates/capture/` (the agent, Rust). Read it in
   a sitting, then decide.
 
 ---
@@ -65,7 +65,7 @@ No Rust, just want the UI in a browser?
 npm run dev              # http://localhost:5173  (capture + local-AI are desktop-only)
 ```
 
-Sanity-check it does what it claims: `npm test` (180 tests) · `cd capture && cargo test`.
+Sanity-check it does what it claims: `npm test` (180 tests) · `cd crates/capture && cargo test`.
 
 ---
 
@@ -74,7 +74,7 @@ Sanity-check it does what it claims: `npm test` (180 tests) · `cd capture && ca
 No browser extension required. Build the agent yourself (lean — no SQLCipher):
 
 ```sh
-cd capture && cargo build --release
+cd crates/capture && cargo build --release
 ```
 
 With the desktop app open and HTB's VPN connected, start a watched shell:
@@ -91,7 +91,7 @@ differently → Reference path → Add write-up* and paste any write-up — pars
 without Ollama). Everything else (deviations, time waste, stealth, techniques, grade) works without it.
 
 Playing in **Pwnbox**, or want the full auto-detect/auto-pull extension? See
-[`capture/CAPTURE.md`](capture/CAPTURE.md) and the in-app **Install** tab.
+[`crates/capture/CAPTURE.md`](crates/capture/CAPTURE.md) and the in-app **Install** tab.
 
 ---
 

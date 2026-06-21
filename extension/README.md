@@ -43,6 +43,6 @@ the host with no extra args).
 ## Maps onto the session controller
 
 `session_start { target_scope, context_path: "cloud:htb", origin.machine_id }` and
-`session_end { reason: "machine_stopped" }` are exactly what `capture/src/session.rs`
+`session_end { reason: "machine_stopped" }` are exactly what `crates/capture/src/session.rs`
 (`SessionController::start/stop`) consumes — so the HTB triggers and the local daemon share one
 session lifecycle.

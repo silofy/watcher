@@ -2,8 +2,8 @@
 #
 # Build the Watcher capture agent INSIDE Pwnbox (Parrot OS) and print how to use it.
 #
-# Prereq: the `capture/` and `core/` crate folders, in their original relative layout
-# (capture/Cargo.toml references ../core). Get them into Pwnbox however you like — HTB's file
+# Prereq: the `crates/capture/` and `crates/core/` crate folders, in their original relative layout
+# (crates/capture/Cargo.toml references ../core). Get them into Pwnbox however you like — HTB's file
 # transfer, a private git clone, or scp from your host.
 #
 #   chmod +x build-in-pwnbox.sh && ./build-in-pwnbox.sh

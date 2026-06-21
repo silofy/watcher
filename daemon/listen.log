@@ -1,4 +1,0 @@
-[watcher-daemon] listening on 127.0.0.1:8799 → C:\Users\Tiago Peter\Claude\Projects\Watcher\daemon\htb.db (newline-JSON §3.3 envelopes)
-[daemon] ▶ session_start htb-optimum (HTB :: Optimum)
-[daemon] ⚑ flag nudge — wrap up htb-optimum?
-[daemon] ■ session_end htb-optimum (manual)

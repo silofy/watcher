@@ -15,9 +15,9 @@ ptrace, LD_PRELOAD, or keyloggers (the things that trip EDR).
 ## Run
 
 ```bash
-cargo run --manifest-path capture/Cargo.toml             # runs the platform demo session
-cargo run --manifest-path capture/Cargo.toml -- whoami "echo hi"   # custom commands
-cargo test --manifest-path capture/Cargo.toml            # unit tests (cleaning + masking)
+cargo run --manifest-path crates/capture/Cargo.toml             # runs the platform demo session
+cargo run --manifest-path crates/capture/Cargo.toml -- whoami "echo hi"   # custom commands
+cargo test --manifest-path crates/capture/Cargo.toml            # unit tests (cleaning + masking)
 ```
 
 Verified on Windows 11 (ConPTY, Rust 1.96 MSVC). Sample output (one `command` + one
@@ -58,8 +58,8 @@ genuinely differs per OS — there's a `WindowsShell` and a `UnixShell`:
 ### Modes
 
 ```bash
-cargo run --manifest-path capture/Cargo.toml -- whoami "echo hi"   # scripted (testable headless)
-cargo run --manifest-path capture/Cargo.toml -- --interactive      # live: raw-mode passthrough
+cargo run --manifest-path crates/capture/Cargo.toml -- whoami "echo hi"   # scripted (testable headless)
+cargo run --manifest-path crates/capture/Cargo.toml -- --interactive      # live: raw-mode passthrough
 ```
 
 Interactive mode tees real stdin↔PTY in raw mode, forwards terminal resizes to the PTY (the
@@ -86,6 +86,6 @@ inside the box.
 
 ## Remaining daemon work (out of POC scope)
 
-- **Persistence**: handled by the sibling `store/` crate (SQLCipher) — the daemon wires capture → store.
+- **Persistence**: handled by the sibling `crates/store/` crate (SQLCipher) — the daemon wires capture → store.
 - **Per-source clock-skew** normalization (browser/guest-VM agents) and the Unix **termios-ECHO**
   password trick (the heuristic masker is the cross-platform fallback).

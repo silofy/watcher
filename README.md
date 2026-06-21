@@ -35,12 +35,12 @@ Everything runs on your machine. No account, no telemetry, no cloud.
 No browser extension required:
 
 ```sh
-cd capture && cargo build --release
+cd crates/capture && cargo build --release
 ./target/release/watcher-capture --attach --machine <box>
 ```
 
 Commands stream into the app live; `exit` to stop. Full guide (incl. Pwnbox and the optional
-auto-detect extension): **[capture/CAPTURE.md](capture/CAPTURE.md)**.
+auto-detect extension): **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
 
 ## How it works
 
@@ -55,10 +55,15 @@ the coaching text — it never changes the numbers.
 ```
 src/            report UI (React + Tailwind) + deterministic pipeline & metrics
 src-tauri/      desktop shell (Tauri)
-capture/ core/  Rust capture agent (PTY) + shared session/redaction core
-daemon/ store/  optional: single-owner daemon + encrypted (SQLCipher) store
+crates/         the Rust side:
+  capture/        PTY capture agent
+  core/           shared session lifecycle + redaction
+  daemon/         optional: single-owner store daemon
+  store/          optional: encrypted SQLCipher store
 extension/      optional MV3 extension (HTB auto-detect + write-up auto-pull)
+plugins/        optional plugin API (SDK + conformance kit)
 schema/         the versioned JSON contracts
+fixtures/       sample sessions   ·   scripts/ tests/   tooling & tests
 ```
 
 ## Privacy

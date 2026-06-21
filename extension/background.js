@@ -157,7 +157,7 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 
   // In-browser text terminals (ttyd/xterm over WebSocket — e.g. some THM rooms). Pwnbox is VNC and
-  // can't be tapped this way; the in-Pwnbox agent handles that case (capture/CAPTURE.md).
+  // can't be tapped this way; the in-Pwnbox agent handles that case (crates/capture/CAPTURE.md).
   if (msg.kind === "ws" && ctx.session_uuid) {
     ctx.seq += 1;
     send(wsFrameToEnvelope(msg.data, msg.dir, { ...ctx, ts_utc_us: Date.now() * 1000 }));

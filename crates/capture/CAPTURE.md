@@ -22,7 +22,7 @@ extension required.**
    watcher-capture --attach --machine Forge
    ```
 
-   On Windows: `& "…\capture\target\debug\watcher-capture.exe" --attach --machine Forge` (one line).
+   On Windows: `& "…\crates\capture\target\debug\watcher-capture.exe" --attach --machine Forge` (one line).
 3. Hack as normal — `nmap`, `evil-winrm`, etc. Each completed command appears in the debrief within
    ~1–4 s. Type `exit` to stop.
 
@@ -45,15 +45,15 @@ not text — it cannot be tapped from the extension. Instead, run the agent **in
 import the result.
 
 1. Get the agent into Pwnbox. A **prebuilt Linux x86_64 binary** is committed at
-   `capture/dist/watcher-capture-linux-x86_64` — just transfer that file (HTB file transfer / scp),
+   `crates/capture/dist/watcher-capture-linux-x86_64` — just transfer that file (HTB file transfer / scp),
    no building required:
 
    ```
    chmod +x watcher-capture-linux-x86_64
    ```
 
-   To rebuild it from Windows (no WSL/Docker), run `capture/build-linux.ps1` — it cross-compiles via
-   cargo-zigbuild. To build *inside* Pwnbox instead, `capture/build-in-pwnbox.sh` installs Rust and
+   To rebuild it from Windows (no WSL/Docker), run `crates/capture/build-linux.ps1` — it cross-compiles via
+   cargo-zigbuild. To build *inside* Pwnbox instead, `crates/capture/build-in-pwnbox.sh` installs Rust and
    compiles from source.
 2. Capture into the export dir the Watcher pulls from, tagging the machine you're on:
 

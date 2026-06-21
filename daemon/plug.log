@@ -1,5 +1,0 @@
-[watcher-daemon] listening on 127.0.0.1:8803 → C:\Users\Tiago Peter\Claude\Projects\Watcher\daemon\plugins-demo.db (newline-JSON §3.3 envelopes)
-[daemon] ⌁ plugin 'aws-cloudshell' (source) — exit_codes=false stdin=true boundary=inferred redaction=none
-[daemon] ▶ session_start 38095fe4-97d0-4cf2-8816-ecdfcbef954a (AWS CloudShell engagement)
-[daemon] ⚑ flag nudge — wrap up 38095fe4-97d0-4cf2-8816-ecdfcbef954a?
-[daemon] ■ session_end 38095fe4-97d0-4cf2-8816-ecdfcbef954a (manual)

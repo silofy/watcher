@@ -9,12 +9,12 @@ envelope here, and the store re-redacts on receipt (never trusts an upstream's s
 
 ```bash
 # ingest a capture stream into an encrypted DB
-cargo run --manifest-path store/Cargo.toml -- --db session.db --key <passphrase> --ndjson capture/events.ndjson
+cargo run --manifest-path crates/store/Cargo.toml -- --db session.db --key <passphrase> --ndjson crates/capture/events.ndjson
 # or pipe straight from the capture POC:
-cargo run --manifest-path capture/Cargo.toml -- whoami "sudo -l" \
-  | cargo run --manifest-path store/Cargo.toml -- --db session.db --key <passphrase>
+cargo run --manifest-path crates/capture/Cargo.toml -- whoami "sudo -l" \
+  | cargo run --manifest-path crates/store/Cargo.toml -- --db session.db --key <passphrase>
 
-cargo test --manifest-path store/Cargo.toml     # schema ingest + encryption-at-rest + wrong-key
+cargo test --manifest-path crates/store/Cargo.toml     # schema ingest + encryption-at-rest + wrong-key
 ```
 
 ## Schema

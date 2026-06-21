@@ -8,37 +8,31 @@ dist-ssr
 src-tauri/target
 src-tauri/gen
 src-tauri/test.log
-capture/target
-core/target
-store/target
-daemon/target
+crates/*/target
 
 # build artifacts
 report.html
 tsconfig.tsbuildinfo
+dev.log
+fixtures/session-live-capture.json
+
 # tester packaging output
 *.zip
 .pkgtmp/
-dev.log
-capture/events.ndjson
-capture/run.log
-fixtures/session-live-capture.json
+
+# crate runtime artifacts (logs, encrypted DBs, raw captures)
+crates/**/*.log
+crates/**/*.db
+crates/**/*.db-*
+crates/capture/events.ndjson
 
 # editor
 .vscode/*
 !.vscode/extensions.json
 .idea
-capture/*.db
-capture/*.db-*
-store/build.log
-daemon/build.log
-daemon/*.db
-daemon/*.db-*
 
+# misc screenshots
 dogfood-window.png
-daemon/dogfood.db
-daemon/dogfood.db-*
-capture/cap.log
 ui-v2-*.png
 
 .vercel
