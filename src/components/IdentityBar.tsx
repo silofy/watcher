@@ -2,6 +2,7 @@ import { useReport } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { tierColor } from "./ui";
 import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
+import { computeGrade, gradeColor } from "../lib/bridge/grade";
 import { detectFlags } from "../lib/flags";
 import { normalizeCoaching, stepText } from "../lib/coaching";
 import { fmtDuration } from "../lib/format";
@@ -55,12 +56,18 @@ const SOURCE_LABEL: Record<string, string> = {
 
 /** The machine "about" header — identity, flags/tasks, session context, and the key takeaway. */
 export function IdentityBar() {
-  const { report, timeline, sessionCards, activeId } = useReport();
+  const { report, timeline, sessionCards, activeId, metrics } = useReport();
   const { session, golden_dag, coaching } = report;
   const machine = machineOf(report);
   const card = sessionCards.find((c) => c.id === activeId);
   const first = normalizeCoaching(coaching.next_steps)[0];
   const narrative = first ? stepText(first) : undefined;
+
+  // verdict numbers folded in from the old KPI bar — grade + the quality metrics
+  const grade = computeGrade(report);
+  const tw = metrics.time_waster;
+  const lost = Math.round(((tw.detour_ms + tw.stuck_ms + tw.loop_ms) / Math.max(1, tw.t_active_ms)) * 100);
+  const lostColor = lost >= 30 ? "var(--color-detour)" : lost >= 15 ? "var(--color-tool)" : "var(--color-match)";
 
   // Flags — telemetry-derived milestones (reading a flag file), independent of any write-up.
   const flags = detectFlags(report.episodes);
@@ -81,27 +88,38 @@ export function IdentityBar() {
 
   return (
     <div className="py-1">
-      {/* identity */}
-      <div className="flex items-center gap-3.5">
-        <MachineAvatar machine={machine} size={64} />
-        <div className="min-w-0">
-          <h1 className="font-display text-3xl font-bold leading-none tracking-tight text-fg">{machine.name}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {machine.difficulty && <Pill text={machine.difficulty} color={DIFFICULTY_COLOR[machine.difficulty]} />}
-            {machine.os && <Pill text={machine.os} />}
-            {machine.retired && <Pill text="Retired" />}
-            {machine.local && <Pill text="Local" />}
-            {card?.isLatest && <Pill text="Latest" color="var(--color-signal)" />}
+      {/* identity + the headline grade */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <MachineAvatar machine={machine} size={64} />
+          <div className="min-w-0">
+            <h1 className="font-display text-3xl font-bold leading-none tracking-tight text-fg">{machine.name}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {machine.difficulty && <Pill text={machine.difficulty} color={DIFFICULTY_COLOR[machine.difficulty]} />}
+              {machine.os && <Pill text={machine.os} />}
+              {machine.retired && <Pill text="Retired" />}
+              {machine.local && <Pill text="Local" />}
+              {card?.isLatest && <Pill text="Latest" color="var(--color-signal)" />}
+            </div>
           </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="font-display text-5xl font-bold leading-none" style={{ color: gradeColor(grade.letter) }}>
+            {grade.letter}
+          </div>
+          <div className="label mt-1 tabular-nums text-faint">{Math.round(grade.score)} / 100</div>
         </div>
       </div>
 
-      {/* result on the left, session facts on the right */}
+      {/* result + quality on the left, session facts on the right — one band (folded-in KPIs) */}
       <div className="my-3.5 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-y border-edge py-3">
-        <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+        <div className="flex flex-wrap items-end gap-x-7 gap-y-3">
           <FlagStat label="User flag" state={userState} at={flagAt(userStep)} />
           <FlagStat label="System flag" state={systemState} at={flagAt(flags.system)} />
-          <Stat label="Machine tasks" value={hasRef ? `${tasksDone}/${golden_dag.length}` : "—"} color={hasRef ? tierColor(tasksPct) : undefined} />
+          <Stat label="Objectives" value={hasRef ? `${tasksDone}/${golden_dag.length}` : "—"} color={hasRef ? tierColor(tasksPct) : undefined} />
+          <Stat label="Time lost" value={`${lost}%`} color={lostColor} />
+          <Stat label="Stealth" value={String(Math.round(metrics.stealth_score))} color={tierColor(metrics.stealth_score)} />
+          <Stat label="Techniques" value={String(metrics.technique_breadth)} />
         </div>
         <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
           <Stat label="Total time" value={fmtDuration(timeline.totalMs)} />

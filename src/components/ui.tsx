@@ -14,6 +14,9 @@ export function Section({
   className = "",
   boxed = false,
   i,
+  collapsible = false,
+  name,
+  defaultOpen = false,
 }: {
   title?: string;
   subtitle?: string;
@@ -22,7 +25,38 @@ export function Section({
   className?: string;
   boxed?: boolean;
   i?: number;
+  /** Render as a collapsed-by-default disclosure; the header becomes the click target. */
+  collapsible?: boolean;
+  /** Shared name → only one `<details>` in the group stays open at a time (native accordion). */
+  name?: string;
+  defaultOpen?: boolean;
 }) {
+  const titleEl = title && <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>;
+  const subEl = subtitle && <span className="text-xs text-faint">{subtitle}</span>;
+  const rightEl = right && <div className="text-xs text-muted">{right}</div>;
+
+  if (collapsible) {
+    return (
+      <details
+        name={name}
+        open={defaultOpen}
+        className={`group/sec relative ${i != null ? "rise" : ""} ${className}`}
+        style={i != null ? ({ "--i": i } as CSSProperties) : undefined}
+      >
+        <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 py-1 [&::-webkit-details-marker]:hidden">
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-faint transition-transform duration-200 group-open/sec:rotate-90">▸</span>
+            {titleEl}
+            {subEl}
+          </div>
+          {rightEl}
+        </summary>
+        <div className="mt-2 h-px bg-edge" />
+        <div className="pt-3">{children}</div>
+      </details>
+    );
+  }
+
   return (
     <section
       className={`relative ${boxed ? "rounded border border-edge bg-panel px-4 py-3" : ""} ${i != null ? "rise" : ""} ${className}`}
@@ -31,15 +65,45 @@ export function Section({
       {(title || right) && (
         <header className="flex items-baseline justify-between gap-4 pb-2">
           <div className="flex items-baseline gap-2.5">
-            {title && <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>}
-            {subtitle && <span className="text-xs text-faint">{subtitle}</span>}
+            {titleEl}
+            {subEl}
           </div>
-          {right && <div className="text-xs text-muted">{right}</div>}
+          {rightEl}
         </header>
       )}
       <div className="h-px bg-edge" />
       <div className="pt-3">{children}</div>
     </section>
+  );
+}
+
+/** A generic one-at-a-time disclosure for content that isn't already a Section (shares the native
+ *  `name` accordion group). The title row is the click target; the body shows when open. */
+export function Collapse({
+  title,
+  subtitle,
+  name,
+  defaultOpen = false,
+  className = "",
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  name?: string;
+  defaultOpen?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <details name={name} open={defaultOpen} className={`group/sec relative ${className}`}>
+      <summary className="flex cursor-pointer list-none items-baseline gap-2.5 py-1 [&::-webkit-details-marker]:hidden">
+        <span className="text-faint transition-transform duration-200 group-open/sec:rotate-90">▸</span>
+        <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>
+        {subtitle && <span className="text-xs text-faint">{subtitle}</span>}
+      </summary>
+      <div className="mt-2 h-px bg-edge" />
+      <div className="pt-3">{children}</div>
+    </details>
   );
 }
 

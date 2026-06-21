@@ -114,16 +114,29 @@ export function wasteBreakdown(episodes: Episode[]): WasteBreakdown {
   return fold(episodes.map((e) => classify(e, p75)));
 }
 
-/** Efficiency per MITRE tactic (each phase owns a distinct tactic in this build). */
-export function efficiencyByTactic(episodes: Episode[]): Record<string, number> {
+/**
+ * Full waste breakdown per MITRE tactic — the per-phase counterpart of `wasteBreakdown`.
+ * Crucially this classifies against the GLOBAL think-baseline (p75 over the whole session), so a
+ * phase's "stuck" time is measured against the operator's own normal pace, not the phase's local pace
+ * (which would make every phase look ~average). That makes the per-phase numbers comparable.
+ */
+export function wasteByTactic(episodes: Episode[]): Record<string, WasteBreakdown> {
   const p75 = thinkBaselineP75(episodes);
   const groups = new Map<string, WasteBreakdown[]>();
   for (const e of episodes) {
     if (!groups.has(e.tactic)) groups.set(e.tactic, []);
     groups.get(e.tactic)!.push(classify(e, p75));
   }
+  const out: Record<string, WasteBreakdown> = {};
+  for (const [tactic, parts] of groups) out[tactic] = fold(parts);
+  return out;
+}
+
+/** Efficiency per MITRE tactic (each phase owns a distinct tactic in this build). */
+export function efficiencyByTactic(episodes: Episode[]): Record<string, number> {
+  const waste = wasteByTactic(episodes);
   const out: Record<string, number> = {};
-  for (const [tactic, parts] of groups) out[tactic] = fold(parts).efficiency_pct;
+  for (const [tactic, w] of Object.entries(waste)) out[tactic] = w.efficiency_pct;
   return out;
 }
 

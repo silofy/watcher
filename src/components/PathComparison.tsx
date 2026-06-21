@@ -17,6 +17,8 @@ export function PathComparison() {
 
   return (
     <Section
+      collapsible
+      name="debrief-details"
       title="What you'd do differently"
       subtitle="the intended write-up path vs your route"
       right={

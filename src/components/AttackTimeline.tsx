@@ -53,6 +53,8 @@ export function AttackTimeline() {
 
   return (
     <Section
+      collapsible
+      name="debrief-details"
       title="How the run unfolded"
       subtitle={`MITRE phases, tinted by efficiency · ${metrics.technique_breadth} distinct ATT&CK techniques`}
       right={<ActorLegend />}

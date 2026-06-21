@@ -1,8 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useReport } from "./store/report";
-import { KpiBar } from "./components/KpiBar";
+import { PhaseAudit } from "./components/PhaseAudit";
 import { IdentityBar } from "./components/IdentityBar";
 import { TrimControl } from "./components/TrimControl";
+import { Collapse } from "./components/ui";
 import { AttackTimeline } from "./components/AttackTimeline";
 import { DeviationTimeline } from "./components/DeviationTimeline";
 import { StealthReport } from "./components/StealthReport";
@@ -82,45 +83,33 @@ export function App() {
         ) : needsWriteup ? (
           <WriteupGate />
         ) : (
-          <div className="grid grid-cols-1 gap-x-6 gap-y-7 lg:grid-cols-12 lg:items-start">
-            {/* 1 — the verdict: who, did you root it, the one lesson, then the scorecard */}
+          <div className="grid grid-cols-1 gap-x-6 gap-y-6 lg:grid-cols-12 lg:items-start">
+            {/* 1 — the verdict band: identity, did you root it, the grade + key numbers, the one lesson */}
             <Rise i={0} className="lg:col-span-12">
               <IdentityBar />
             </Rise>
-            <Rise i={1} className="lg:col-span-12">
-              <KpiBar />
-            </Rise>
-            {/* 2 — what did I do wrong: wasted time, dead-ends, stalls */}
-            <Rise i={2} id="deviated" className="lg:col-span-12">
-              <DeviationTimeline />
-            </Rise>
-            {/* 3 — what should I have done differently: intended path vs yours */}
-            <Rise i={3} id="path" className="lg:col-span-12">
-              <PathComparison />
-            </Rise>
-            {/* 4 — your grade + how to level up: the explainable rubric, skills, and playbook */}
-            <Rise i={4} id="bridge" className="lg:col-span-12">
-              <Assessment />
-            </Rise>
-            {/* 5 — how the run unfolded: the MITRE swimlane + techniques */}
-            <Rise i={5} id="unfolded" className="lg:col-span-12">
-              <AttackTimeline />
+            {/* 2 — the spine: Lighthouse-style phase audit, one card per MITRE phase, actionable text */}
+            <Rise i={1} id="audit" className="lg:col-span-12">
+              <PhaseAudit />
             </Rise>
 
-            {/* appendix — reference + utilities, demoted below the story */}
-            <div className="mt-2 flex items-center gap-3 lg:col-span-12">
+            {/* Details — every supporting view, collapsed; opening one closes the others (accordion) */}
+            <div className="mt-1 flex items-center gap-3 lg:col-span-12">
               <span className="label text-faint">Details</span>
               <div className="h-px flex-1 bg-edge" />
+              <span className="text-xs text-faint">tap to expand · one at a time</span>
             </div>
-            <Rise i={6} id="stealth" className="lg:col-span-12">
-              <StealthReport />
-            </Rise>
-            <Rise i={7} id="log" className="lg:col-span-12">
-              <CommandReplay />
-            </Rise>
-            <Rise i={8} className="lg:col-span-12">
-              <TrimControl />
-            </Rise>
+            <div className="flex flex-col gap-2 lg:col-span-12">
+              <div id="path"><PathComparison /></div>
+              <div id="bridge"><Assessment /></div>
+              <div id="unfolded"><AttackTimeline /></div>
+              <div id="deviated"><DeviationTimeline /></div>
+              <div id="stealth"><StealthReport /></div>
+              <div id="log"><CommandReplay /></div>
+              <Collapse name="debrief-details" title="Session window" subtitle="retroactively trim the report">
+                <TrimControl />
+              </Collapse>
+            </div>
 
             <footer className="flex items-center justify-between py-6 text-xs text-faint lg:col-span-12">
               <span className="mono">

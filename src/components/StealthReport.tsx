@@ -72,6 +72,8 @@ export function StealthReport() {
 
   return (
     <Section
+      collapsible
+      name="debrief-details"
       title="Stealth & Noise"
       subtitle="footprint over the run — cumulative builds, exposure decays"
       right={

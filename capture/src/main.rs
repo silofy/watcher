@@ -416,6 +416,7 @@ fn write_session_episodes(path: &std::path::Path, base: &Value, episodes: Vec<Va
     v["episodes"] = Value::Array(episodes);
     v["recording"] = json!(true);
     v["metrics"]["technique_breadth"] = json!(breadth);
+    v["session"]["ended_at"] = json!(iso_now()); // heartbeat — lets the UI tell a live capture from a dead one
     let _ = std::fs::write(path, serde_json::to_string_pretty(&v).unwrap_or_default());
 }
 
@@ -437,22 +438,42 @@ fn machine_arg(args: &[String]) -> Value {
     }
 }
 
-/// A complete, schema-shaped report for a standalone capture (the in-Pwnbox agent). Same shape the
-/// daemon writes for a live session, so the file can be dropped straight into ~/.watcher/sessions/.
-fn build_base_report(uuid: &str, machine: Value, target: &str, context: &str) -> Value {
+/// A complete, schema-shaped report for an agent-owned capture (the in-Pwnbox `--export` agent, or a
+/// self-started local `--attach` when no extension session exists). Same shape the daemon writes for a
+/// live session, so the file can be dropped straight into ~/.watcher/sessions/. `source` is the §3.3
+/// provenance ("in_vm_daemon" for Pwnbox, "local_pty" for a local watched shell).
+fn build_base_report(uuid: &str, machine: Value, target: &str, context: &str, source: &str) -> Value {
     let t = iso_now();
+    let intro = if source == "in_vm_daemon" {
+        "Captured inside Pwnbox. Download this file and drop it into ~/.watcher/sessions/ on your PC."
+    } else {
+        "Live local capture — commands stream into this report as you run them."
+    };
     json!({
         "schema_version": "1.0",
         "session": { "uuid": uuid, "started_at": t, "ended_at": t, "target_scope": target,
-                     "context_path": context, "shell": "", "source": "in_vm_daemon", "machine": machine },
+                     "context_path": context, "shell": "", "source": source, "machine": machine },
         "episodes": [], "phases": [], "golden_dag": [],
         "metrics": { "efficiency_pct": 0, "objective_coverage_pct": 0, "stealth_score": 100, "technique_breadth": 0,
                      "time_waster": { "productive_ms": 0, "detour_ms": 0, "stuck_ms": 0, "loop_ms": 0, "t_active_ms": 0 } },
         "coaching": { "skill_radar": { "recon": 0, "web": 0, "exploit": 0, "privesc": 0, "opsec": 0 },
-                      "next_steps": [{ "action": "Captured inside Pwnbox. Download this file and drop it into ~/.watcher/sessions/ on your PC.", "why": "", "category": "Recap", "evidence_seq": null }] },
+                      "next_steps": [{ "action": intro, "why": "", "category": "Recap", "evidence_seq": null }] },
         "redaction_profile": "full",
         "recording": true
     })
+}
+
+/// Flip a session report to archived (recording:false, ended now). Called when this agent OWNS the
+/// session lifecycle — a standalone `--export`, or a self-started `--attach` with no extension session.
+/// (Extension-opened sessions are left alone: the extension owns their lifecycle.)
+fn mark_finished(path: &std::path::Path) {
+    if let Ok(s) = std::fs::read_to_string(path) {
+        if let Ok(mut v) = serde_json::from_str::<Value>(&s) {
+            v["recording"] = json!(false);
+            v["session"]["ended_at"] = json!(iso_now());
+            let _ = std::fs::write(path, serde_json::to_string_pretty(&v).unwrap_or_default());
+        }
+    }
 }
 
 /// Interactive capture wired to an existing HTB session: same watched shell as `-i`, but every
@@ -507,11 +528,15 @@ fn run_attached(profile: &dyn ShellProfile, path: &std::path::Path, base: &Value
     let writer_running = running.clone();
     let ep_handle = thread::spawn(move || {
         let mut last = usize::MAX;
+        let mut last_write = Instant::now();
         loop {
             thread::sleep(Duration::from_millis(800));
             let eps = episodes_from_terminal(&writer_term.lock().unwrap());
-            if eps.len() != last {
+            // write on new commands, or as a ~10s heartbeat so `ended_at` keeps proving liveness even
+            // while you're thinking between commands (the UI's staleness guard reads that timestamp).
+            if eps.len() != last || last_write.elapsed() >= Duration::from_secs(10) {
                 last = eps.len();
+                last_write = Instant::now();
                 write_session_episodes(&writer_path, &writer_base, eps);
             }
             if !writer_running.load(Ordering::Relaxed) {
@@ -581,34 +606,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(out) = arg_value(&args, "--export") {
         let target = arg_value(&args, "--machine").unwrap_or_else(|| "Pwnbox session".to_string());
         let context = arg_value(&args, "--context").unwrap_or_else(|| "cloud:htb:pwnbox".to_string());
-        let base = build_base_report(&session, machine_arg(&args), &target, &context);
+        let base = build_base_report(&session, machine_arg(&args), &target, &context, "in_vm_daemon");
         let path = std::path::PathBuf::from(&out);
         write_session_episodes(&path, &base, vec![]); // create it immediately so it's visible live
         eprintln!("[watcher-capture] exporting to {out} — hack as normal, type 'exit' to finish.");
         run_attached(profile.as_ref(), &path, &base)?;
-        // Mark finished so it imports as an archived run, not a live recording.
-        if let Ok(s) = std::fs::read_to_string(&path) {
-            if let Ok(mut v) = serde_json::from_str::<Value>(&s) {
-                v["recording"] = json!(false);
-                v["session"]["ended_at"] = json!(iso_now());
-                let _ = std::fs::write(&path, serde_json::to_string_pretty(&v).unwrap_or_default());
-            }
-        }
+        mark_finished(&path); // imports as an archived run, not a live recording
         eprintln!("[watcher-capture] done -> {out}. Download it and drop it into ~/.watcher/sessions/ on your PC.");
         return Ok(());
     }
 
-    // Attach to the live HTB session the extension opened and stream local commands into it.
+    // Attach and stream local commands into a recording session. Prefer the one the browser extension
+    // opened (it carries the box identity); if there is none, self-start one — so live local capture
+    // needs no extension at all (cross-platform). `--machine <name>` names the self-started session.
     if args.iter().any(|a| a == "--attach") {
-        let Some((path, base)) = find_active_session() else {
-            eprintln!("[watcher-capture] no active recording session in ~/.watcher/sessions.");
-            eprintln!("                  Spawn a box on HTB first (the extension opens the session), then re-run.");
-            return Ok(());
+        let (path, base, self_started) = match find_active_session() {
+            Some((p, b)) => (p, b, false),
+            None => {
+                let target = arg_value(&args, "--machine").unwrap_or_else(|| "local session".to_string());
+                let context = arg_value(&args, "--context").unwrap_or_else(|| "host".to_string());
+                let base = build_base_report(&session, machine_arg(&args), &target, &context, "local_pty");
+                let dir = watcher_sessions_dir().ok_or("cannot resolve ~/.watcher/sessions")?;
+                std::fs::create_dir_all(&dir)?;
+                let path = dir.join(format!("{session}.json"));
+                write_session_episodes(&path, &base, vec![]); // visible in The Watcher immediately
+                eprintln!("[watcher-capture] no extension session found — started a new one ('{target}').");
+                (path, base, true)
+            }
         };
-        let name = base["session"]["machine"]["name"].as_str().unwrap_or("session").to_string();
+        let name = base["session"]["machine"]["name"]
+            .as_str()
+            .or_else(|| base["session"]["target_scope"].as_str())
+            .unwrap_or("session")
+            .to_string();
         eprintln!("[watcher-capture] attached to '{name}'. Your commands will appear in The Watcher live.");
         eprintln!("                  Hack as normal; type 'exit' to stop capturing.");
-        return run_attached(profile.as_ref(), &path, &base);
+        run_attached(profile.as_ref(), &path, &base)?;
+        if self_started {
+            mark_finished(&path); // we own this session's lifecycle; close it on exit
+        }
+        return Ok(());
     }
 
     let interactive = args.iter().any(|a| a == "--interactive" || a == "-i");
@@ -667,5 +704,24 @@ mod tests {
         retag(&mut evs, "in_vm_daemon", "cloud:htb:pwnbox");
         assert_eq!(evs[0].source, "in_vm_daemon");
         assert_eq!(evs[0].provenance.context_path, "cloud:htb:pwnbox");
+    }
+
+    #[test]
+    fn self_started_local_session_carries_local_provenance() {
+        // a self-started --attach session: local_pty source, recording, named by --machine
+        let v = build_base_report("u1", machine_arg(&["--machine".into(), "Forge".into()]), "Forge", "host", "local_pty");
+        assert_eq!(v["session"]["source"], "local_pty");
+        assert_eq!(v["session"]["machine"]["name"], "Forge");
+        assert_eq!(v["recording"], true);
+        // the Pwnbox download note must NOT leak into a local capture
+        let note = v["coaching"]["next_steps"][0]["action"].as_str().unwrap();
+        assert!(!note.contains("Pwnbox"), "local capture should not mention Pwnbox: {note}");
+    }
+
+    #[test]
+    fn pwnbox_export_keeps_download_note() {
+        let v = build_base_report("u2", Value::Null, "Pwnbox session", "cloud:htb:pwnbox", "in_vm_daemon");
+        assert_eq!(v["session"]["source"], "in_vm_daemon");
+        assert!(v["coaching"]["next_steps"][0]["action"].as_str().unwrap().contains("Pwnbox"));
     }
 }

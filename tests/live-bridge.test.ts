@@ -13,6 +13,9 @@ function liveReport(uuid: string, name: string): WatcherReport {
   r.session.target_scope = `HTB :: ${name}`;
   r.session.machine = { name, os: "Linux", difficulty: "Easy", avatar: null, points: 20, retired: true };
   r.recording = true;
+  // a just-spawned capture has a fresh heartbeat — the UI's staleness guard reads session.ended_at
+  r.session.started_at = new Date().toISOString();
+  r.session.ended_at = new Date().toISOString();
   return r;
 }
 

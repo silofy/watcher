@@ -16,6 +16,9 @@ daemon/target
 # build artifacts
 report.html
 tsconfig.tsbuildinfo
+# tester packaging output
+*.zip
+.pkgtmp/
 dev.log
 capture/events.ndjson
 capture/run.log

@@ -1,7 +1,5 @@
-import ReactMarkdown from "react-markdown";
 import { useReport } from "../store/report";
-import { Section, Chip, tierColor } from "./ui";
-import { CAT_COLOR, normalizeCoaching } from "../lib/coaching";
+import { Section, tierColor } from "./ui";
 import { computeGrade, gradeColor, RUBRIC, type RubricKey } from "../lib/bridge/grade";
 import { minimizedBundle } from "../lib/bridge/bundle";
 import type { SkillRadar } from "../types/report";
@@ -33,12 +31,11 @@ const RUBRIC_LABELS: Record<RubricKey, string> = {
   independence: "Independence",
 };
 const RUBRIC_COLS = "11rem minmax(0,1fr) 2.5rem 3rem 3.25rem";
-const MD_CODE = "[&_code]:mono [&_code]:rounded [&_code]:bg-panel-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-fg [&_p]:m-0";
 
 /**
- * Grade & coaching — one piece: where you scored (the explainable Enterprise Bridge rubric), then how
- * to level up (skills + playbook), then what syncs to the institution. The grade frames the coaching;
- * the coaching is how you raise it. Independence stays a gate routed to a human, not a verdict.
+ * Grade & skills — where you scored (the explainable Enterprise Bridge rubric) and your skill profile,
+ * then what syncs to the institution. The actionable moves live in the Phase Audit now; this is the
+ * scorecard behind the grade. Independence stays a gate routed to a human, not a verdict.
  */
 export function Assessment() {
   const s = useReport();
@@ -49,7 +46,6 @@ export function Assessment() {
   const satisfied = bundle.evidence_digests.filter((d) => d.satisfied).length;
 
   const radar = report.coaching.skill_radar;
-  const steps = normalizeCoaching(report.coaching.next_steps).filter((st) => st.category !== "Recap");
   const valuePoly = AXES.map((a, i) => point(i, radar[a.key] / 100).join(",")).join(" ");
   const ranked = [...AXES].sort((a, b) => radar[b.key] - radar[a.key]);
   const top = ranked[0];
@@ -57,8 +53,10 @@ export function Assessment() {
 
   return (
     <Section
-      title="Coaching & grade"
-      subtitle="how you scored — and how to level up"
+      collapsible
+      name="debrief-details"
+      title="Grade & skills"
+      subtitle="the rubric behind your score · your skill profile"
       right={
         <span
           className="rounded-full border px-2 py-0.5"
@@ -127,13 +125,13 @@ export function Assessment() {
         </div>
       </div>
 
-      {/* divider into the coaching half */}
+      {/* divider into the skill profile */}
       <div className="my-5 flex items-center gap-3">
-        <span className="label text-faint">How to level up</span>
+        <span className="label text-faint">Skill profile</span>
         <div className="h-px flex-1 bg-edge" />
       </div>
 
-      {/* the verdict that frames the coaching */}
+      {/* the read on your skills — the actionable moves live in the Phase Audit above */}
       <p className="mb-5 text-base leading-relaxed text-muted">
         Your edge is{" "}
         <span className="font-semibold" style={{ color: tierColor(radar[top.key]) }}>
@@ -143,90 +141,47 @@ export function Assessment() {
         <span className="font-semibold" style={{ color: tierColor(radar[low.key]) }}>
           {low.label} ({radar[low.key]})
         </span>{" "}
-        — every move below is ordered by how much time it would have saved you.
+        — the Phase Audit turns that gap into specific moves, in context.
       </p>
 
-      {/* 2 — skills + playbook */}
-      <div className="grid gap-7 lg:grid-cols-[300px_1fr]">
-        <div className="lg:border-r lg:border-edge lg:pr-6">
-          <h3 className="label mb-2 text-faint">Skill radar</h3>
-          <svg viewBox="0 0 240 230" className="w-full max-w-[280px]">
-            {[0.25, 0.5, 0.75, 1].map((ring) => (
-              <polygon key={ring} points={AXES.map((_, i) => point(i, ring).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
-            ))}
-            {AXES.map((_, i) => {
-              const [x, y] = point(i, 1);
-              return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-edge)" strokeWidth={1} />;
-            })}
-            <polygon points={valuePoly} fill="var(--color-alt)" fillOpacity={0.22} stroke="var(--color-alt)" strokeWidth={2} />
-            {AXES.map((a, i) => {
-              const [x, y] = point(i, 1.2);
-              return (
-                <text key={a.key} x={x} y={y} fontSize="12" fill="var(--color-faint)" textAnchor="middle" dominantBaseline="middle">
-                  {a.label}
-                </text>
-              );
-            })}
-          </svg>
-          <ul className="mt-4 space-y-2.5">
-            {ranked.map((a) => {
-              const v = radar[a.key];
-              const c = tierColor(v);
-              return (
-                <li key={a.key}>
-                  <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-muted">{a.label}</span>
-                    <span className="mono tabular-nums" style={{ color: c }}>
-                      {v} · {quality(v)}
-                    </span>
-                  </div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-panel-2">
-                    <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${v}%`, background: c }} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="label mb-3 text-faint">
-            Your playbook for next time <span className="text-muted">· {steps.length} moves</span>
-          </h3>
-          {steps.length === 0 && (
-            <p className="rounded-lg border border-edge bg-panel-2/30 p-4 text-sm text-faint">No coaching moves yet — they surface as your run is analyzed against the intended path.</p>
-          )}
-          <ol className="space-y-3">
-            {steps.map((step, i) => {
-              const color = CAT_COLOR[step.category];
-              const linked = step.evidence_seq != null;
-              return (
-                <li
-                  key={i}
-                  className={`rounded-lg border border-edge bg-panel-2/30 p-4 transition-colors hover:border-edge-bright ${linked ? "cursor-pointer" : ""}`}
-                  onMouseEnter={() => linked && s.hover(step.evidence_seq!)}
-                  onMouseLeave={() => linked && s.hover(null)}
-                  onClick={() => linked && s.reveal(step.evidence_seq!)}
-                >
-                  <div className="mb-2 flex items-center gap-2.5">
-                    <span className="readout flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-panel text-sm text-muted ring-1 ring-edge">{i + 1}</span>
-                    <Chip color={color}>{step.category}</Chip>
-                    {i === 0 && <span className="label text-signal">Start here · highest impact</span>}
-                    {linked && <span className="label ml-auto text-faint">step {step.evidence_seq} ↗</span>}
-                  </div>
-                  <div className={`text-base font-semibold leading-snug text-fg ${MD_CODE}`}>
-                    <ReactMarkdown>{step.action}</ReactMarkdown>
-                  </div>
-                  {step.why && (
-                    <div className={`mt-1 text-sm leading-relaxed text-muted [&_strong]:text-fg ${MD_CODE}`}>
-                      <ReactMarkdown>{step.why}</ReactMarkdown>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </div>
+      <div className="grid items-center gap-7 lg:grid-cols-[280px_1fr]">
+        <svg viewBox="0 0 240 230" className="mx-auto w-full max-w-[260px]">
+          {[0.25, 0.5, 0.75, 1].map((ring) => (
+            <polygon key={ring} points={AXES.map((_, i) => point(i, ring).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
+          ))}
+          {AXES.map((_, i) => {
+            const [x, y] = point(i, 1);
+            return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-edge)" strokeWidth={1} />;
+          })}
+          <polygon points={valuePoly} fill="var(--color-alt)" fillOpacity={0.22} stroke="var(--color-alt)" strokeWidth={2} />
+          {AXES.map((a, i) => {
+            const [x, y] = point(i, 1.2);
+            return (
+              <text key={a.key} x={x} y={y} fontSize="12" fill="var(--color-faint)" textAnchor="middle" dominantBaseline="middle">
+                {a.label}
+              </text>
+            );
+          })}
+        </svg>
+        <ul className="space-y-2.5">
+          {ranked.map((a) => {
+            const v = radar[a.key];
+            const c = tierColor(v);
+            return (
+              <li key={a.key}>
+                <div className="flex items-baseline justify-between text-xs">
+                  <span className="text-muted">{a.label}</span>
+                  <span className="mono tabular-nums" style={{ color: c }}>
+                    {v} · {quality(v)}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-panel-2">
+                  <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${v}%`, background: c }} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
       {/* 3 — what actually leaves the machine on sync */}

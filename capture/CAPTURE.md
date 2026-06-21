@@ -10,24 +10,27 @@ desktop app polls and renders. The extension opens it; a capture agent fills in 
 
 ---
 
-## Path A — Play over the VPN, from your own terminal (Windows / Linux / WSL)
+## Path A — Play over the VPN, from your own terminal (macOS / Linux / Windows / WSL)
 
-Best when you attack from a local Kali/WSL/PowerShell over HTB's OpenVPN. Fully live.
+Best when you attack from a local Kali/WSL/PowerShell over HTB's OpenVPN. Fully live. **No browser
+extension required.**
 
-1. On HTB, spawn the machine (the extension opens the session) and download the **OpenVPN** config
-   ("Connect with OpenVPN"). Connect: `sudo openvpn lab.ovpn`.
-2. Start a watched shell that attaches to the open session:
+1. Download the **OpenVPN** config ("Connect with OpenVPN") and connect: `sudo openvpn lab.ovpn`.
+2. Start a watched shell, naming the box:
 
    ```
-   watcher-capture --attach
+   watcher-capture --attach --machine Forge
    ```
 
-   On Windows: `& "…\capture\target\debug\watcher-capture.exe" --attach` (one line).
+   On Windows: `& "…\capture\target\debug\watcher-capture.exe" --attach --machine Forge` (one line).
 3. Hack as normal — `nmap`, `evil-winrm`, etc. Each completed command appears in the debrief within
    ~1–4 s. Type `exit` to stop.
 
-`--attach` finds the newest still-recording session in `~/.watcher/sessions/` and streams episodes
-into it. It must run on the **same machine** as the desktop app (it reads that local folder).
+`--attach` first looks for the newest still-recording session in `~/.watcher/sessions/` (the one the
+browser extension opens, which carries the box's identity). If there is none, it **self-starts a
+session** named by `--machine`, so live capture works with no extension at all. Either way it must run
+on the **same machine** as the desktop app (it reads that local folder), and it closes the session it
+started on `exit`.
 
 Note: if you `ssh`/`openvpn` into the box and then run a *nested* shell, OSC-133 boundaries bracket
 the **outer** shell — the nested session is one block. Run commands in the watched shell directly,
@@ -72,8 +75,8 @@ import the result.
 
 | flag | meaning |
 |------|---------|
-| `--attach` | stream into the live HTB session the extension opened (same machine) |
+| `--attach` | stream into a live local session; self-starts one if the extension hasn't opened one (same machine) |
 | `--export <file>` | standalone capture → write a complete report to `<file>` (for Pwnbox) |
-| `--machine <name>` | machine identity for `--export` (also `--os`, `--difficulty`) |
+| `--machine <name>` | name the box — identity for `--export` and for a self-started `--attach` (also `--os`, `--difficulty`) |
 | `-i` / `--interactive` | raw capture to NDJSON on stdout (no session file) |
 | `--forward <addr>` | ship envelopes to a daemon `--listen` socket instead of a file |

@@ -171,7 +171,7 @@ export function DeviationTimeline() {
   );
 
   return (
-    <Section title="Where you deviated" subtitle="measured against your own run — not an optimal path" right={legend}>
+    <Section collapsible name="debrief-details" title="Where you deviated" subtitle="measured against your own run — not an optimal path" right={legend}>
       {/* glance readouts */}
       <div className="mb-3 flex flex-wrap items-end gap-x-8 gap-y-3">
         <Readout

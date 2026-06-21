@@ -22,7 +22,8 @@ describe("report renders end-to-end", () => {
       "Stealth &amp; Noise",
       "Command Log",
       "do differently",
-      "Coaching",
+      "Phase audit",
+      "Grade &amp; skills",
     ]) {
       expect(html).toContain(title);
     }

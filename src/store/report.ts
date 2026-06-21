@@ -14,6 +14,7 @@ import { applyTrim } from "../lib/trim";
 import { computeGrade } from "../lib/bridge/grade";
 import { machineOf, type MachineMeta } from "../lib/machine";
 import { finalizeLiveReport } from "../lib/finalize";
+import { isLiveRecording } from "../lib/live";
 
 /**
  * The normalized store. The report blob is resolved from, in order:
@@ -117,7 +118,7 @@ function toCard(id: string, r: WatcherReport): SessionCard {
     coverage: r.metrics.objective_coverage_pct,
     efficiency: r.metrics.efficiency_pct,
     episodes: r.episodes.length,
-    recording: r.recording ?? false,
+    recording: isLiveRecording(r), // flag + heartbeat — a dead capture isn't "live"
     isLatest: false,
   };
 }
@@ -211,7 +212,10 @@ export const useReport = create<ReportState>((set, get) => ({
     const r = REPORTS[id];
     if (!r) return;
     const banner = get().liveBanner;
-    set({ activeId: id, view: "debrief", fullReport: r, trimSeq: null, ...derive(r), ...RESET, liveBanner: banner?.id === id ? null : banner, writeup: null });
+    // Explicitly opening a session (from History, the live banner, etc.) goes straight to the debrief —
+    // never re-prompt for a write-up here. The gate is for the initial landing; you can still add a
+    // reference path from inside the debrief (Reference path → Add write-up).
+    set({ activeId: id, view: "debrief", fullReport: r, trimSeq: null, ...derive(r), ...RESET, gateDismissed: true, liveBanner: banner?.id === id ? null : banner, writeup: null });
   },
 
   applyGoldenDag: (golden, meta) => {
@@ -234,7 +238,7 @@ export const useReport = create<ReportState>((set, get) => ({
     REPORTS[id] = finalized;
     const patch: Partial<ReportState> = { sessionCards: cardsFrom() };
     if (get().activeId === id) Object.assign(patch, derive(applyTrim(finalized, get().trimSeq)), { fullReport: finalized });
-    if (isNew && finalized.recording) patch.liveBanner = { id, name: machineOf(finalized).name };
+    if (isNew && isLiveRecording(finalized)) patch.liveBanner = { id, name: machineOf(finalized).name };
     set(patch);
   },
   dismissLiveBanner: () => set({ liveBanner: null }),

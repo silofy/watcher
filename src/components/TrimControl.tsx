@@ -72,12 +72,9 @@ export function TrimControl() {
   const windowEndMs = full.bySeq.get(b)?.t1 ?? total;
 
   return (
-    <div className="rounded-lg border border-edge bg-panel/40 px-4 py-3">
+    <div>
       <div className="flex items-baseline justify-between">
-        <div className="flex items-baseline gap-2.5">
-          <span className="label text-muted">Session window</span>
-          <span className="text-xs text-faint">drag the handles to scope the report</span>
-        </div>
+        <span className="text-xs text-faint">drag the handles to scope the report</span>
         <button
           type="button"
           onClick={clearTrim}

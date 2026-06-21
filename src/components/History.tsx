@@ -15,54 +15,60 @@ function fmtDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function Card({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
+/** One engagement per row: identity → status → result → metrics → grade → date. */
+function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
   const m = c.machine;
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group relative rounded-lg border border-edge bg-panel p-4 text-left transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-edge-bright"
+      className="group flex w-full items-center gap-4 rounded-lg border border-edge bg-panel px-4 py-3 text-left transition-colors hover:border-edge-bright"
     >
-      <div className="flex items-start gap-3">
-        <MachineAvatar machine={m} size={52} />
-        <div className="min-w-0">
-          <div className="font-display text-xl font-bold leading-none text-fg">{m.name}</div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {c.recording && (
-              <span className="label flex items-center gap-1 text-xs text-signal">
-                <span className="caret">●</span> Rec
-              </span>
-            )}
-            {!c.recording && c.isLatest && (
-              <span className="label flex items-center gap-1 text-xs text-signal">
-                <span className="h-1.5 w-1.5 rounded-full bg-signal" /> Latest
-              </span>
-            )}
-            <span className="label text-xs" style={{ color: c.rooted ? "var(--color-match)" : "var(--color-faint)" }}>
-              {c.rooted ? "Rooted" : "Foothold"}
+      <MachineAvatar machine={m} size={42} />
+
+      {/* identity + the one status that matters */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate font-display text-lg font-bold leading-tight text-fg">{m.name}</span>
+          {c.recording ? (
+            <span
+              title="Live — capturing now. Stops when you exit the capture agent (or the box is terminated)."
+              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-signal"
+              style={{ background: "color-mix(in oklch, var(--color-signal) 14%, transparent)" }}
+            >
+              <span className="caret">●</span> Recording
             </span>
-            {m.difficulty && (
-              <span className="label text-xs" style={{ color: DIFFICULTY_COLOR[m.difficulty] }}>
-                {m.difficulty}
-              </span>
-            )}
-            {m.os && <span className="label text-xs text-faint">{m.os}</span>}
-          </div>
+          ) : (
+            c.isLatest && <span className="label text-xs text-signal">· Latest</span>
+          )}
         </div>
-        <div className="ml-auto text-right">
-          <div className="font-display text-4xl font-bold leading-none" style={{ color: gradeColor(c.letter) }}>
-            {c.letter}
-          </div>
-          <div className="label mt-0.5 tabular-nums">{Math.round(c.grade)}</div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+          {m.difficulty && (
+            <span className="label" style={{ color: DIFFICULTY_COLOR[m.difficulty] }}>
+              {m.difficulty}
+            </span>
+          )}
+          {m.os && <span className="text-faint">{m.os}</span>}
+          {/* result of the run — a static outcome, not a live state */}
+          <span style={{ color: c.rooted ? "var(--color-match)" : "var(--color-faint)" }}>
+            {c.rooted ? "✓ Rooted" : "Foothold only"}
+          </span>
         </div>
       </div>
 
-      <div className="mt-3.5 h-px bg-edge" />
-      <div className="mt-2.5 flex items-center justify-between text-xs text-faint">
-        <span className="mono">
-          cov {Math.round(c.coverage)}% · eff {Math.round(c.efficiency)}% · {c.episodes} ep
-        </span>
-        <span className="mono">{fmtDate(c.ended_at)}</span>
+      {/* metrics — quiet, hidden on narrow widths */}
+      <span className="mono hidden whitespace-nowrap text-xs text-faint sm:inline">
+        cov {Math.round(c.coverage)}% · eff {Math.round(c.efficiency)}% · {c.episodes} ep
+      </span>
+
+      <span className="mono hidden whitespace-nowrap text-xs text-faint md:inline">{fmtDate(c.ended_at)}</span>
+
+      {/* grade */}
+      <div className="w-10 shrink-0 text-right">
+        <div className="font-display text-3xl font-bold leading-none" style={{ color: gradeColor(c.letter) }}>
+          {c.letter}
+        </div>
+        <div className="label mt-0.5 tabular-nums text-faint">{Math.round(c.grade)}</div>
       </div>
     </button>
   );
@@ -132,9 +138,9 @@ export function History() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+        <div className="space-y-2">
           {cards.map((c) => (
-            <Card key={c.id} c={c} onOpen={() => switchSession(c.id)} />
+            <Row key={c.id} c={c} onOpen={() => switchSession(c.id)} />
           ))}
         </div>
       )}
