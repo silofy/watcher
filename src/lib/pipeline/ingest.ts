@@ -134,10 +134,13 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     loud_moments: metrics.loud_moments.map((l) => ({ seq: l.seq, noise: round(l.noise, 1) })),
     objective_coverage_pct: round(metrics.objective_coverage_pct),
     technique_breadth: metrics.technique_breadth,
+    ukc_coverage_pct: round(metrics.ukc_coverage_pct),
+    ukc_progression: round(metrics.ukc_progression),
+    weakness_breadth: metrics.weakness_breadth,
   };
 
   return {
-    schema_version: "1.0",
+    schema_version: "1.1",
     session: opts.session,
     episodes,
     phases,

@@ -13,6 +13,7 @@ import { buildTimeline } from "../scale";
 import { efficiencyByTactic, computeMetrics, round, type ComputedMetrics } from "../metrics";
 import { segmentEpisodes } from "./segment";
 import { alignEpisodes } from "./align";
+import { enrichFrameworks } from "./frameworks";
 import type { RawCommand, SegmentConfig } from "./types";
 
 export const TACTIC_LABELS: Record<string, string> = {
@@ -67,7 +68,9 @@ export interface PipelineOptions {
 export function runPipeline(raw: RawCommand[], opts: PipelineOptions): PipelineResult {
   const sessionStartMs = opts.sessionStartMs ?? (raw.length ? raw[0].started_at_ms : 0);
   const segmented = segmentEpisodes(raw, opts.segmentConfig);
-  const { episodes, golden } = alignEpisodes(segmented, opts.golden);
+  const aligned = alignEpisodes(segmented, opts.golden);
+  const episodes = enrichFrameworks(aligned.episodes);
+  const golden = aligned.golden;
   const phases = derivePhases(episodes, sessionStartMs);
 
   // computeMetrics consumes the report shape; supply the fields it reads.

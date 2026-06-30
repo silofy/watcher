@@ -13,6 +13,7 @@
  * millisecond is counted twice.
  */
 import type { Episode, WatcherReport } from "../types/report";
+import { ukcCoverage, ukcProgression, weaknessBreadth } from "./pipeline/frameworks";
 
 /**
  * Per-lab loudness baseline the summed noise is normalized against (brief §6.1):
@@ -154,6 +155,9 @@ export interface ComputedMetrics {
   loud_moments: { seq: number; noise: number }[];
   objective_coverage_pct: number;
   technique_breadth: number;
+  ukc_coverage_pct: number;
+  ukc_progression: number;
+  weakness_breadth: number;
   p75_gap_ms: number;
   efficiency_by_tactic: Record<string, number>;
 }
@@ -180,6 +184,10 @@ export function computeMetrics(report: WatcherReport): ComputedMetrics {
 
   const breadth = new Set(episodes.map((e) => e.technique).filter(Boolean)).size;
 
+  // Second/third axes (schema v1.1): UKC ordering + CWE weakness classes. Derived straight
+  // from each episode's tactic/binary, so these hold whether or not `frameworks` was stamped.
+  const goldenTactics = golden_dag.map((o) => o.tactic);
+
   return {
     efficiency_pct: waste.efficiency_pct,
     time_waster: {
@@ -194,6 +202,9 @@ export function computeMetrics(report: WatcherReport): ComputedMetrics {
     loud_moments: loud,
     objective_coverage_pct: coverage,
     technique_breadth: breadth,
+    ukc_coverage_pct: ukcCoverage(episodes, goldenTactics),
+    ukc_progression: ukcProgression(episodes),
+    weakness_breadth: weaknessBreadth(episodes),
     p75_gap_ms: thinkBaselineP75(episodes),
     efficiency_by_tactic: efficiencyByTactic(episodes),
   };

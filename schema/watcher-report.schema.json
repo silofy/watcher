@@ -7,7 +7,7 @@
   "required": ["schema_version", "session", "episodes", "phases", "golden_dag", "metrics", "coaching", "redaction_profile"],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "const": "1.0" },
+    "schema_version": { "enum": ["1.0", "1.1"] },
 
     "session": {
       "type": "object",
@@ -68,6 +68,19 @@
           "loop_of_seq": {
             "type": ["integer", "null"],
             "description": "If set, this episode is a redundant near-duplicate retry of the referenced seq (Loop waste, brief §6.1)."
+          },
+          "frameworks": {
+            "type": "object",
+            "description": "Cross-framework overlay on the ATT&CK classification (schema v1.1): UKC phase + CWE weakness class.",
+            "additionalProperties": false,
+            "properties": {
+              "ukc": {
+                "type": "string",
+                "description": "Unified Kill Chain phase derived from the ATT&CK tactic — adds attack ordering.",
+                "enum": ["reconnaissance", "exploitation", "execution", "persistence", "defense-evasion", "credential-access", "privilege-escalation", "lateral-movement", "command-and-control", "collection", "exfiltration", "objectives"]
+              },
+              "cwe": { "type": "array", "items": { "type": "string", "pattern": "^CWE-[0-9]+$" }, "description": "Distinct CWE weakness classes the episode exploited." }
+            }
           }
         }
       }
@@ -158,7 +171,10 @@
           }
         },
         "objective_coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 },
-        "technique_breadth": { "type": "integer", "minimum": 0, "description": "Count of distinct MITRE techniques touched." }
+        "technique_breadth": { "type": "integer", "minimum": 0, "description": "Count of distinct MITRE techniques touched." },
+        "ukc_coverage_pct": { "type": "number", "minimum": 0, "maximum": 100, "description": "Distinct UKC phases reached vs. those the intended path requires (schema v1.1)." },
+        "ukc_progression": { "type": "number", "minimum": 0, "maximum": 100, "description": "Share of UKC-phase transitions that advance rather than backtrack (schema v1.1)." },
+        "weakness_breadth": { "type": "integer", "minimum": 0, "description": "Count of distinct CWE weakness classes exploited (schema v1.1)." }
       }
     },
 

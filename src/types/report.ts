@@ -39,6 +39,14 @@ export interface Session {
   machine?: Machine;
 }
 
+/** Cross-framework tags overlaid on an episode's ATT&CK classification (schema v1.1). */
+export interface EpisodeFrameworks {
+  /** Unified Kill Chain phase derived from the ATT&CK tactic — adds attack ordering. */
+  ukc?: string;
+  /** CWE weakness classes the episode exploited (absent when none is unambiguous). */
+  cwe?: string[];
+}
+
 export interface Episode {
   seq: number;
   cmd: string;
@@ -56,6 +64,7 @@ export interface Episode {
   context_path?: string;
   alignment?: Alignment;
   loop_of_seq?: number | null;
+  frameworks?: EpisodeFrameworks;
 }
 
 export interface Phase {
@@ -100,6 +109,12 @@ export interface Metrics {
   independence?: Independence;
   objective_coverage_pct: number;
   technique_breadth: number;
+  /** Distinct UKC phases reached vs. those the intended path requires (schema v1.1). */
+  ukc_coverage_pct?: number;
+  /** Share of UKC-phase transitions that advance rather than backtrack (schema v1.1). */
+  ukc_progression?: number;
+  /** Distinct CWE weakness classes exploited — a sharper breadth than techniques (schema v1.1). */
+  weakness_breadth?: number;
 }
 
 export interface SkillRadar {
@@ -141,7 +156,7 @@ export interface NoiseBaseline {
 }
 
 export interface WatcherReport {
-  schema_version: "1.0";
+  schema_version: "1.0" | "1.1";
   session: Session;
   episodes: Episode[];
   phases: Phase[];
