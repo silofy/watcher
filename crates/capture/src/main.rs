@@ -316,12 +316,13 @@ fn run_interactive(
     Ok(events)
 }
 
-// ---- Attach mode: correlate a local terminal to the HTB session the extension opened ----
+// ---- Attach mode: stream a local terminal into a live recording session ----
 //
-// The browser extension writes ~/.watcher/sessions/<uuid>.json with the machine identity and
-// recording:true. `--attach` finds that session and streams the commands you run in a watched
-// shell straight into it as episodes, so your local hacking shows up in the report — correlated to
-// the box, with no second session to reconcile.
+// A live session is a ~/.watcher/sessions/<uuid>.json file with the machine identity and
+// recording:true. `--attach` finds the newest one (or self-starts it) and streams the commands you
+// run in a watched shell straight into it as episodes, so your local hacking shows up in the
+// report, correlated to the box, with no second session to reconcile. A second terminal can attach
+// to a session this process already opened.
 
 use serde_json::{json, Value};
 
@@ -330,7 +331,7 @@ fn watcher_sessions_dir() -> Option<std::path::PathBuf> {
     Some(std::path::Path::new(&home).join(".watcher").join("sessions"))
 }
 
-/// The newest still-recording session file (the engagement the extension currently has open).
+/// The newest still-recording session file (a live engagement already open on this machine).
 fn find_active_session() -> Option<(std::path::PathBuf, Value)> {
     let dir = watcher_sessions_dir()?;
     let mut best: Option<(std::path::PathBuf, Value, String)> = None;
@@ -405,7 +406,7 @@ fn episodes_from_terminal(t: &Terminal) -> Vec<Value> {
     out
 }
 
-/// Merge episodes into the session file the extension wrote (preserving its machine identity).
+/// Merge episodes into the session file (preserving its machine identity).
 fn write_session_episodes(path: &std::path::Path, base: &Value, episodes: Vec<Value>) {
     let mut v = base.clone();
     let breadth = episodes
@@ -424,7 +425,7 @@ fn iso_now() -> String {
     chrono::Utc::now().to_rfc3339()
 }
 
-/// Build the machine-identity block for a standalone export from CLI args (Pwnbox has no extension
+/// Build the machine-identity block for a standalone export from CLI args (Pwnbox has no live
 /// session to inherit it from). Null when --machine is omitted.
 fn machine_arg(args: &[String]) -> Value {
     match arg_value(args, "--machine") {
@@ -439,8 +440,8 @@ fn machine_arg(args: &[String]) -> Value {
 }
 
 /// A complete, schema-shaped report for an agent-owned capture (the in-Pwnbox `--export` agent, or a
-/// self-started local `--attach` when no extension session exists). Same shape the daemon writes for a
-/// live session, so the file can be dropped straight into ~/.watcher/sessions/. `source` is the §3.3
+/// self-started local `--attach`). Same shape the daemon writes for a live session, so the file can
+/// be dropped straight into ~/.watcher/sessions/. `source` is the §3.3
 /// provenance ("in_vm_daemon" for Pwnbox, "local_pty" for a local watched shell).
 fn build_base_report(uuid: &str, machine: Value, target: &str, context: &str, source: &str) -> Value {
     let t = iso_now();
@@ -464,8 +465,8 @@ fn build_base_report(uuid: &str, machine: Value, target: &str, context: &str, so
 }
 
 /// Flip a session report to archived (recording:false, ended now). Called when this agent OWNS the
-/// session lifecycle — a standalone `--export`, or a self-started `--attach` with no extension session.
-/// (Extension-opened sessions are left alone: the extension owns their lifecycle.)
+/// session lifecycle — a standalone `--export`, or a self-started `--attach`. A session this process
+/// did not open (one it merely attached to) is left alone; its opener owns the lifecycle.
 fn mark_finished(path: &std::path::Path) {
     if let Ok(s) = std::fs::read_to_string(path) {
         if let Ok(mut v) = serde_json::from_str::<Value>(&s) {
@@ -602,7 +603,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
 
     // Standalone capture (the in-Pwnbox agent): record with our own identity, write a complete
-    // report to a file the user downloads and imports. No extension session needed.
+    // report to a file the user downloads and imports.
     if let Some(out) = arg_value(&args, "--export") {
         let target = arg_value(&args, "--machine").unwrap_or_else(|| "Pwnbox session".to_string());
         let context = arg_value(&args, "--context").unwrap_or_else(|| "cloud:htb:pwnbox".to_string());
@@ -616,9 +617,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Attach and stream local commands into a recording session. Prefer the one the browser extension
-    // opened (it carries the box identity); if there is none, self-start one — so live local capture
-    // needs no extension at all (cross-platform). `--machine <name>` names the self-started session.
+    // Attach and stream local commands into a recording session. Prefer a live session already open
+    // on this machine; if there is none, self-start one (cross-platform). `--machine <name>` names
+    // the self-started session.
     if args.iter().any(|a| a == "--attach") {
         let (path, base, self_started) = match find_active_session() {
             Some((p, b)) => (p, b, false),
@@ -630,7 +631,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::fs::create_dir_all(&dir)?;
                 let path = dir.join(format!("{session}.json"));
                 write_session_episodes(&path, &base, vec![]); // visible in The Watcher immediately
-                eprintln!("[watcher-capture] no extension session found — started a new one ('{target}').");
+                eprintln!("[watcher-capture] no live session found — started a new one ('{target}').");
                 (path, base, true)
             }
         };

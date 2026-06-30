@@ -1,7 +1,6 @@
-//! The unified telemetry envelope (brief §3.3). Both capture agents (local PTY,
-//! browser extension, in-VM daemon, plugins) emit this exact shape, so Modules 2–4
-//! never need to know where an event came from. The daemon is the single owner that
-//! normalizes clocks and re-redacts on receipt.
+//! The unified telemetry envelope (brief §3.3). Every source (local PTY, in-VM daemon,
+//! plugins) emits this exact shape, so Modules 2–4 never need to know where an event came
+//! from. The daemon is the single owner that normalizes clocks and re-redacts on receipt.
 
 use serde::Serialize;
 
@@ -34,7 +33,7 @@ pub struct Payload {
 
 #[derive(Serialize)]
 pub struct TelemetryEvent {
-    /// "local_pty" | "browser_ext" | "in_vm_daemon" | "plugin".
+    /// "local_pty" | "in_vm_daemon" | "plugin".
     pub source: String,
     pub session_uuid: String,
     pub seq: u64,

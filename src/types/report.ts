@@ -14,7 +14,7 @@ export type Alignment =
   | "out_of_order"
   | null;
 
-export type Source = "local_pty" | "browser_ext" | "in_vm_daemon" | "plugin";
+export type Source = "local_pty" | "in_vm_daemon" | "plugin";
 
 export type RedactionProfile = "public_safe" | "full";
 
@@ -156,7 +156,4 @@ export interface WatcherReport {
    *  Derived per box from its expected loud tooling, so the 0–100 stealth score means something
    *  per box rather than against a global magic constant. */
   noise_baseline?: NoiseBaseline;
-  /** Raw write-up text the extension pulled from HTB for this box (Layer-2 source). The app
-   *  auto-extracts a golden DAG from it when no reference is present yet. */
-  writeup_text?: string;
 }

@@ -20,10 +20,10 @@
         "target_scope": { "type": "string", "description": "Authorized scope, e.g. an HTB box label or CIDR." },
         "context_path": { "type": "string", "description": "host -> vm -> container provenance, e.g. cloud:htb:pwnbox." },
         "shell": { "type": "string" },
-        "source": { "type": "string", "enum": ["local_pty", "browser_ext", "in_vm_daemon", "plugin"] },
+        "source": { "type": "string", "enum": ["local_pty", "in_vm_daemon", "plugin"] },
         "machine": {
           "type": "object",
-          "description": "Lab/machine identity, surfaced as the report's hero (e.g. the HTB box the browser extension detected on spawn).",
+          "description": "Lab/machine identity, surfaced as the report's hero (e.g. the HTB box named via --machine on capture).",
           "additionalProperties": false,
           "properties": {
             "name": { "type": "string" },

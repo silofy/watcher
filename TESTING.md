@@ -15,8 +15,8 @@ There are **no prebuilt executables** in this drop, deliberately. You run a stat
 build from source you've read. Specifically:
 
 - **Local-first, offline.** No account, no telemetry, no phone-home. The *only* outbound traffic is the
-  **optional** write-up fetch from public sources (HTB / 0xdf / IppSec) — readable in
-  `extension/lib/writeup.js`. Don't use it and there is zero egress.
+  **optional** write-up fetch when you paste a URL into the reference-path control — readable in
+  `src/components/WriteupGate.tsx` / `src/lib/writeup.ts`. Paste the text instead and there is zero egress.
 - **Capture is userspace PTY only** — ConPTY on Windows, `openpty` on Unix (one `portable-pty` call).
   **No eBPF, no ptrace, no `LD_PRELOAD`, no kernel module, no API hooking, no root.** Read
   `crates/capture/src/main.rs`: it spawns your shell in a PTY and reads OSC-133 markers. That's the whole
@@ -71,7 +71,7 @@ Sanity-check it does what it claims: `npm test` (180 tests) · `cd crates/captur
 
 ## 3. Capture your own engagement
 
-No browser extension required. Build the agent yourself (lean — no SQLCipher):
+Build the agent yourself (lean — no SQLCipher):
 
 ```sh
 cd crates/capture && cargo build --release
@@ -90,7 +90,7 @@ For the **intended-path comparison** (coverage, "what you'd do differently"), op
 differently → Reference path → Add write-up* and paste any write-up — parsed locally (keyword fallback
 without Ollama). Everything else (deviations, time waste, stealth, techniques, grade) works without it.
 
-Playing in **Pwnbox**, or want the full auto-detect/auto-pull extension? See
+Playing in **Pwnbox**? See
 [`crates/capture/CAPTURE.md`](crates/capture/CAPTURE.md) and the in-app **Install** tab.
 
 ---

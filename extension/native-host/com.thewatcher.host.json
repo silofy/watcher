@@ -1,9 +1,0 @@
-{
-    "name":  "com.thewatcher.host",
-    "description":  "The Watcher local daemon (Native Messaging host)",
-    "path":  "C:\\Users\\Tiago Peter\\Claude\\Projects\\Watcher\\extension\\native-host\\watcher-host.cmd",
-    "type":  "stdio",
-    "allowed_origins":  [
-                            "chrome-extension://dmpppmcadnpodkfagopppminmbkmipih/"
-                        ]
-}

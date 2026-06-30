@@ -1,12 +1,12 @@
 # watcher-daemon — the single SQLCipher owner
 
-Wires the proven pieces into one process. Both capture agents and plugins feed it the §3.3
-telemetry envelope (over Native Messaging / a unix socket); the daemon:
+Wires the proven pieces into one process. Capture agents and plugins feed it the §3.3
+telemetry envelope (over a TCP/unix socket); the daemon:
 
 1. **re-redacts on receipt** (`watcher_core::redact`) — never trusts an upstream's own scrubbing,
    the privacy guarantee lives in the core;
 2. **owns session boundaries** (`watcher_core::SessionController`) — honors upstream
-   `session_start`/`session_end` (from the browser extension or capture), auto-starts/closes
+   `session_start`/`session_end` from capture, auto-starts/closes
    otherwise, and surfaces flag nudges;
 3. **stamps + persists** command/output to the encrypted SQLCipher store under the active session.
 
@@ -26,14 +26,14 @@ cargo test --manifest-path crates/daemon/Cargo.toml   # process: re-redact + sta
 
 ```
 capture (local PTY) ─┐
-browser ext (HTB)  ──┼─▶ watcher-daemon ──▶ SQLCipher store
-plugins (socket)   ─┘     re-redact
+plugins (socket)   ──┼─▶ watcher-daemon ──▶ SQLCipher store
+in-VM daemon       ─┘     re-redact
                           SessionController (boundaries)
                           stamp session_uuid
 ```
 
 Shares `watcher-core` (session controller + redaction) with the capture agent, so the session
-lifecycle is identical whether a boundary comes from HTB spawn/stop, a manual start, idle, or a flag.
+lifecycle is identical whether a boundary comes from a session start/stop, idle, or a flag.
 
 ## Build prerequisites
 

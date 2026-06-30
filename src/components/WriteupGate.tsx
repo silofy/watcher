@@ -13,7 +13,7 @@ type Status = { kind: "idle" | "working" | "error"; msg?: string };
  * applied, there's nothing to grade against, so we ask for one up front rather than show a half report.
  */
 export function WriteupGate() {
-  const { report, applyGoldenDag, setView, setGateDismissed } = useReport();
+  const { report, applyGoldenDag, setGateDismissed } = useReport();
   const box = machineOf(report);
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -28,7 +28,7 @@ export function WriteupGate() {
         try {
           content = await (await fetch(input)).text();
         } catch {
-          setStatus({ kind: "error", msg: "Couldn't fetch that URL — the site blocks cross-origin reads. Paste the write-up text instead, or use the extension to auto-pull." });
+          setStatus({ kind: "error", msg: "Couldn't fetch that URL — the site blocks cross-origin reads. Paste the write-up text instead." });
           return;
         }
       }
@@ -95,10 +95,7 @@ export function WriteupGate() {
         {status.kind === "error" && status.msg && <p className="mt-2 text-xs text-detour">{status.msg}</p>}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <button type="button" onClick={() => setView("install")} className="text-signal transition-colors hover:text-fg">
-          Playing live? Auto-pull write-ups with the extension →
-        </button>
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 text-sm">
         <button type="button" onClick={() => setGateDismissed(true)} className="text-faint transition-colors hover:text-muted">
           Skip — just analyze my own run
         </button>

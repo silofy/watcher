@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useReport } from "../store/report";
 import { machineOf } from "../lib/machine";
 import { resolveProvider } from "../lib/llm";
@@ -6,7 +6,7 @@ import { goldenFromText } from "../lib/writeup";
 
 type Status = { kind: "idle" | "working" | "error"; msg?: string };
 
-const SRC: Record<string, string> = { "htb-official": "HTB official", "0xdf": "0xdf", "ippsec-notes": "IppSec notes", "htb-auto": "HTB", pasted: "pasted write-up" };
+const SRC: Record<string, string> = { "htb-official": "HTB official", "0xdf": "0xdf", "ippsec-notes": "IppSec notes", pasted: "pasted write-up" };
 
 /**
  * Layer-2 trigger: paste a box write-up, the local model extracts the intended objective path, and
@@ -20,7 +20,6 @@ export function WriteupControl() {
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const hasDag = report.golden_dag.length > 0;
-  const autoTried = useRef<string | null>(null);
 
   async function analyze(source: string, sourceLabel?: string) {
     const input = source.trim();
@@ -42,18 +41,6 @@ export function WriteupControl() {
     }
   }
 
-  // Auto-overlay: when the extension has pulled a write-up from HTB and no reference is applied yet,
-  // extract it automatically (once per session). Manual paste below stays as the fallback.
-  useEffect(() => {
-    const wt = report.writeup_text;
-    const key = report.session.uuid;
-    if (wt && !hasDag && autoTried.current !== key) {
-      autoTried.current = key;
-      void analyze(wt, "htb-auto");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [report.session.uuid, report.writeup_text, hasDag]);
-
   return (
     <div className="mb-3 rounded-lg border border-edge bg-panel-2/40 p-3">
       {/* one source-of-truth row: provenance on the left, replace/add on the right — same control either way */}
@@ -68,7 +55,7 @@ export function WriteupControl() {
           </span>
         ) : (
           <span className="text-sm text-muted">
-            None yet — <span className="text-fg">grading your run only</span>. Auto-pulls for retired boxes, or add one now.
+            None yet — <span className="text-fg">grading your run only</span>. Add one to unlock the comparison.
           </span>
         )}
         <button

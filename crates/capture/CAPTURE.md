@@ -1,19 +1,17 @@
 # Capturing an HTB engagement
 
 The Watcher records the **commands** you run against a box. Machine *identity* (name, OS,
-difficulty, avatar) is supplied automatically by the browser extension the moment you spawn the box
-on HTB — see `extension/INSTALL.md`. This document covers the two ways to capture the commands,
-matching the two ways people play HTB content.
+difficulty) comes from the `--machine` flag you pass when you start capturing. This document covers
+the two ways to capture the commands, matching the two ways people play HTB content.
 
 In both cases the rendezvous is the same: a session report JSON in `~/.watcher/sessions/`, which the
-desktop app polls and renders. The extension opens it; a capture agent fills in the episodes.
+desktop app polls and renders. The capture agent opens it and fills in the episodes.
 
 ---
 
 ## Path A — Play over the VPN, from your own terminal (macOS / Linux / Windows / WSL)
 
-Best when you attack from a local Kali/WSL/PowerShell over HTB's OpenVPN. Fully live. **No browser
-extension required.**
+Best when you attack from a local Kali/WSL/PowerShell over HTB's OpenVPN. Fully live.
 
 1. Download the **OpenVPN** config ("Connect with OpenVPN") and connect: `sudo openvpn lab.ovpn`.
 2. Start a watched shell, naming the box:
@@ -26,11 +24,10 @@ extension required.**
 3. Hack as normal — `nmap`, `evil-winrm`, etc. Each completed command appears in the debrief within
    ~1–4 s. Type `exit` to stop.
 
-`--attach` first looks for the newest still-recording session in `~/.watcher/sessions/` (the one the
-browser extension opens, which carries the box's identity). If there is none, it **self-starts a
-session** named by `--machine`, so live capture works with no extension at all. Either way it must run
-on the **same machine** as the desktop app (it reads that local folder), and it closes the session it
-started on `exit`.
+`--attach` first looks for the newest still-recording session in `~/.watcher/sessions/` (so a second
+terminal can join one that's already recording). If there is none, it **self-starts a session** named
+by `--machine`. Either way it must run on the **same machine** as the desktop app (it reads that local
+folder), and it closes the session it started on `exit`.
 
 Note: if you `ssh`/`openvpn` into the box and then run a *nested* shell, OSC-133 boundaries bracket
 the **outer** shell — the nested session is one block. Run commands in the watched shell directly,
@@ -40,9 +37,8 @@ or use Path B inside the box for per-command boundaries.
 
 ## Path B — Play in Pwnbox (in-browser Parrot OS)
 
-Pwnbox is delivered as a **VNC remote desktop** (`vnc.htb-cloud.com`), so the browser sees pixels,
-not text — it cannot be tapped from the extension. Instead, run the agent **inside** Pwnbox and
-import the result.
+Pwnbox is delivered as a **VNC remote desktop** (`vnc.htb-cloud.com`), so there's no local terminal
+to watch. Instead, run the agent **inside** Pwnbox and import the result.
 
 1. Get the agent into Pwnbox. A **prebuilt Linux x86_64 binary** is committed at
    `crates/capture/dist/watcher-capture-linux-x86_64` — just transfer that file (HTB file transfer / scp),
@@ -75,7 +71,7 @@ import the result.
 
 | flag | meaning |
 |------|---------|
-| `--attach` | stream into a live local session; self-starts one if the extension hasn't opened one (same machine) |
+| `--attach` | stream into a live local session; self-starts one if none is recording (same machine) |
 | `--export <file>` | standalone capture → write a complete report to `<file>` (for Pwnbox) |
 | `--machine <name>` | name the box — identity for `--export` and for a self-started `--attach` (also `--os`, `--difficulty`) |
 | `-i` / `--interactive` | raw capture to NDJSON on stdout (no session file) |

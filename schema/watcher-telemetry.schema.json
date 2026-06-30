@@ -11,7 +11,7 @@
       "required": ["source", "session_uuid", "ts_utc_us", "kind"],
       "additionalProperties": false,
       "properties": {
-        "source": { "type": "string", "enum": ["local_pty", "browser_ext", "in_vm_daemon", "plugin"] },
+        "source": { "type": "string", "enum": ["local_pty", "in_vm_daemon", "plugin"] },
         "session_uuid": { "type": "string" },
         "seq": { "type": "integer", "minimum": 0 },
         "ts_utc_us": { "type": "integer", "minimum": 0, "description": "UTC microseconds; the daemon normalizes per-source skew." },

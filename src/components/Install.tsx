@@ -38,16 +38,15 @@ export function Install() {
       <div className="mb-5">
         <h2 className="font-display text-2xl font-semibold text-fg">Setup</h2>
         <p className="mt-1.5 text-sm text-muted">
-          Add only the tiers you need — each works on its own. Everything runs on macOS, Linux, and Windows; the browser
-          extension (Tier 3) is optional convenience, never a requirement.
+          Add only the tiers you need — each works on its own. Everything runs on macOS, Linux, and Windows.
         </p>
       </div>
 
       <div className="space-y-3">
         <Tier n={1} title="Capture your runs" req={<Req tone="desktop">desktop app · any OS</Req>} unlocks="Run a watched shell while you attack a box over OpenVPN — each command streams into the debrief live.">
           <Code>watcher-capture --attach --machine &lt;name&gt;</Code>
-          <Step>Live, no extension — self-starts a session and streams each command as you run it. <code>exit</code> to stop. macOS / Linux / Windows.</Step>
-          <Step>Already spawned the box with the extension? Plain <code>watcher-capture --attach</code> picks up its session (and the box identity) automatically.</Step>
+          <Step>Live — self-starts a session and streams each command as you run it. <code>exit</code> to stop. macOS / Linux / Windows.</Step>
+          <Step>A second terminal can run plain <code>watcher-capture --attach</code> to join a session that's already recording.</Step>
         </Tier>
 
         <Tier n={2} title="Capture in Pwnbox" req={<Req tone="desktop">desktop app + SSH</Req>} unlocks="Pwnbox is a pixel stream — run the agent inside it, pull results over your own key (PC ↔ Pwnbox, no third party).">
@@ -57,7 +56,7 @@ export function Install() {
 
         <Tier n={3} title="Reference path — the comparison" req={<Req tone="none">paste, no install</Req>} unlocks="Powers coverage, “What you'd do differently”, and the golden-path graph. Without it: your own deviations, time, stealth and techniques — no comparison.">
           <Step><span className="text-fg">Paste:</span> <span className="text-fg">What you'd do differently → Reference path → Add write-up</span> (HTB / 0xdf / IppSec). Extracts the intended path locally — keyword fallback if Ollama is off.</Step>
-          <Step><span className="text-fg">Or auto-pull:</span> load <code>extension/</code> unpacked + register the native host (<code>extension/INSTALL.md</code>) — names the box on spawn and fetches the write-up. Windows-first, needs the daemon built.</Step>
+          <Step>Retired boxes have public write-ups; an active box has none, so the comparison stays off until it retires. Your own run is still graded in full.</Step>
         </Tier>
 
         <Tier n={4} title="AI-refined coaching" req={<Req tone="advanced">optional · Ollama</Req>} unlocks="Rewrites coaching into command-aware advice. Fully local — session never leaves the device. Off = rules-based, still solid.">
@@ -66,7 +65,7 @@ export function Install() {
         </Tier>
       </div>
 
-      <p className="mt-4 text-xs text-faint">Status: report + local capture are solid; Pwnbox sync and the extension are rougher, Windows-first.</p>
+      <p className="mt-4 text-xs text-faint">Status: report + local capture are solid; Pwnbox sync is rougher, Windows-first.</p>
     </div>
   );
 }

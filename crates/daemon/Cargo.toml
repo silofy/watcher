@@ -18,12 +18,6 @@ watcher-store = { path = "../store" }
 uuid = { version = "1", features = ["v4"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-# Fetch the presigned-S3 write-up PDF (no auth) and extract its text (Layer-2 source). native-tls
-# uses Windows SChannel — no OpenSSL/ring build needed.
-ureq = { version = "2", default-features = false, features = ["native-tls", "gzip"] }
-native-tls = "0.2"
-pdf-extract = "0.7"
 
 [dev-dependencies]
 tempfile = "3"

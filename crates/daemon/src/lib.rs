@@ -1,6 +1,5 @@
-//! The Watcher daemon core — the single SQLCipher owner. Every source (local PTY capture, the HTB
-//! browser extension over Native Messaging, plugins over a local socket) feeds it §3.3 envelopes;
-//! the daemon:
+//! The Watcher daemon core — the single SQLCipher owner. Every source (local PTY capture, plugins
+//! over a local socket) feeds it §3.3 envelopes; the daemon:
 //!   1. **re-redacts on receipt** (`watcher_core::redact`) — never trusts an upstream's scrubbing,
 //!   2. **owns session boundaries** (`watcher_core::SessionController`) — honors upstream
 //!      session_start/session_end, auto-starts/closes otherwise, surfaces flag nudges,
@@ -9,7 +8,6 @@
 //! `StreamProcessor` is a pure, incremental transform (no DB) so it is fully testable; a single
 //! consumer owns the store connection (the "single SQLCipher owner") and many sources feed it.
 
-use std::io::{ErrorKind, Read, Write};
 use std::sync::mpsc::Receiver;
 
 use serde::Deserialize;
@@ -237,31 +235,6 @@ pub fn run_consumer(
     summary
 }
 
-// ---- Native Messaging framing (Chrome host protocol: u32-LE length + UTF-8 JSON) ----
-
-/// Read one Native-Messaging message, or None at EOF.
-pub fn read_nm_message<R: Read>(r: &mut R) -> std::io::Result<Option<String>> {
-    let mut len_buf = [0u8; 4];
-    if let Err(e) = r.read_exact(&mut len_buf) {
-        if e.kind() == ErrorKind::UnexpectedEof {
-            return Ok(None);
-        }
-        return Err(e);
-    }
-    let len = u32::from_le_bytes(len_buf) as usize;
-    let mut buf = vec![0u8; len];
-    r.read_exact(&mut buf)?;
-    Ok(Some(String::from_utf8_lossy(&buf).into_owned()))
-}
-
-/// Write one Native-Messaging message.
-pub fn write_nm_message<W: Write>(w: &mut W, msg: &str) -> std::io::Result<()> {
-    let bytes = msg.as_bytes();
-    w.write_all(&(bytes.len() as u32).to_le_bytes())?;
-    w.write_all(bytes)?;
-    w.flush()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -276,7 +249,7 @@ mod tests {
         })
     }
 
-    const STREAM: &str = r#"{"source":"browser_ext","session_uuid":"ext-1","seq":0,"ts_utc_us":1000,"kind":"session_start","payload":{"text":"HTB :: Optimum"}}
+    const STREAM: &str = r#"{"source":"local_pty","session_uuid":"ext-1","seq":0,"ts_utc_us":1000,"kind":"session_start","payload":{"text":"HTB :: Optimum"}}
 {"source":"local_pty","session_uuid":"run-x","seq":1,"ts_utc_us":2000,"kind":"command","payload":{"cmd":"nmap -sV 10.10.10.8"}}
 {"source":"local_pty","session_uuid":"run-x","seq":1,"ts_utc_us":3000,"kind":"output","payload":{"stream":"stdout","text":"root.txt 0123456789abcdef0123456789abcdef on 10.10.10.8","line_count":1}}
 {"source":"local_pty","session_uuid":"run-x","seq":0,"ts_utc_us":4000,"kind":"session_end","payload":{"text":"manual"}}"#;
@@ -351,14 +324,5 @@ mod tests {
         assert_eq!(ev.provenance.context_path.as_deref(), Some("cloud:aws:cloudshell"));
         assert_eq!(ev.provenance.boundary_confidence, Some(0.7)); // "inferred"
         assert_eq!(ev.provenance.platform.as_deref(), Some("aws-cloudshell"));
-    }
-
-    #[test]
-    fn nm_framing_roundtrips() {
-        let mut buf: Vec<u8> = Vec::new();
-        write_nm_message(&mut buf, "{\"hello\":1}").unwrap();
-        let mut cur = std::io::Cursor::new(buf);
-        assert_eq!(read_nm_message(&mut cur).unwrap().as_deref(), Some("{\"hello\":1}"));
-        assert_eq!(read_nm_message(&mut cur).unwrap(), None); // clean EOF
     }
 }

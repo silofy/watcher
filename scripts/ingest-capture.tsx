@@ -38,8 +38,8 @@ const events = parseEnvelopes(readFileSync(ndjsonPath, "utf8"));
 const raw = envelopesToRawCommands(events);
 if (raw.length === 0) throw new Error(`no command envelopes in ${ndjsonPath}`);
 
-// Machine identity: in production the browser extension fills this on an HTB spawn. Here we pick
-// it up from the capture's --label (the session_start marker), with a --machine override:
+// Machine identity: capture names the box via --machine on an HTB spawn. Here we pick it up from
+// the capture's --label (the session_start marker), with a --machine override:
 //   --machine "name=Lame,os=Linux,difficulty=Easy,avatar=https://…"
 const label = events.find((e) => e.kind === "session_start")?.payload?.text;
 const machineArg = arg("machine", "");

@@ -9,8 +9,8 @@
 //!   * flag detection                                                — a 32-hex token is an
 //!                                                                      "objective complete" end-NUDGE
 //!
-//! Boundaries are signals routed to the human, not irreversible verdicts. The browser extension
-//! feeds HTB spawn/stop in here as start/stop; the daemon drives it from the merged stream.
+//! Boundaries are signals routed to the human, not irreversible verdicts. The daemon drives session
+//! start/stop from the merged stream; capture self-starts one when none is open.
 
 pub struct SessionConfig {
     pub idle_timeout_us: u64,

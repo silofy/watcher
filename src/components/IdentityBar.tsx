@@ -49,7 +49,6 @@ function FlagStat({ label, state, at }: { label: string; state: "yes" | "no" | "
 
 const SOURCE_LABEL: Record<string, string> = {
   local_pty: "Local terminal",
-  browser_ext: "Browser",
   in_vm_daemon: "Pwnbox / VM",
   plugin: "Plugin",
 };

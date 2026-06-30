@@ -68,9 +68,9 @@ exit (`extract_sessions`). It needs a real TTY, so it's driven by hand, not in C
 
 ## In-VM daemon (§5.2) — capturing inside a pixel-streamed box
 
-HTB Pwnbox / THM AttackBox in the browser are **pixel-streamed** (noVNC/Guacamole): no terminal text
-in the DOM, so the browser extension is blind. The fallback is to run this same agent **inside** the
-box and forward its telemetry to a host daemon:
+HTB Pwnbox / THM AttackBox in the browser are **pixel-streamed** (noVNC/Guacamole): no local terminal
+to watch. The fallback is to run this same agent **inside** the box and forward its telemetry to a
+host daemon:
 
 ```bash
 # same binary, built for Linux, run inside the Pwnbox shell:
