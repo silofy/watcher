@@ -23,7 +23,7 @@ describe("report renders end-to-end", () => {
       "Command Log",
       "do differently",
       "Phase audit",
-      "Grade &amp; skills",
+      "explainable rubric",
     ]) {
       expect(html).toContain(title);
     }

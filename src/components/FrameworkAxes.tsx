@@ -1,5 +1,6 @@
 import { useReport } from "../store/report";
 import { Section, Gauge, tierColor } from "./ui";
+import { UKC_ORDER, ukcLabel, reachedUkcPhases, runWeaknesses, cweLabel } from "../lib/pipeline/frameworks";
 
 /**
  * The three-lens readout: ATT&CK alone is a flat, unordered matrix, so the grade overlays two
@@ -10,6 +11,8 @@ import { Section, Gauge, tierColor } from "./ui";
 export function FrameworkAxes() {
   const { report, metrics } = useReport();
   const hasRef = report.golden_dag.length > 0;
+  const reached = reachedUkcPhases(report.episodes);
+  const weaknesses = runWeaknesses(report.episodes);
 
   return (
     <Section
@@ -18,13 +21,12 @@ export function FrameworkAxes() {
       collapsible
       name="debrief-details"
     >
+      {/* three headline readouts */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* UKC progression — the precision ATT&CK can't give: it has no order. */}
         <div className="flex flex-col items-center gap-2 rounded-lg border border-edge bg-panel px-3 py-4">
           <Gauge label="Progression" value={metrics.ukc_progression} caption="UKC phases hit in order" />
         </div>
 
-        {/* UKC coverage — like objective coverage, it needs the intended path to compare against. */}
         <div className="flex flex-col items-center gap-2 rounded-lg border border-edge bg-panel px-3 py-4">
           {hasRef ? (
             <Gauge label="Phase coverage" value={metrics.ukc_coverage_pct} caption="of the path's UKC phases" />
@@ -41,13 +43,12 @@ export function FrameworkAxes() {
           )}
         </div>
 
-        {/* Weakness breadth — a count, so a plain readout rather than a 0–100 gauge. */}
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-edge bg-panel px-3 py-4">
           <div className="flex h-[108px] flex-col items-center justify-center">
-            <span className="font-display text-5xl font-bold leading-none" style={{ color: tierColor(metrics.weakness_breadth > 0 ? 70 : 30) }}>
-              {metrics.weakness_breadth}
+            <span className="font-display text-5xl font-bold leading-none" style={{ color: tierColor(weaknesses.length > 0 ? 70 : 30) }}>
+              {weaknesses.length}
             </span>
-            <span className="mt-1 text-xs text-faint">CWE {metrics.weakness_breadth === 1 ? "class" : "classes"}</span>
+            <span className="mt-1 text-xs text-faint">CWE {weaknesses.length === 1 ? "class" : "classes"}</span>
           </div>
           <div className="text-center">
             <div className="label text-fg">Weakness breadth</div>
@@ -56,7 +57,46 @@ export function FrameworkAxes() {
         </div>
       </div>
 
-      <p className="mt-3 text-xs leading-relaxed text-faint">
+      {/* UKC kill-chain track — the canonical phase order, with the ones this run reached lit up */}
+      <div className="mt-5">
+        <div className="label mb-2 text-faint">Kill chain — phases reached, in attack order</div>
+        <div className="flex flex-wrap items-center gap-1">
+          {UKC_ORDER.map((phase, i) => {
+            const hit = reached.has(phase);
+            return (
+              <span key={phase} className="flex items-center">
+                {i > 0 && <span className="mx-0.5 text-faint">·</span>}
+                <span
+                  className={`rounded px-1.5 py-0.5 text-xs ${hit ? "border border-match/40 bg-match/10 text-fg" : "border border-edge text-faint"}`}
+                >
+                  {ukcLabel(phase)}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* CWE weakness classes — named, not just counted */}
+      <div className="mt-4">
+        <div className="label mb-2 text-faint">Weakness classes exploited</div>
+        {weaknesses.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {weaknesses.map((id) => (
+              <span key={id} className="mono rounded border border-tool/40 bg-tool/10 px-1.5 py-0.5 text-xs text-fg">
+                {cweLabel(id)}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-faint">
+            None recognized yet — CWE tags are mapped only from tooling that exploits one unambiguous weakness, so the
+            list stays honest as it grows.
+          </p>
+        )}
+      </div>
+
+      <p className="mt-4 text-xs leading-relaxed text-faint">
         ATT&CK says <span className="text-muted">what</span> you did; UKC adds the <span className="text-muted">order</span> it
         should happen in (so backtracking is visible); CWE adds the <span className="text-muted">weakness class</span> you
         exploited (so two different bugs don't collapse into one technique).

@@ -2,40 +2,39 @@ import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
 import { computeGrade, gradeColor, RUBRIC, type RubricKey } from "../lib/bridge/grade";
 import { minimizedBundle } from "../lib/bridge/bundle";
-import type { SkillRadar } from "../types/report";
 
-const AXES: { key: keyof SkillRadar; label: string }[] = [
-  { key: "recon", label: "Recon" },
-  { key: "web", label: "Web" },
-  { key: "exploit", label: "Exploit" },
-  { key: "privesc", label: "PrivEsc" },
-  { key: "opsec", label: "OpSec" },
+/** The radar axes ARE the grade's weighted dimensions — chart, math, and letter tell one story. */
+const RUBRIC_AXES: { key: RubricKey; short: string }[] = [
+  { key: "coverage", short: "Coverage" },
+  { key: "breadth", short: "Breadth" },
+  { key: "efficiency", short: "Efficiency" },
+  { key: "progression", short: "Order" },
+  { key: "discipline", short: "Discipline" },
+  { key: "independence", short: "Indep." },
 ];
 
 const CX = 120;
 const CY = 115;
 const R = 78;
 function point(i: number, frac: number): [number, number] {
-  const angle = -Math.PI / 2 + (i * 2 * Math.PI) / AXES.length;
+  const angle = -Math.PI / 2 + (i * 2 * Math.PI) / RUBRIC_AXES.length;
   return [CX + Math.cos(angle) * R * frac, CY + Math.sin(angle) * R * frac];
-}
-function quality(v: number): string {
-  return v >= 80 ? "Strong" : v >= 65 ? "Solid" : v >= 50 ? "Developing" : "Needs work";
 }
 
 const RUBRIC_LABELS: Record<RubricKey, string> = {
   coverage: "Objective coverage",
   breadth: "Technique breadth",
   efficiency: "Efficiency",
+  progression: "UKC progression",
   discipline: "Operational discipline",
   independence: "Independence",
 };
 const RUBRIC_COLS = "11rem minmax(0,1fr) 2.5rem 3rem 3.25rem";
 
 /**
- * Grade & skills — where you scored (the explainable Enterprise Bridge rubric) and your skill profile,
- * then what syncs to the institution. The actionable moves live in the Phase Audit now; this is the
- * scorecard behind the grade. Independence stays a gate routed to a human, not a verdict.
+ * Grade — one coherent picture: the radar plots the five weighted rubric dimensions with the letter in
+ * its center, and the table shows the score × weight → points math behind it. The actionable moves live
+ * in the Phase Audit; this is the explainable scorecard. Independence is a gate routed to a human.
  */
 export function Assessment() {
   const s = useReport();
@@ -45,18 +44,14 @@ export function Assessment() {
   const flagged = grade.independence_gate.flagged;
   const satisfied = bundle.evidence_digests.filter((d) => d.satisfied).length;
 
-  const radar = report.coaching.skill_radar;
-  const valuePoly = AXES.map((a, i) => point(i, radar[a.key] / 100).join(",")).join(" ");
-  const ranked = [...AXES].sort((a, b) => radar[b.key] - radar[a.key]);
-  const top = ranked[0];
-  const low = ranked[ranked.length - 1];
+  const valuePoly = RUBRIC_AXES.map((a, i) => point(i, grade.components[a.key].raw / 100).join(",")).join(" ");
 
   return (
     <Section
       collapsible
       name="debrief-details"
-      title="Grade & skills"
-      subtitle="the rubric behind your score · your skill profile"
+      title="Grade"
+      subtitle="how your score breaks down — the explainable rubric"
       right={
         <span
           className="rounded-full border px-2 py-0.5"
@@ -69,22 +64,43 @@ export function Assessment() {
         </span>
       }
     >
-      {/* 1 — the grade & the rubric math (explainable Enterprise Bridge) */}
-      <div className="grid gap-6 md:grid-cols-[240px_1fr]">
-        <div className="flex flex-col items-center justify-center rounded-lg border border-edge bg-panel-2/40 p-4">
-          <div className="font-display text-6xl font-bold leading-none" style={{ color: gradeColor(grade.letter) }}>
+      <div className="grid gap-8 md:grid-cols-[300px_1fr] md:items-center">
+        {/* the grade radar — the five weighted dimensions, letter in the center */}
+        <svg viewBox="0 0 240 230" className="mx-auto w-full max-w-[300px]">
+          {[0.25, 0.5, 0.75, 1].map((ring) => (
+            <polygon key={ring} points={RUBRIC_AXES.map((_, i) => point(i, ring).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
+          ))}
+          {RUBRIC_AXES.map((_, i) => {
+            const [x, y] = point(i, 1);
+            return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-edge)" strokeWidth={1} />;
+          })}
+          <polygon points={valuePoly} fill="var(--color-alt)" fillOpacity={0.18} stroke="var(--color-alt)" strokeWidth={2} />
+          {/* vertices colored by tier — independence turns red when it trips the gate */}
+          {RUBRIC_AXES.map((a, i) => {
+            const raw = grade.components[a.key].raw;
+            const [x, y] = point(i, raw / 100);
+            const col = a.key === "independence" && flagged ? "var(--color-loud)" : tierColor(raw);
+            return <circle key={a.key} cx={x} cy={y} r={3.2} fill={col} />;
+          })}
+          {RUBRIC_AXES.map((a, i) => {
+            const [x, y] = point(i, 1.24);
+            const lit = a.key === "independence" && flagged;
+            return (
+              <text key={a.key} x={x} y={y} fontSize="11" fill={lit ? "var(--color-loud)" : "var(--color-faint)"} textAnchor="middle" dominantBaseline="middle">
+                {a.short}
+              </text>
+            );
+          })}
+          {/* the grade itself, at the center of its own breakdown */}
+          <text x={CX} y={CY - 3} fontSize="30" fontWeight={700} fill={gradeColor(grade.letter)} textAnchor="middle" dominantBaseline="middle" className="font-display">
             {grade.letter}
-          </div>
-          <div className="mono mt-1.5 text-sm text-muted">{grade.score} / 100 weighted</div>
-          <div className="mt-3 flex items-center gap-1.5 text-xs">
-            <span className="text-faint">independence</span>
-            <span className="mono" style={{ color: flagged ? "var(--color-loud)" : "var(--color-match)" }}>
-              {grade.independence_gate.score}
-            </span>
-            <span className="text-faint">vs gate {grade.independence_gate.threshold}</span>
-          </div>
-        </div>
+          </text>
+          <text x={CX} y={CY + 17} fontSize="10.5" fill="var(--color-faint)" textAnchor="middle">
+            {grade.score}/100
+          </text>
+        </svg>
 
+        {/* the rubric math behind the chart */}
         <div>
           <div className="label grid gap-2 px-1.5 pb-1.5 text-xs" style={{ gridTemplateColumns: RUBRIC_COLS }}>
             <span>metric</span>
@@ -125,78 +141,49 @@ export function Assessment() {
         </div>
       </div>
 
-      {/* divider into the skill profile */}
-      <div className="my-5 flex items-center gap-3">
-        <span className="label text-faint">Skill profile</span>
-        <div className="h-px flex-1 bg-edge" />
-      </div>
-
-      {/* the read on your skills — the actionable moves live in the Phase Audit above */}
-      <p className="mb-5 text-base leading-relaxed text-muted">
-        Your edge is{" "}
-        <span className="font-semibold" style={{ color: tierColor(radar[top.key]) }}>
-          {top.label} ({radar[top.key]})
-        </span>
-        . The gap holding you back is{" "}
-        <span className="font-semibold" style={{ color: tierColor(radar[low.key]) }}>
-          {low.label} ({radar[low.key]})
-        </span>{" "}
-        — the Phase Audit turns that gap into specific moves, in context.
-      </p>
-
-      <div className="grid items-center gap-7 lg:grid-cols-[280px_1fr]">
-        <svg viewBox="0 0 240 230" className="mx-auto w-full max-w-[260px]">
-          {[0.25, 0.5, 0.75, 1].map((ring) => (
-            <polygon key={ring} points={AXES.map((_, i) => point(i, ring).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
-          ))}
-          {AXES.map((_, i) => {
-            const [x, y] = point(i, 1);
-            return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-edge)" strokeWidth={1} />;
-          })}
-          <polygon points={valuePoly} fill="var(--color-alt)" fillOpacity={0.22} stroke="var(--color-alt)" strokeWidth={2} />
-          {AXES.map((a, i) => {
-            const [x, y] = point(i, 1.2);
-            return (
-              <text key={a.key} x={x} y={y} fontSize="12" fill="var(--color-faint)" textAnchor="middle" dominantBaseline="middle">
-                {a.label}
-              </text>
-            );
-          })}
-        </svg>
-        <ul className="space-y-2.5">
-          {ranked.map((a) => {
-            const v = radar[a.key];
-            const c = tierColor(v);
-            return (
-              <li key={a.key}>
-                <div className="flex items-baseline justify-between text-xs">
-                  <span className="text-muted">{a.label}</span>
-                  <span className="mono tabular-nums" style={{ color: c }}>
-                    {v} · {quality(v)}
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-panel-2">
-                  <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${v}%`, background: c }} />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      {/* 3 — what actually leaves the machine on sync */}
-      <div className="mt-5 rounded-lg border border-edge bg-ink/50 p-3 text-xs">
-        <div className="label mb-1.5 text-faint">Consent preview — what syncs to the institution</div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted">
-          <span className="mono">{bundle.session.target_scope}</span>
-          <span>
-            {satisfied}/{bundle.evidence_digests.length} objectives (digests)
-          </span>
-          <span>scores + grade only</span>
-          <span className="text-match">no raw commands or output</span>
-          <span>profile: {bundle.redaction_profile}</span>
-          <span className="text-faint">· hash-chained + ed25519-signed on sync</span>
+      {/* what actually leaves the machine on sync — plain-language consent, not a jargon dump */}
+      <div className="mt-5 rounded-lg border border-edge bg-ink/50 p-4 text-xs">
+        <div className="mb-2.5">
+          <div className="label text-fg">If you sync this to your institution</div>
+          <p className="mt-1 text-muted">
+            Only your <span className="text-fg">grade and scores</span> leave this machine. Your commands, their output,
+            and the live IP never do.
+          </p>
         </div>
+
+        <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          {/* what they receive */}
+          <div>
+            <div className="label mb-1.5 flex items-center gap-1.5 text-match">
+              <span>✓</span> They receive
+            </div>
+            <ul className="space-y-1 text-muted">
+              <li>The box: <span className="text-fg">{bundle.session.target_scope}</span> <span className="text-faint">(IP removed)</span></li>
+              <li>Your grade, plus the {RUBRIC_AXES.length} scores behind it</li>
+              <li>
+                Which objectives you reached — <span className="text-fg">{satisfied} of {bundle.evidence_digests.length}</span>{" "}
+                <span className="text-faint">(just a checkmark per objective, not how you did it)</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* what never leaves */}
+          <div>
+            <div className="label mb-1.5 flex items-center gap-1.5 text-detour">
+              <span>✕</span> They never see
+            </div>
+            <ul className="space-y-1 text-muted">
+              <li>The commands you typed</li>
+              <li>Any command output or files</li>
+              <li>The target's IP address</li>
+            </ul>
+          </div>
+        </div>
+
+        <p className="mt-3 border-t border-edge/60 pt-2.5 text-faint">
+          Signed before it sends, so your institution can confirm the grade is genuinely yours and hasn't been edited
+          after the fact.
+        </p>
       </div>
 
       {flagged && <p className="mt-3 text-xs text-loud">{grade.rationale[0]}</p>}
