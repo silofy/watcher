@@ -182,6 +182,14 @@ export function AttackTimeline() {
                 <span className="mono text-muted">{hovered.ep.technique}</span> {techniqueName(hovered.ep.technique)}
               </span>
             )}
+            {hovered.ep.frameworks?.ukc && (
+              <span className="text-xs text-faint">
+                UKC <span className="text-muted">{hovered.ep.frameworks.ukc.replace(/-/g, " ")}</span>
+              </span>
+            )}
+            {!!hovered.ep.frameworks?.cwe?.length && (
+              <span className="mono text-xs text-muted">{hovered.ep.frameworks.cwe.join(" ")}</span>
+            )}
             <span className="mono w-full truncate text-xs text-muted">$ {hovered.ep.cmd || "— (thinking)"}</span>
           </div>
         ) : (

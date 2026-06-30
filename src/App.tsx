@@ -5,6 +5,7 @@ import { IdentityBar } from "./components/IdentityBar";
 import { TrimControl } from "./components/TrimControl";
 import { Collapse } from "./components/ui";
 import { AttackTimeline } from "./components/AttackTimeline";
+import { FrameworkAxes } from "./components/FrameworkAxes";
 import { DeviationTimeline } from "./components/DeviationTimeline";
 import { StealthReport } from "./components/StealthReport";
 import { CommandReplay } from "./components/CommandReplay";
@@ -103,6 +104,7 @@ export function App() {
               <div id="path"><PathComparison /></div>
               <div id="bridge"><Assessment /></div>
               <div id="unfolded"><AttackTimeline /></div>
+              <div id="frameworks"><FrameworkAxes /></div>
               <div id="deviated"><DeviationTimeline /></div>
               <div id="stealth"><StealthReport /></div>
               <div id="log"><CommandReplay /></div>

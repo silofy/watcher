@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { GoldenObjective, WatcherReport } from "../types/report";
-import { alignEpisodes, objectiveCoverage } from "../lib/pipeline";
+import { alignEpisodes, objectiveCoverage, ukcCoverage } from "../lib/pipeline";
 import {
   buildTimeline,
   phaseWindows as computePhaseWindows,
@@ -225,7 +225,11 @@ export const useReport = create<ReportState>((set, get) => ({
       ...r,
       episodes,
       golden_dag: aligned,
-      metrics: { ...r.metrics, objective_coverage_pct: objectiveCoverage(aligned) },
+      metrics: {
+        ...r.metrics,
+        objective_coverage_pct: objectiveCoverage(aligned),
+        ukc_coverage_pct: ukcCoverage(episodes, aligned.map((o) => o.tactic)),
+      },
     };
     REPORTS[get().activeId] = next;
     set({ fullReport: next, writeup: meta ?? get().writeup, sessionCards: cardsFrom(), ...derive(applyTrim(next, get().trimSeq)) });
