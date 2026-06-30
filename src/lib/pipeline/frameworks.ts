@@ -69,11 +69,44 @@ export const ATTACK_TACTIC_TO_UKC: Record<string, UkcPhase> = {
  * unambiguous cases are added; sparse-but-correct beats dense-but-wrong.
  */
 export const BINARY_TO_CWE: Record<string, string[]> = {
+  // injection — the tool exists to exploit one specific weakness class
   sqlmap: ["CWE-89"], // SQL injection
+  nosqlmap: ["CWE-943"], // NoSQL injection
+  commix: ["CWE-78"], // OS command injection
+  tplmap: ["CWE-1336"], // server-side template injection
+  xxeinjector: ["CWE-611"], // XML external entity
+  ssrfmap: ["CWE-918"], // server-side request forgery
+  ysoserial: ["CWE-502"], // insecure deserialization
+  "ysoserial.net": ["CWE-502"],
+  // credentials — exploiting weak/guessable secrets
   hydra: ["CWE-307"], // improper restriction of excessive auth attempts
   medusa: ["CWE-307"],
   patator: ["CWE-307"],
   crackmapexec: ["CWE-307"],
+  john: ["CWE-521"], // weak password requirements (offline cracking evidences it)
+  hashcat: ["CWE-521"],
+};
+
+/** CWE id → short human name, for display. Covers exactly the ids the binary map can produce. */
+export const CWE_NAMES: Record<string, string> = {
+  "CWE-89": "SQL injection",
+  "CWE-943": "NoSQL injection",
+  "CWE-78": "OS command injection",
+  "CWE-1336": "Template injection (SSTI)",
+  "CWE-611": "XML external entity (XXE)",
+  "CWE-918": "Server-side request forgery",
+  "CWE-502": "Insecure deserialization",
+  "CWE-307": "Unthrottled auth attempts",
+  "CWE-521": "Weak credentials",
+};
+
+/** Human-readable CWE label, e.g. "CWE-89 · SQL injection" (falls back to the bare id). */
+export const cweLabel = (id: string): string => (CWE_NAMES[id] ? `${id} · ${CWE_NAMES[id]}` : id);
+
+/** UKC phase as a display label, e.g. "command-and-control" → "Command and control". */
+export const ukcLabel = (phase: UkcPhase): string => {
+  const words = phase.replace(/-/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
 };
 
 export interface EpisodeFrameworks {
@@ -146,7 +179,18 @@ export function ukcProgression(episodes: Pick<Episode, "tactic">[]): number {
 
 /** Distinct CWE weakness classes across the run — a sharper breadth than distinct techniques. */
 export function weaknessBreadth(episodes: Pick<Episode, "binary">[]): number {
-  const classes = new Set<string>();
-  for (const e of episodes) for (const c of cweOf(e)) classes.add(c);
-  return classes.size;
+  return runWeaknesses(episodes).length;
+}
+
+/** The distinct CWE ids the run exploited, in first-seen order (for display). */
+export function runWeaknesses(episodes: Pick<Episode, "binary">[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const e of episodes) for (const c of cweOf(e)) if (!seen.has(c)) (seen.add(c), out.push(c));
+  return out;
+}
+
+/** The set of UKC phases the run reached (derived from tactics). */
+export function reachedUkcPhases(episodes: Pick<Episode, "tactic">[]): Set<UkcPhase> {
+  return new Set(episodes.map((e) => ATTACK_TACTIC_TO_UKC[e.tactic]).filter(Boolean) as UkcPhase[]);
 }

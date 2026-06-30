@@ -4,11 +4,15 @@ import {
   ukcRank,
   ukcOf,
   cweOf,
+  cweLabel,
+  ukcLabel,
   deriveFrameworks,
   enrichFrameworks,
   ukcCoverage,
   ukcProgression,
   weaknessBreadth,
+  runWeaknesses,
+  reachedUkcPhases,
 } from "./frameworks";
 import type { Episode } from "../../types/report";
 
@@ -45,9 +49,23 @@ describe("CWE mapping", () => {
     expect(cweOf(ep("TA0001", "hydra"))).toEqual(["CWE-307"]);
   });
 
+  it("covers the expanded injection/deserialization/cred tooling", () => {
+    expect(cweOf(ep("TA0001", "commix"))).toEqual(["CWE-78"]);
+    expect(cweOf(ep("TA0001", "tplmap"))).toEqual(["CWE-1336"]);
+    expect(cweOf(ep("TA0001", "ysoserial"))).toEqual(["CWE-502"]);
+    expect(cweOf(ep("TA0001", "ssrfmap"))).toEqual(["CWE-918"]);
+    expect(cweOf(ep("TA0006", "hashcat"))).toEqual(["CWE-521"]);
+  });
+
   it("maps enumeration tooling to no weakness (honest empty, not a guess)", () => {
     expect(cweOf(ep("TA0007", "gobuster"))).toEqual([]);
     expect(cweOf(ep("TA0007", "nmap"))).toEqual([]);
+  });
+
+  it("labels CWE ids and UKC phases for display, with a graceful fallback", () => {
+    expect(cweLabel("CWE-89")).toBe("CWE-89 · SQL injection");
+    expect(cweLabel("CWE-99999")).toBe("CWE-99999");
+    expect(ukcLabel("command-and-control")).toBe("Command and control");
   });
 });
 
@@ -92,9 +110,21 @@ describe("ukcProgression", () => {
   });
 });
 
-describe("weaknessBreadth", () => {
+describe("weaknessBreadth / runWeaknesses", () => {
   it("counts distinct CWE classes, not repeated ones", () => {
     const eps = [ep("TA0001", "sqlmap"), ep("TA0001", "sqlmap"), ep("TA0001", "hydra")];
     expect(weaknessBreadth(eps)).toBe(2); // CWE-89 + CWE-307
+  });
+
+  it("lists distinct CWE ids in first-seen order", () => {
+    const eps = [ep("TA0001", "hydra"), ep("TA0001", "sqlmap"), ep("TA0001", "hydra")];
+    expect(runWeaknesses(eps)).toEqual(["CWE-307", "CWE-89"]);
+  });
+});
+
+describe("reachedUkcPhases", () => {
+  it("collects the distinct UKC phases a run touched", () => {
+    const phases = reachedUkcPhases([ep("TA0007"), ep("TA0001"), ep("TA0004"), ep("TA9999")]);
+    expect([...phases].sort()).toEqual(["exploitation", "privilege-escalation", "reconnaissance"]);
   });
 });

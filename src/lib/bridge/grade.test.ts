@@ -11,14 +11,28 @@ describe("grading rubric (§6.4)", () => {
     expect(sum).toBeCloseTo(1, 9);
   });
 
-  it("produces an explainable weighted score with all five components", () => {
+  it("produces an explainable weighted score with all six components", () => {
     const g = computeGrade(report);
-    expect(Object.keys(g.components).sort()).toEqual(["breadth", "coverage", "discipline", "efficiency", "independence"]);
+    expect(Object.keys(g.components).sort()).toEqual(["breadth", "coverage", "discipline", "efficiency", "independence", "progression"]);
     const recombined = Object.values(g.components).reduce((a, c) => a + c.weighted, 0);
     // score rounds the total; recombined sums per-component rounded weights — within rounding
     expect(Math.abs(g.score - recombined)).toBeLessThanOrEqual(0.5);
     expect(g.score).toBeGreaterThanOrEqual(0);
     expect(g.score).toBeLessThanOrEqual(100);
+  });
+
+  it("scores UKC progression as its own dimension", () => {
+    const cloned = structuredClone(report);
+    cloned.metrics.ukc_progression = 40;
+    const g = computeGrade(cloned);
+    expect(g.components.progression.raw).toBe(40);
+    expect(g.components.progression.weight).toBeCloseTo(0.1, 9);
+  });
+
+  it("treats a legacy report without ukc_progression as full progression", () => {
+    const cloned = structuredClone(report);
+    delete cloned.metrics.ukc_progression;
+    expect(computeGrade(cloned).components.progression.raw).toBe(100);
   });
 
   it("normalizes technique breadth against the target", () => {

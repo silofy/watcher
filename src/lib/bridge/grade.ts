@@ -2,7 +2,10 @@
  * Enterprise Bridge — the weighted grading rubric (brief §6.4).
  *
  * A grade must be explainable, so the metrics map to explicit weights:
- *   objective coverage 35 · technique breadth 20 · efficiency 15 · discipline 15 · independence 15
+ *   objective coverage 30 · technique breadth 15 · efficiency 15 · progression 10 · discipline 15 · independence 15
+ *
+ * Progression (UKC phase ordering) is its own dimension because it measures something efficiency
+ * can't: whether the run advanced through the kill chain in order or thrashed between phases.
  *
  * Independence is special: it is a GATE, not just a weight. A high-skill / low-independence result
  * is routed to an integrity queue with an evidence bundle — a signal to a human, never an automated
@@ -11,9 +14,10 @@
 import type { WatcherReport } from "../../types/report";
 
 export const RUBRIC = {
-  coverage: 0.35,
-  breadth: 0.2,
+  coverage: 0.3,
+  breadth: 0.15,
   efficiency: 0.15,
+  progression: 0.1,
   discipline: 0.15,
   independence: 0.15,
 } as const;
@@ -64,6 +68,7 @@ export function computeGrade(report: WatcherReport): Grade {
     coverage: clamp(m.objective_coverage_pct),
     breadth: clamp((m.technique_breadth / BREADTH_TARGET) * 100),
     efficiency: clamp(m.efficiency_pct),
+    progression: clamp(m.ukc_progression ?? 100),
     discipline: clamp(m.stealth_score),
     independence: clamp(m.independence?.score ?? 0),
   };
@@ -87,7 +92,7 @@ export function computeGrade(report: WatcherReport): Grade {
       `Independence ${round1(indep)} is below the gate (${INDEPENDENCE_GATE}) — routed to the integrity queue with an evidence bundle. This is a signal to a human reviewer, not an automated verdict.`,
     );
   }
-  for (const key of ["coverage", "efficiency", "discipline"] as RubricKey[]) {
+  for (const key of ["coverage", "efficiency", "progression", "discipline"] as RubricKey[]) {
     if (raws[key] < 50) rationale.push(`Low ${key} (${round1(raws[key])}).`);
   }
   if (rationale.length === 0) rationale.push("Solid across the rubric; no integrity concerns.");
