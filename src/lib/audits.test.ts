@@ -20,6 +20,29 @@ describe("buildPhaseAudits", () => {
     expect(phases.map((p) => p.tactic)).toEqual(report.phases.map((p) => p.mitre_tactic));
   });
 
+  it("warns when a long SSH session left post-exploitation uncaptured", () => {
+    const withSsh = structuredClone(report);
+    // an interactive ssh block, and no on-target commands captured after it
+    withSsh.episodes.push({
+      seq: 999,
+      cmd: "ssh user@10.10.10.5",
+      binary: "ssh",
+      duration_ms: 600_000,
+      gap_before_ms: 0,
+      actor: "human_active",
+      tactic: "TA0008",
+      context_path: "host",
+    });
+    const warn = buildPhaseAudits(withSsh).general.find((g) => g.id === "ssh-opaque-block");
+    expect(warn).toBeDefined();
+    expect(warn!.evidence_seq).toBe(999);
+
+    // ...but not when the session was actually tapped (on-target commands present)
+    const tapped = structuredClone(withSsh);
+    tapped.episodes.push({ seq: 1000, cmd: "id", binary: "id", duration_ms: 0, gap_before_ms: 0, actor: "human_active", tactic: "TA0007", context_path: "host->ssh:10.10.10.5" });
+    expect(buildPhaseAudits(tapped).general.find((g) => g.id === "ssh-opaque-block")).toBeUndefined();
+  });
+
   it("scopes CWE weakness classes to the phase that exploited them", () => {
     const access = phases.find((p) => p.tactic === "TA0001")!; // hydra runs here
     expect(access.cwe).toEqual(["CWE-307"]);

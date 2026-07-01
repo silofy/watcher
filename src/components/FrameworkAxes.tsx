@@ -4,6 +4,7 @@ import { Section, Gauge, tierColor, Chip } from "./ui";
 import { fmtClock, fmtDuration } from "../lib/format";
 import { techniqueName } from "../lib/attack";
 import { UKC_ORDER, type UkcPhase, ukcOf, ukcRank, ukcLabel, runWeaknesses, cweLabel } from "../lib/pipeline/frameworks";
+import { isOnTarget } from "../lib/pipeline/mitre";
 
 const UKC_SHORT: Record<UkcPhase, string> = {
   reconnaissance: "Recon",
@@ -213,6 +214,9 @@ function KillChainTrajectory({ progression }: { progression: number }) {
                   <span className="mono text-sm font-semibold text-fg">{ep.binary}</span>
                   {phase && <Chip color="var(--color-alt)">{ukcLabel(phase)}</Chip>}
                   {ep.alignment && <Chip color={ALIGNMENT_COLORS[ep.alignment]}>{ALIGNMENT_LABEL[ep.alignment] ?? ep.alignment.replace(/_/g, " ")}</Chip>}
+                  {isOnTarget(ep.context_path) && (
+                    <Chip color="var(--color-tool)">on target{ep.context_path?.match(/ssh:(\S+)/) ? `: ${ep.context_path.match(/ssh:(\S+)/)![1]}` : ""}</Chip>
+                  )}
                   {pinned ? (
                     <button type="button" onClick={() => s.select(null)} className="label ml-auto rounded border border-edge px-1.5 py-0.5 text-xs text-faint transition-colors hover:text-fg">
                       pinned · clear

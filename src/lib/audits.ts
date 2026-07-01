@@ -15,6 +15,7 @@ import type { CoachCategory, CoachingStep, Episode, WatcherReport } from "../typ
 import { activeMs, wasteByTactic, type WasteBreakdown } from "./metrics";
 import { normalizeCoaching } from "./coaching";
 import { runWeaknesses } from "./pipeline/frameworks";
+import { isOnTarget } from "./pipeline/mitre";
 
 export type AuditKind = "insight" | "manual" | "pass";
 
@@ -286,6 +287,21 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       evidence_seq: s.evidence_seq ?? null,
       category: s.category,
     }));
+
+  // SSH-block warning: a long interactive `ssh` with no on-target commands captured means the tap
+  // wasn't active — everything you did on the box collapsed into one block. Make the gap explicit.
+  const bigSsh = episodes.find((e) => e.binary === "ssh" && e.duration_ms >= 60_000);
+  if (bigSsh && !episodes.some((e) => isOnTarget(e.context_path))) {
+    general.push({
+      id: "ssh-opaque-block",
+      kind: "insight",
+      title: "Commands inside your SSH session weren't captured",
+      detail:
+        "A long interactive `ssh` session was recorded as a single block — the enumeration, privesc, and flag reads you ran on the box aren't in this debrief. Run remote commands non-interactively (`ssh host 'cmd'`), or let the capture agent tap the session, for per-command detail.",
+      evidence_seq: bigSsh.seq,
+      category: "Tactics",
+    });
+  }
 
   return { phases: phaseAudits, general };
 }
