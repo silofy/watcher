@@ -52,14 +52,49 @@ export function classifyBinary(binary: string): MitrePrior {
 }
 
 /**
+ * True when a command executed ON a compromised target (post-exploitation), not the attacker host.
+ * The ssh-tap tags those commands `context_path: …ssh:<target>`, so their meaning flips: `whoami` on
+ * your own box is orientation; on the target it's Discovery.
+ */
+export function isOnTarget(contextPath?: string): boolean {
+  return !!contextPath && /ssh:/i.test(contextPath);
+}
+
+/**
+ * On-target reclassification — the same binary means something different once you're inside the box.
+ * Applied only when the execution context says the command ran on the target; returns null to defer
+ * to the normal local classification.
+ */
+function classifyOnTarget(cmd: string, binary: string): MitrePrior | null {
+  const lower = cmd.toLowerCase();
+  // ssh/scp FROM the target into another host = pivoting / lateral movement
+  if (["ssh", "scp", "sshpass", "rsync"].includes(binary)) return { tactic: "TA0008", technique: "T1021", confidence: 0.8 };
+  // pulling tooling onto the box = ingress tool transfer, not external recon
+  if (["wget", "curl", "certutil", "tftp"].includes(binary)) return { tactic: "TA0011", technique: "T1105", confidence: 0.75 };
+  // reading the credential stores = OS credential access
+  if (/\/etc\/(shadow|passwd)\b|ntds\.dit|\bsam\b|\.kdbx\b|id_rsa\b/.test(lower)) return { tactic: "TA0006", technique: "T1003", confidence: 0.75 };
+  // orienting after landing a shell = Discovery (these are low-signal locally)
+  if (["whoami", "id", "groups"].includes(binary)) return { tactic: "TA0007", technique: "T1033", confidence: 0.75 };
+  if (["uname", "hostname", "lsb_release", "systeminfo"].includes(binary)) return { tactic: "TA0007", technique: "T1082", confidence: 0.7 };
+  return null;
+}
+
+/**
  * Context-aware classification on the full command. Applies the few-shot override
  * cases the brief calls out, where the binary prior is wrong in context.
  *
  * @param phaseTactic the tactic of the surrounding phase, when known, used for overrides.
+ * @param contextPath the §3.3 provenance; an `ssh:<target>` context reclassifies as post-exploitation.
  */
-export function classifyCommand(cmd: string, phaseTactic?: string): MitrePrior {
+export function classifyCommand(cmd: string, phaseTactic?: string, contextPath?: string): MitrePrior {
   const binary = extractBinary(cmd);
   const lower = cmd.toLowerCase();
+
+  // Context override: if this ran on the target, its meaning is post-exploitation, not local recon.
+  if (isOnTarget(contextPath)) {
+    const onTarget = classifyOnTarget(cmd, binary.toLowerCase());
+    if (onTarget) return onTarget;
+  }
 
   // Override: `python -m http.server` (or updog/simplehttpserver) during privesc is
   // file staging / ingress tool transfer, NOT Execution.

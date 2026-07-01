@@ -47,7 +47,7 @@ export function segmentEpisodes(
 
     const duration = Math.max(0, r.ended_at_ms - r.started_at_ms);
     const binary = extractBinary(r.cmd);
-    const prior = classifyCommand(r.cmd, lastTactic);
+    const prior = classifyCommand(r.cmd, lastTactic, r.context_path);
 
     // Break a long pause into its own episode (think_pause, or idle if very long).
     // The gap-before belongs to the action it precedes, so the pause carries the
