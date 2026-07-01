@@ -20,7 +20,7 @@ function loadSshSessions(): ReturnType<typeof sshSessionsFromDir> {
   const dir = arg("ssh-dir", join(homedir(), ".watcher", "ssh"));
   if (!existsSync(dir)) return [];
   const files = readdirSync(dir)
-    .filter((n) => n.endsWith(".in") || n.endsWith(".meta"))
+    .filter((n) => n.endsWith(".in") || n.endsWith(".out") || n.endsWith(".meta"))
     .map((n) => ({ name: n, content: readFileSync(join(dir, n), "utf8") }));
   return sshSessionsFromDir(files);
 }

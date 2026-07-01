@@ -25,6 +25,28 @@ export interface SshIngestOptions {
   startedAtMs: number;
   /** spacing between commands when precise timing isn't supplied (spike default). */
   stepMs?: number;
+  /** the session's `--log-out` transcript, used to scrub un-echoed input (typed secrets). */
+  outputLog?: string;
+}
+
+const ANSI_ALL = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-Z\\-_]/g;
+
+/**
+ * Drop typed lines that were never echoed to the output — the terminal echoes every command as you
+ * type it, but a password at a no-echo prompt (sudo/ssh/su) is not echoed. So an input line absent
+ * from the output stream is a secret or a program-prompt response, never a shell command: exclude it
+ * before it can become an episode or reach the store. Without an output log we can't judge, so we
+ * keep everything (documented weakness — pair the `.out` file to enable scrubbing).
+ */
+export function scrubUnechoed(commands: string[], outputLog?: string): string[] {
+  if (!outputLog) return commands;
+  const echoed = outputLog.replace(ANSI_ALL, "");
+  return commands.filter((c) => {
+    const needle = c.trim();
+    // a real command is echoed verbatim; a secret isn't. Very short tokens are kept (not secrets,
+    // and reliably echoed as part of normal output).
+    return needle.length < 3 || echoed.includes(needle);
+  });
 }
 
 /** One file the capture tap wrote under ~/.watcher/ssh (an `<id>.in` transcript or `<id>.meta`). */
@@ -40,21 +62,25 @@ export interface SshLogFile {
  */
 export function sshSessionsFromDir(files: SshLogFile[]): Array<SshIngestOptions & { inputLog: string }> {
   const meta = new Map<string, { target?: string; startedAtMs?: number }>();
+  const outLog = new Map<string, string>();
   for (const f of files) {
-    const m = f.name.match(/^(.*)\.meta$/);
-    if (!m) continue;
-    try {
-      meta.set(m[1], JSON.parse(f.content));
-    } catch {
-      /* ignore a malformed sidecar */
+    const metaM = f.name.match(/^(.*)\.meta$/);
+    if (metaM) {
+      try {
+        meta.set(metaM[1], JSON.parse(f.content));
+      } catch {
+        /* ignore a malformed sidecar */
+      }
     }
+    const outM = f.name.match(/^(.*)\.out$/);
+    if (outM) outLog.set(outM[1], f.content);
   }
   const out: Array<SshIngestOptions & { inputLog: string }> = [];
   for (const f of files) {
     const m = f.name.match(/^(.*)\.in$/);
     if (!m || !f.content.trim()) continue;
     const meta_ = meta.get(m[1]) ?? {};
-    out.push({ inputLog: f.content, target: meta_.target ?? "target", startedAtMs: meta_.startedAtMs ?? 0 });
+    out.push({ inputLog: f.content, outputLog: outLog.get(m[1]), target: meta_.target ?? "target", startedAtMs: meta_.startedAtMs ?? 0 });
   }
   return out.sort((a, b) => a.startedAtMs - b.startedAtMs);
 }
@@ -66,7 +92,8 @@ export function sshSessionsFromDir(files: SshLogFile[]): Array<SshIngestOptions 
 export function ingestSshSession(inputLog: string, opts: SshIngestOptions): RawCommand[] {
   const step = opts.stepMs ?? 1000;
   const contextPath = `host->ssh:${opts.target}`;
-  return parseScriptInputLog(inputLog).map((cmd, i) => {
+  const commands = scrubUnechoed(parseScriptInputLog(inputLog), opts.outputLog);
+  return commands.map((cmd, i) => {
     const started = opts.startedAtMs + i * step;
     return {
       cmd: redactText(cmd),

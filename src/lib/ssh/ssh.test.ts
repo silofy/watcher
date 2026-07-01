@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseScriptInputLog } from "./parse";
-import { sshTargetOf, ingestSshSession, sshSessionsFromDir } from "./ingest";
+import { sshTargetOf, ingestSshSession, sshSessionsFromDir, scrubUnechoed } from "./ingest";
 import { finalizeLiveReport } from "../finalize";
 import { classifyCommand, isOnTarget } from "../pipeline/mitre";
 import { segmentEpisodes } from "../pipeline/segment";
@@ -86,6 +86,29 @@ describe("end-to-end: ssh log → episodes carry post-exploitation tactics", () 
     expect(byBinary["whoami"]).toBe("TA0007"); // Discovery, not local noise
     expect(byBinary["sudo"]).toBe("TA0004"); // PrivEsc
     expect(byBinary["wget"]).toBe("TA0011"); // Ingress tool transfer
+  });
+});
+
+describe("scrubUnechoed (typed-secret scrubbing)", () => {
+  it("drops an un-echoed line (a password) but keeps echoed commands", () => {
+    // the shell echoes `sudo -l` and `id`; the sudo password is typed at a no-echo prompt → not echoed
+    const commands = ["sudo -l", "hunter2SecretPass", "id"];
+    const outputLog = "PS> sudo -l\n[sudo] password for kali: \nUser kali may run...\nPS> id\nuid=1000(kali)\n";
+    expect(scrubUnechoed(commands, outputLog)).toEqual(["sudo -l", "id"]);
+  });
+
+  it("keeps everything when there's no output log to judge against", () => {
+    expect(scrubUnechoed(["secret"], undefined)).toEqual(["secret"]);
+  });
+
+  it("ingestSshSession scrubs the password so it never becomes an episode", () => {
+    const cmds = ingestSshSession("sudo su\rSuperSecret123\rwhoami\r", {
+      target: "10.10.10.5",
+      startedAtMs: 0,
+      outputLog: "PS> sudo su\nPassword: \nroot@box:~# PS> whoami\nroot\n",
+    });
+    expect(cmds.map((c) => c.cmd)).toEqual(["sudo su", "whoami"]);
+    expect(cmds.some((c) => c.cmd.includes("SuperSecret"))).toBe(false);
   });
 });
 
