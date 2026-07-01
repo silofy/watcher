@@ -102,11 +102,14 @@ export function IdentityBar() {
             </div>
           </div>
         </div>
-        <div className="shrink-0 text-right">
-          <div className="font-display text-5xl font-bold leading-none" style={{ color: gradeColor(grade.letter) }}>
-            {grade.letter}
+        <div className="flex shrink-0 items-center gap-5">
+          <Stat label="Total time" value={fmtDuration(timeline.totalMs)} />
+          <div className="text-right">
+            <div className="font-display text-5xl font-bold leading-none" style={{ color: gradeColor(grade.letter) }}>
+              {grade.letter}
+            </div>
+            <div className="label mt-1 tabular-nums text-faint">{Math.round(grade.score)} / 100</div>
           </div>
-          <div className="label mt-1 tabular-nums text-faint">{Math.round(grade.score)} / 100</div>
         </div>
       </div>
 
@@ -121,7 +124,6 @@ export function IdentityBar() {
           <Stat label="Techniques" value={String(metrics.technique_breadth)} />
         </div>
         <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-          <Stat label="Total time" value={fmtDuration(timeline.totalMs)} />
           <Stat label="Date" value={new Date(session.started_at).toISOString().slice(0, 10)} />
           <Stat label="Location" value={SOURCE_LABEL[session.source] ?? session.source} />
         </div>
