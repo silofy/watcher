@@ -6,10 +6,12 @@ import {
   percentile,
   thinkBaselineP75,
   episodeNoise,
+  contextNoiseFactor,
   wasteBreakdown,
   efficiencyByTactic,
   round,
 } from "./metrics";
+import type { Episode } from "../types/report";
 import { fmtMinutes } from "./format";
 
 const report = fixture as unknown as WatcherReport;
@@ -37,6 +39,39 @@ describe("episodeNoise (brief §6.1: w × (1 + log10 volume))", () => {
   });
   it("treats volume < 1 as 1 (log10 floor)", () => {
     expect(episodeNoise({ noise_weight: 3, volume: 0 } as never)).toBe(3);
+  });
+});
+
+describe("context-aware noise (host vs network surface)", () => {
+  const ep = (binary: string, contextPath?: string): Episode => ({
+    seq: 1,
+    cmd: binary,
+    binary,
+    duration_ms: 0,
+    gap_before_ms: 0,
+    actor: "human_active",
+    tactic: "TA0002",
+    noise_weight: 1,
+    volume: 1,
+    context_path: contextPath,
+  });
+  const ssh = "host->ssh:10.10.10.5";
+
+  it("leaves external commands on the network-tuned weight", () => {
+    expect(contextNoiseFactor(ep("nc"))).toBe(1);
+    expect(episodeNoise(ep("nc"))).toBeCloseTo(1);
+  });
+
+  it("amplifies host-artifact tools run on the target", () => {
+    // a reverse shell / listener is loud host-side even though nc's network weight is 1
+    expect(contextNoiseFactor(ep("nc", ssh))).toBeCloseTo(1.6);
+    expect(episodeNoise(ep("nc", ssh))).toBeGreaterThan(episodeNoise(ep("nc")));
+    expect(episodeNoise(ep("bash", ssh))).toBeGreaterThan(episodeNoise(ep("bash")));
+  });
+
+  it("damps passive reads on the target (quiet host-side)", () => {
+    expect(contextNoiseFactor(ep("cat", ssh))).toBeCloseTo(0.7);
+    expect(episodeNoise(ep("cat", ssh))).toBeLessThan(episodeNoise(ep("cat")));
   });
 });
 

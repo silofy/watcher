@@ -14,6 +14,7 @@
  */
 import type { Episode, WatcherReport } from "../types/report";
 import { ukcCoverage, ukcProgression, weaknessBreadth } from "./pipeline/frameworks";
+import { isOnTarget } from "./pipeline/mitre";
 
 /**
  * Per-lab loudness baseline the summed noise is normalized against (brief §6.1):
@@ -32,12 +33,36 @@ export function activeMs(ep: Episode): number {
   return ep.duration_ms + ep.gap_before_ms;
 }
 
-/** Loudness of a single command, scaled by volume (brief §6.1). */
+/**
+ * Tools/actions that create host-side artifacts (process spawns, file drops, shells). These are loud
+ * ON the target even when their network weight is low — a reverse shell is the loudest thing you can
+ * do host-side, but it barely registers on the network-tuned weight table.
+ */
+const ONTARGET_LOUD = new Set([
+  "nc", "ncat", "netcat", "socat",
+  "linpeas", "linpeas.sh", "pspy", "pspy64", "les.sh",
+  "wget", "curl", "chmod", "chattr",
+  "msfconsole", "msfvenom", "meterpreter",
+  "bash", "sh", "python", "python3", "perl", "php",
+]);
+
+/**
+ * Context multiplier on a command's noise: WHERE it ran changes its detection surface. On the target
+ * the surface is host-based (EDR / auditd / process creation / file writes), so tool drops and shell
+ * spawns are amplified and passive reads (cat/ls/id) damped. External commands keep the network-tuned
+ * weight unchanged. Off-target reads that never touch the target aren't scored louder here.
+ */
+export function contextNoiseFactor(ep: Episode): number {
+  if (!isOnTarget(ep.context_path)) return 1;
+  return ONTARGET_LOUD.has((ep.binary ?? "").toLowerCase()) ? 1.6 : 0.7;
+}
+
+/** Loudness of a single command, scaled by volume (brief §6.1) and by where it ran (host vs network). */
 export function episodeNoise(ep: Episode): number {
   const w = ep.noise_weight ?? 0;
   if (w === 0) return 0;
   const volume = Math.max(1, ep.volume ?? 1);
-  return w * (1 + Math.log10(volume));
+  return w * (1 + Math.log10(volume)) * contextNoiseFactor(ep);
 }
 
 /** Nearest-rank percentile (deterministic — no interpolation ambiguity). */
