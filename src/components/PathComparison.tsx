@@ -1,6 +1,5 @@
 import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
-import { WriteupControl } from "./WriteupControl";
 import { PathGraph } from "./PathGraph";
 
 const LEGEND: [string, string][] = [
@@ -27,9 +26,11 @@ export function PathComparison() {
         </span>
       }
     >
-      <WriteupControl />
-
-      {report.golden_dag.length === 0 ? null : (
+      {report.golden_dag.length === 0 ? (
+        <p className="text-sm text-faint">
+          Add a <span className="text-fg">reference path</span> at the top of the debrief to unlock the intended-path comparison.
+        </p>
+      ) : (
         <>
           <PathGraph />
           {/* legend reads as the chart's caption, below the canvas */}
