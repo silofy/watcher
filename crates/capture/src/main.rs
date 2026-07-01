@@ -331,6 +331,17 @@ fn watcher_sessions_dir() -> Option<std::path::PathBuf> {
     Some(std::path::Path::new(&home).join(".watcher").join("sessions"))
 }
 
+/// Write the bundled `ssh()` capture tap to ~/.watcher/watcher-ssh.sh so the watched shell can
+/// source it. Best-effort — a failure just means SSH sessions fall back to one opaque block.
+fn install_ssh_tap() {
+    if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
+        let dir = std::path::Path::new(&home).join(".watcher");
+        if std::fs::create_dir_all(&dir).is_ok() {
+            let _ = std::fs::write(dir.join("watcher-ssh.sh"), include_str!("../watcher-ssh.sh"));
+        }
+    }
+}
+
 /// The newest still-recording session file (a live engagement already open on this machine).
 fn find_active_session() -> Option<(std::path::PathBuf, Value)> {
     let dir = watcher_sessions_dir()?;
@@ -521,6 +532,14 @@ fn run_attached(profile: &dyn ShellProfile, path: &std::path::Path, base: &Value
 
     write!(writer, "{}\r", profile.integration_command())?;
     writer.flush()?;
+
+    // Source the ssh() capture tap so interactive SSH sessions are recorded per-command (POSIX only).
+    let session_uuid = base["session"]["uuid"].as_str().unwrap_or("").to_string();
+    if let Some(tap) = profile.ssh_tap_command(&session_uuid) {
+        install_ssh_tap();
+        write!(writer, "{}\r", tap)?;
+        writer.flush()?;
+    }
 
     // Stream episodes into the session file as commands complete.
     let writer_term = term.clone();

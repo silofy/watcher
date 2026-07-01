@@ -3,6 +3,9 @@ import { parseScriptInputLog } from "./parse";
 import { sshTargetOf, ingestSshSession } from "./ingest";
 import { classifyCommand, isOnTarget } from "../pipeline/mitre";
 import { segmentEpisodes } from "../pipeline/segment";
+import { assembleReport } from "../pipeline/ingest";
+import type { RawCommand } from "../pipeline/types";
+import type { Session } from "../../types/report";
 
 describe("parseScriptInputLog", () => {
   it("splits on Enter and trims", () => {
@@ -82,5 +85,34 @@ describe("end-to-end: ssh log → episodes carry post-exploitation tactics", () 
     expect(byBinary["whoami"]).toBe("TA0007"); // Discovery, not local noise
     expect(byBinary["sudo"]).toBe("TA0004"); // PrivEsc
     expect(byBinary["wget"]).toBe("TA0011"); // Ingress tool transfer
+  });
+});
+
+describe("assembleReport folds an SSH session into the report", () => {
+  const session: Session = {
+    uuid: "11111111-1111-1111-1111-111111111111",
+    started_at: new Date(0).toISOString(),
+    ended_at: new Date(60000).toISOString(),
+    target_scope: "HTB :: Box",
+    shell: "bash",
+    source: "local_pty",
+  };
+
+  it("interleaves on-target commands by time and tags them as post-exploitation", () => {
+    // local recon, then an on-target session captured over ssh
+    const local: RawCommand[] = [
+      { cmd: "nmap -sV 10.10.10.5", started_at_ms: 0, ended_at_ms: 2000, exit_code: 0, output_line_count: 40, context_path: "host" },
+    ];
+    const report = assembleReport(local, {
+      session,
+      golden: [],
+      ssh: [{ inputLog: "id\rcat /etc/shadow\r", target: "10.10.10.5", startedAtMs: 5000, stepMs: 1000 }],
+    });
+    const onTarget = report.episodes.filter((e) => e.context_path === "host->ssh:10.10.10.5" && e.binary);
+    expect(onTarget.map((e) => e.binary)).toEqual(["id", "cat"]);
+    expect(onTarget.find((e) => e.binary === "id")!.tactic).toBe("TA0007"); // Discovery on-target
+    expect(onTarget.find((e) => e.binary === "cat")!.tactic).toBe("TA0006"); // /etc/shadow → cred access
+    // the local nmap keeps its local classification and comes first in time
+    expect(report.episodes.find((e) => e.binary === "nmap")!.tactic).toBe("TA0007");
   });
 });

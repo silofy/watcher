@@ -20,6 +20,14 @@ pub trait ShellProfile {
     /// editors like VS Code inject. Replaces the echoed-sentinel boundary hack.
     fn integration_command(&self) -> String;
 
+    /// A one-shot command that sources the `ssh()` capture tap into the watched shell, so
+    /// interactive SSH sessions are recorded per-command (via `script`) instead of vanishing
+    /// into one opaque block. None where unsupported (Windows). `session_uuid` ties the ssh
+    /// logs to this engagement.
+    fn ssh_tap_command(&self, _session_uuid: &str) -> Option<String> {
+        None
+    }
+
     /// Heuristic password-prompt masker. On Unix the daemon also reads the termios
     /// ECHO bit (deterministic); ConPTY does not surface that cleanly, so on Windows
     /// this heuristic (plus OSC 133 shell-integration markers) is the mechanism.
@@ -82,6 +90,11 @@ impl ShellProfile for UnixShell {
         "export PROMPT_COMMAND='printf \"\\033]133;D;%s\\007\" \"$?\"'; \
          export PS1='\\033]133;A\\007PS> \\033]133;B\\007'"
             .to_string()
+    }
+    fn ssh_tap_command(&self, session_uuid: &str) -> Option<String> {
+        Some(format!(
+            "export WATCHER_SESSION='{session_uuid}'; . \"$HOME/.watcher/watcher-ssh.sh\" 2>/dev/null"
+        ))
     }
 }
 

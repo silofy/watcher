@@ -7,6 +7,7 @@
 import type { Coaching, CoachingStep, GoldenObjective, Metrics, Session, WatcherReport } from "../../types/report";
 import { round, type ComputedMetrics } from "../metrics";
 import { classifyCoaching } from "../coaching";
+import { ingestSshSession, type SshIngestOptions } from "../ssh/ingest";
 import { runPipeline } from "./index";
 import type { RawCommand } from "./types";
 
@@ -113,16 +114,27 @@ function deriveCoaching(
   return { skill_radar, next_steps };
 }
 
+/** A captured interactive SSH session (from the `script` tap) to fold in as on-target commands. */
+export interface SshSessionInput extends SshIngestOptions {
+  /** the `script --log-in` transcript of the session. */
+  inputLog: string;
+}
+
 export interface AssembleOptions {
   golden: GoldenObjective[];
   session: Session;
   redaction_profile?: "public_safe" | "full";
+  /** interactive SSH sessions captured over this run — merged into the command stream by time. */
+  ssh?: SshSessionInput[];
 }
 
 /** Run the pipeline over raw commands and assemble a complete, schema-valid report. */
 export function assembleReport(raw: RawCommand[], opts: AssembleOptions): WatcherReport {
   const sessionStartMs = Date.parse(opts.session.started_at);
-  const { episodes, phases, golden, metrics } = runPipeline(raw, {
+  // fold captured SSH sessions in as on-target commands, interleaved by time so phases stay ordered
+  const sshRaw = (opts.ssh ?? []).flatMap((s) => ingestSshSession(s.inputLog, s));
+  const merged = sshRaw.length ? [...raw, ...sshRaw].sort((a, b) => a.started_at_ms - b.started_at_ms) : raw;
+  const { episodes, phases, golden, metrics } = runPipeline(merged, {
     golden: opts.golden,
     sessionStartMs: Number.isNaN(sessionStartMs) ? undefined : sessionStartMs,
   });
