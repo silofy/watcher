@@ -67,6 +67,25 @@ export interface Timeline {
 export function buildTimeline(episodes: Episode[]): Timeline {
   const ordered = [...episodes].sort((a, b) => a.seq - b.seq);
   const items: TimedEpisode[] = [];
+
+  // Real-time axis: when every episode carries an absolute start (live/fused captures), position
+  // by wall-clock so concurrent lanes (host vs on-target) overlap instead of serializing. Fixtures
+  // and authored streams lack started_at_ms and fall back to the cumulative relative model.
+  const hasAbsolute = ordered.length > 0 && ordered.every((e) => typeof e.started_at_ms === "number");
+  if (hasAbsolute) {
+    const t0Base = Math.min(...ordered.map((e) => e.started_at_ms as number));
+    let totalMs = 0;
+    for (const ep of ordered) {
+      const t0 = (ep.started_at_ms as number) - t0Base;
+      const t1 = t0 + ep.duration_ms;
+      const gapStart = Math.max(0, t0 - ep.gap_before_ms);
+      items.push({ ep, t0, t1, gapStart });
+      totalMs = Math.max(totalMs, t1);
+    }
+    const bySeq = new Map(items.map((it) => [it.ep.seq, it]));
+    return { items, totalMs, bySeq };
+  }
+
   let running = 0;
   for (const ep of ordered) {
     const gapStart = running;

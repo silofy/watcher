@@ -54,6 +54,31 @@ describe("buildTimeline (the shared axis)", () => {
   });
 });
 
+describe("buildTimeline — real wall-clock axis (fused lanes)", () => {
+  it("positions episodes by started_at_ms so concurrent lanes overlap", () => {
+    const base = 1_000_000;
+    const tl = buildTimeline([
+      mk({ seq: 1, started_at_ms: base, duration_ms: 60_000 }), // host: [0, 60s]
+      mk({ seq: 2, started_at_ms: base + 10_000, duration_ms: 5_000 }), // target: starts 10s in
+    ]);
+    expect(tl.bySeq.get(1)).toMatchObject({ t0: 0, t1: 60_000 });
+    expect(tl.bySeq.get(2)!.t0).toBe(10_000);
+    expect(tl.bySeq.get(2)!.t0).toBeLessThan(tl.bySeq.get(1)!.t1); // overlap, not serialized
+    expect(tl.totalMs).toBe(60_000);
+  });
+
+  it("spans a think_pause across the gap it represents", () => {
+    const tl = buildTimeline([
+      mk({ seq: 1, started_at_ms: 0, duration_ms: 10_000 }), // [0, 10s]
+      mk({ seq: 2, started_at_ms: 400_000, duration_ms: 0, gap_before_ms: 390_000, actor: "think_pause", cmd: "" }),
+      mk({ seq: 3, started_at_ms: 400_000, duration_ms: 500 }),
+    ]);
+    const pause = tl.bySeq.get(2)!;
+    expect(pause.gapStart).toBe(10_000); // gap opens where #1 ended
+    expect(pause.t1).toBe(400_000); // and closes where #3 starts
+  });
+});
+
 describe("makeTimeScale", () => {
   it("maps the ms domain onto a pixel range", () => {
     const s = makeTimeScale(10000, 0, 100);

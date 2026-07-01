@@ -68,7 +68,8 @@ export function segmentEpisodes(
         seq: seq++,
         cmd: "",
         binary: "",
-        started_at_ms: prevEnd ?? r.started_at_ms,
+        // carry the following command's start so the pause fills [prevEnd, nextStart] on the axis
+        started_at_ms: r.started_at_ms,
         duration_ms: 0,
         gap_before_ms: gap,
         exit_code: null,

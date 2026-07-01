@@ -32,6 +32,12 @@ describe("segmentEpisodes (§4.1)", () => {
     expect(sudo.gap_before_ms).toBe(0);
   });
 
+  it("stamps the think_pause with the start of the command it precedes", () => {
+    // so on the real-time axis the pause fills [prevEnd, nextStart] instead of collapsing at prevEnd
+    expect(eps[2].actor).toBe("think_pause");
+    expect(eps[2].started_at_ms).toBe(base + 451_000); // == sudo's start
+  });
+
   it("tags a long scanning command machine_bound and a quick command human_active", () => {
     expect(eps[0]).toMatchObject({ binary: "nmap", actor: "machine_bound", tactic: "TA0007" });
     expect(eps[1]).toMatchObject({ binary: "curl", actor: "human_active" });
