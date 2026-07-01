@@ -7,7 +7,7 @@
   "required": ["schema_version", "session", "episodes", "phases", "golden_dag", "metrics", "coaching", "redaction_profile"],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "enum": ["1.0", "1.1"] },
+    "schema_version": { "enum": ["1.0", "1.1", "1.2"] },
 
     "session": {
       "type": "object",
@@ -49,6 +49,7 @@
           "seq": { "type": "integer", "minimum": 0 },
           "cmd": { "type": "string", "description": "Redacted command text. Empty for a pure think_pause episode." },
           "binary": { "type": "string", "description": "Primary binary, e.g. nmap, gobuster, sudo. Empty for think_pause." },
+          "started_at_ms": { "type": "integer", "minimum": 0, "description": "Absolute wall-clock start (epoch ms). Enables merge-sorting concurrent capture lanes into a single engagement timeline (schema v1.2)." },
           "duration_ms": { "type": "integer", "minimum": 0, "description": "Machine working time." },
           "gap_before_ms": { "type": "integer", "minimum": 0, "description": "Human thinking time before this episode." },
           "exit_code": { "type": ["integer", "null"] },
