@@ -4,6 +4,7 @@ import { MachineAvatar } from "./MachineAvatar";
 import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
 import { resolveProvider } from "../lib/llm";
 import { goldenFromText } from "../lib/writeup";
+import { fetchWriteupUrl, isDesktop } from "../lib/net";
 
 type Status = { kind: "idle" | "working" | "error"; msg?: string };
 
@@ -26,9 +27,14 @@ export function WriteupGate() {
       if (/^https?:\/\/\S+$/.test(input)) {
         setStatus({ kind: "working", msg: "Fetching the write-up…" });
         try {
-          content = await (await fetch(input)).text();
+          content = await fetchWriteupUrl(input);
         } catch {
-          setStatus({ kind: "error", msg: "Couldn't fetch that URL — the site blocks cross-origin reads. Paste the write-up text instead." });
+          setStatus({
+            kind: "error",
+            msg: isDesktop()
+              ? "Couldn't fetch that URL — check the link, or paste the write-up text instead."
+              : "URL fetch needs the desktop app (the browser blocks cross-origin reads). Paste the write-up text instead.",
+          });
           return;
         }
       }
