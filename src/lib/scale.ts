@@ -104,6 +104,11 @@ export function buildTimeline(episodes: Episode[]): Timeline {
  * identical x across stacked charts regardless of the rendered pixel width — one
  * shared axis, responsive, with no DOM measurement.
  */
+/** Which swim-lane an episode belongs to: the attacker host, or a compromised target (ssh-tap). */
+export function episodeLane(ep: Episode): "host" | "target" {
+  return ep.context_path && /ssh:/i.test(ep.context_path) ? "target" : "host";
+}
+
 export const AXIS_W = 1000;
 export const AXIS_PAD = 6;
 

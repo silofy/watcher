@@ -1,5 +1,5 @@
 import { useReport, activeSeq } from "../store/report";
-import { AXIS_W, episodeColor, ACTOR_COLORS, ALIGNMENT_COLORS } from "../lib/scale";
+import { AXIS_W, episodeColor, episodeLane, ACTOR_COLORS, ALIGNMENT_COLORS } from "../lib/scale";
 import { Section, ActorLegend, Chip } from "./ui";
 import { useAxisZoom } from "./useAxisZoom";
 import { ZoomControls } from "./ZoomControls";
@@ -48,6 +48,9 @@ export function AttackTimeline() {
     techMap.set(e.technique, t);
   }
   const techniques = [...techMap.values()].sort((a, b) => a.seqs[0] - b.seqs[0]);
+  // Split the ribbon into host / on-target lanes only when a shell was tapped (an ssh:<target>
+  // context appears); otherwise it stays one band, exactly as before.
+  const twoLane = report.episodes.some((e) => episodeLane(e) === "target");
   // shared drag-to-zoom — window lives in the store, synced with the deviation chart
   const { w0, w1, span, zx, leftPct, zoomed, zoomOut, reset, sel, handlers } = useAxisZoom(timeline.totalMs);
 
@@ -105,20 +108,23 @@ export function AttackTimeline() {
         })}
       </div>
 
-      {/* episode ribbon — one shared axis, segmented by who's driving each step */}
+      {/* episode ribbon — one shared axis; split into host / on-target lanes once a shell is tapped */}
       <div className="relative h-11 overflow-hidden rounded-md border border-edge bg-ink/40">
         <svg viewBox={`0 0 ${AXIS_W} ${RIB_H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
           {timeline.items.map(({ ep, gapStart, t1 }) => {
             const x = zx(gapStart);
             const w = Math.max(1.5, zx(t1) - x);
             const dim = focus != null && focus !== ep.seq;
+            const onTarget = twoLane && episodeLane(ep) === "target";
+            const y = onTarget ? RIB_H / 2 : 0;
+            const h = twoLane ? RIB_H / 2 : RIB_H;
             return (
               <rect
                 key={ep.seq}
                 x={x}
-                y={0}
+                y={y}
                 width={w}
-                height={RIB_H}
+                height={h}
                 fill={episodeColor(ep)}
                 opacity={dim ? 0.22 : 0.9}
                 stroke={focus === ep.seq ? "var(--color-fg)" : "none"}
@@ -128,10 +134,15 @@ export function AttackTimeline() {
                 onMouseLeave={() => s.hover(null)}
                 onClick={() => s.select(s.selectedSeq === ep.seq ? null : ep.seq)}
               >
-                <title>{`#${ep.seq} ${ep.binary} — ${fmtDuration(ep.duration_ms + ep.gap_before_ms)}`}</title>
+                <title>{`#${ep.seq} ${ep.binary} · ${onTarget ? "on-target" : "host"} — ${fmtDuration(ep.duration_ms + ep.gap_before_ms)}`}</title>
               </rect>
             );
           })}
+
+          {/* lane divider between host (top) and on-target (bottom) */}
+          {twoLane && (
+            <line x1={0} y1={RIB_H / 2} x2={AXIS_W} y2={RIB_H / 2} stroke="var(--color-edge)" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+          )}
 
           {/* phase boundary separators — align the ribbon to the phase blocks above */}
           {phaseWindows.slice(1).map(({ phase, t0 }) => (
@@ -156,6 +167,13 @@ export function AttackTimeline() {
           {/* shared playhead */}
           <line x1={zx(playheadMs)} y1={0} x2={zx(playheadMs)} y2={RIB_H} stroke="var(--color-fg)" strokeWidth={1} opacity={0.75} vectorEffect="non-scaling-stroke" pointerEvents="none" />
         </svg>
+        {/* lane labels — HTML overlay so they aren't stretched by the ribbon's preserveAspectRatio="none" */}
+        {twoLane && (
+          <>
+            <span className="label pointer-events-none absolute left-1.5 top-0.5 text-[10px] leading-none text-faint">host</span>
+            <span className="label pointer-events-none absolute bottom-0.5 left-1.5 text-[10px] leading-none text-faint">on-target</span>
+          </>
+        )}
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import {
   makeTimeScale,
   phaseWindows,
   episodeColor,
+  episodeLane,
   ACTOR_COLORS,
   DETOUR_COLOR,
 } from "./scale";
@@ -76,6 +77,14 @@ describe("buildTimeline — real wall-clock axis (fused lanes)", () => {
     const pause = tl.bySeq.get(2)!;
     expect(pause.gapStart).toBe(10_000); // gap opens where #1 ended
     expect(pause.t1).toBe(400_000); // and closes where #3 starts
+  });
+});
+
+describe("episodeLane", () => {
+  it("routes ssh-tapped episodes to the target lane, everything else to host", () => {
+    expect(episodeLane(mk({ context_path: "ssh:10.10.10.5" }))).toBe("target");
+    expect(episodeLane(mk({ context_path: "host" }))).toBe("host");
+    expect(episodeLane(mk({}))).toBe("host");
   });
 });
 
