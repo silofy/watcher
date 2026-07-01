@@ -172,8 +172,8 @@ export function DeviationTimeline() {
 
   return (
     <Section collapsible name="debrief-details" title="Where you deviated" subtitle="measured against your own run — not an optimal path" right={legend}>
-      {/* glance readouts */}
-      <div className="mb-3 flex flex-wrap items-end gap-x-8 gap-y-3">
+      {/* glance readouts — align tops so the numbers sit on one row and any sub-caption hangs below */}
+      <div className="mb-3 flex flex-wrap items-start gap-x-8 gap-y-3">
         <Readout
           label="Time lost"
           value={fmtDuration(lostMs)}
