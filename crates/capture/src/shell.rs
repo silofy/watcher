@@ -41,18 +41,27 @@ pub trait ShellProfile {
     }
 }
 
-pub struct WindowsShell;
+#[derive(Default)]
+pub struct WindowsShell {
+    /// Explicit shell binary from `--shell`; None launches the profile default (powershell.exe).
+    pub program: Option<String>,
+}
 impl ShellProfile for WindowsShell {
     fn platform_tag(&self) -> &'static str {
         "conpty"
     }
     fn shell_command(&self) -> CommandBuilder {
-        // -NoLogo/-NoProfile keep the capture clean and fast; the real daemon would
-        // honor the user's configured shell (powershell, pwsh, cmd, nushell, ...).
-        let mut cmd = CommandBuilder::new("powershell.exe");
-        cmd.arg("-NoLogo");
-        cmd.arg("-NoProfile");
-        cmd
+        // An explicit --shell binary is launched as-is; the default gets -NoLogo/-NoProfile to
+        // keep the capture clean and fast (those flags are PowerShell-specific).
+        match &self.program {
+            Some(p) => CommandBuilder::new(p.clone()),
+            None => {
+                let mut cmd = CommandBuilder::new("powershell.exe");
+                cmd.arg("-NoLogo");
+                cmd.arg("-NoProfile");
+                cmd
+            }
+        }
     }
     fn demo_commands(&self) -> Vec<String> {
         ["whoami", "echo watcher-capture-poc", "Get-Location"]
@@ -70,13 +79,21 @@ impl ShellProfile for WindowsShell {
 }
 
 #[cfg_attr(windows, allow(dead_code))]
-pub struct UnixShell;
+#[derive(Default)]
+pub struct UnixShell {
+    /// Explicit shell binary from `--shell`; None falls back to $SHELL, then /bin/bash.
+    pub program: Option<String>,
+}
 impl ShellProfile for UnixShell {
     fn platform_tag(&self) -> &'static str {
         "unix-pty"
     }
     fn shell_command(&self) -> CommandBuilder {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        let shell = self
+            .program
+            .clone()
+            .or_else(|| std::env::var("SHELL").ok())
+            .unwrap_or_else(|| "/bin/bash".to_string());
         CommandBuilder::new(shell)
     }
     fn demo_commands(&self) -> Vec<String> {
@@ -98,14 +115,43 @@ impl ShellProfile for UnixShell {
     }
 }
 
+/// Pick the shell-integration profile by shell *family* (basename), not host OS: `--shell bash`
+/// on Windows (git-bash / WSL) still needs bash's Final Term markers, not the PowerShell prompt.
+/// The requested binary is remembered so it — not the profile default — is what gets launched.
+pub fn profile_for_shell(shell: &str) -> Box<dyn ShellProfile> {
+    let base = shell
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or(shell)
+        .trim_end_matches(".exe")
+        .to_ascii_lowercase();
+    let program = Some(shell.to_string());
+    match base.as_str() {
+        "powershell" | "pwsh" => Box::new(WindowsShell { program }),
+        "bash" | "sh" | "zsh" | "fish" | "dash" | "ash" | "ksh" => Box::new(UnixShell { program }),
+        // Unknown family: launch the requested binary under the host's default marker scheme.
+        _ =>
+        {
+            #[cfg(windows)]
+            {
+                Box::new(WindowsShell { program })
+            }
+            #[cfg(not(windows))]
+            {
+                Box::new(UnixShell { program })
+            }
+        }
+    }
+}
+
 pub fn platform_profile() -> Box<dyn ShellProfile> {
     #[cfg(windows)]
     {
-        Box::new(WindowsShell)
+        Box::new(WindowsShell::default())
     }
     #[cfg(not(windows))]
     {
-        Box::new(UnixShell)
+        Box::new(UnixShell::default())
     }
 }
 
@@ -114,8 +160,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn shell_family_is_selected_by_basename_not_os() {
+        // Family follows the shell name, not the host: bash always gets unix markers, pwsh conpty.
+        assert_eq!(profile_for_shell("bash").platform_tag(), "unix-pty");
+        assert_eq!(profile_for_shell("/usr/bin/zsh").platform_tag(), "unix-pty");
+        assert_eq!(profile_for_shell(r"C:\Program Files\Git\bin\bash.exe").platform_tag(), "unix-pty");
+        assert_eq!(profile_for_shell("pwsh").platform_tag(), "conpty");
+        assert_eq!(profile_for_shell("powershell.exe").platform_tag(), "conpty");
+    }
+
+    #[test]
     fn detects_common_password_prompts() {
-        let p = UnixShell;
+        let p = UnixShell::default();
         assert!(p.looks_like_password_prompt("[sudo] password for kali:"));
         assert!(p.looks_like_password_prompt("root@10.10.10.5's password:"));
         assert!(p.looks_like_password_prompt("Enter passphrase for key '/root/.ssh/id_rsa':"));

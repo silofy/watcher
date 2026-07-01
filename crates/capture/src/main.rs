@@ -630,11 +630,15 @@ fn run_attached(profile: &dyn ShellProfile, path: &std::path::Path, base: &Value
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let profile = platform_profile();
+    let args: Vec<String> = std::env::args().collect();
+
+    // `--shell <path>` picks the shell (and its marker scheme) by family; default = host shell.
+    let profile = match arg_value(&args, "--shell") {
+        Some(s) => shell::profile_for_shell(&s),
+        None => platform_profile(),
+    };
     let session = Uuid::new_v4().to_string();
     let platform = profile.platform_tag();
-
-    let args: Vec<String> = std::env::args().collect();
 
     // Standalone capture (the in-Pwnbox agent): record with our own identity, write a complete
     // report to a file the user downloads and imports.
