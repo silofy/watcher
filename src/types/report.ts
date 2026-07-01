@@ -51,6 +51,8 @@ export interface Episode {
   seq: number;
   cmd: string;
   binary: string;
+  /** Absolute wall-clock start (epoch ms); present on live/fused captures, lets lanes be positioned on a real time axis. */
+  started_at_ms?: number;
   duration_ms: number;
   gap_before_ms: number;
   exit_code?: number | null;

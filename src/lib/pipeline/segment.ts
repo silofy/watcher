@@ -9,7 +9,12 @@
  */
 import type { Episode } from "../../types/report";
 import { DEFAULT_SEGMENT_CONFIG, extractBinary, type RawCommand, type SegmentConfig } from "./types";
-import { classifyCommand } from "./mitre";
+import { classifyCommand, isOnTarget } from "./mitre";
+
+/** Which lane a command runs in — the attacker host, or on a compromised target (ssh-tap). */
+function laneOf(contextPath?: string): "host" | "target" {
+  return isOnTarget(contextPath) ? "target" : "host";
+}
 
 const NOISE_WEIGHTS: Record<string, number> = {
   hydra: 10,
@@ -38,10 +43,14 @@ export function segmentEpisodes(
 ): Episode[] {
   const episodes: Episode[] = [];
   let seq = 1;
-  let prevEnd: number | null = null;
+  // Think-time is measured within a lane: a jump from the host shell to an on-target shell is a
+  // context switch, not 6 minutes of staring — so each lane tracks its own previous command end.
+  const prevEndByLane = new Map<"host" | "target", number>();
   let lastTactic = "TA0007";
 
   for (const r of raw) {
+    const lane = laneOf(r.context_path);
+    const prevEnd = prevEndByLane.get(lane) ?? null;
     const gap = prevEnd == null ? 0 : Math.max(0, r.started_at_ms - prevEnd);
     let residualGap = gap;
 
@@ -59,6 +68,7 @@ export function segmentEpisodes(
         seq: seq++,
         cmd: "",
         binary: "",
+        started_at_ms: prevEnd ?? r.started_at_ms,
         duration_ms: 0,
         gap_before_ms: gap,
         exit_code: null,
@@ -83,6 +93,7 @@ export function segmentEpisodes(
       seq: seq++,
       cmd: r.cmd,
       binary,
+      started_at_ms: r.started_at_ms,
       duration_ms: duration,
       gap_before_ms: residualGap,
       exit_code: r.exit_code,
@@ -98,7 +109,7 @@ export function segmentEpisodes(
     });
 
     lastTactic = prior.tactic;
-    prevEnd = r.ended_at_ms;
+    prevEndByLane.set(lane, r.ended_at_ms);
   }
 
   return episodes;

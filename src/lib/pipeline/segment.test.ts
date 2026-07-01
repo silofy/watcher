@@ -54,3 +54,22 @@ describe("segmentEpisodes (§4.1)", () => {
     expect(r[1].actor).toBe("idle");
   });
 });
+
+describe("segmentEpisodes — lanes (host vs on-target)", () => {
+  // Enumerate on the host, then 6.5 min later drop into an ssh shell and run `id`. The gap is
+  // host-side think-time, not a pause before the *first* on-target command — lanes are independent.
+  const mixed: RawCommand[] = [
+    { cmd: "gobuster dir -u http://10.10.10.5", started_at_ms: base, ended_at_ms: base + 30_000, exit_code: 0, output_line_count: 4000, context_path: "host" },
+    { cmd: "id", started_at_ms: base + 420_000, ended_at_ms: base + 420_500, exit_code: 0, output_line_count: 1, context_path: "ssh:10.10.10.5" },
+  ];
+  const eps = segmentEpisodes(mixed);
+
+  it("does not fabricate a think_pause from a cross-lane jump", () => {
+    expect(eps.map((e) => e.cmd)).toEqual(["gobuster dir -u http://10.10.10.5", "id"]);
+  });
+
+  it("carries absolute started_at_ms onto episodes so lanes can be merge-positioned", () => {
+    expect(eps[0].started_at_ms).toBe(base);
+    expect(eps[1].started_at_ms).toBe(base + 420_000);
+  });
+});
