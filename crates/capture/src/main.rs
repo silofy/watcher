@@ -629,6 +629,73 @@ fn run_attached(profile: &dyn ShellProfile, path: &std::path::Path, base: &Value
     Ok(())
 }
 
+/// A session's display label — the machine name, else the target scope.
+fn session_label(base: &Value) -> String {
+    base["session"]["machine"]["name"]
+        .as_str()
+        .or_else(|| base["session"]["target_scope"].as_str())
+        .unwrap_or("session")
+        .to_string()
+}
+
+#[derive(Debug, PartialEq)]
+enum AttachChoice {
+    /// Join the already-recording session as another lane.
+    UseExisting,
+    /// Open a fresh engagement instead.
+    StartNew,
+}
+
+/// Decide what `--attach` should do when a session is already recording. Pure so the policy is
+/// unit-testable; the interactive prompt only runs in the one case that actually needs a human.
+/// Prompt fires only when the live session is the *same* box (re-attempt vs. new terminal is
+/// genuinely ambiguous); a different box, `--new`, or no live session never asks.
+fn resolve_attach(
+    active_machine: Option<&str>,
+    requested_machine: Option<&str>,
+    force_new: bool,
+    prompt: impl FnOnce() -> bool,
+) -> AttachChoice {
+    let Some(active) = active_machine else {
+        return AttachChoice::StartNew; // nothing live to join
+    };
+    if force_new {
+        return AttachChoice::StartNew;
+    }
+    // A different box already recording -> don't fold this work into its report; start fresh.
+    let same_box = match requested_machine {
+        Some(r) => active.eq_ignore_ascii_case(r),
+        None => true, // no target named: assume the live session is the one meant
+    };
+    if !same_box {
+        return AttachChoice::StartNew;
+    }
+    if prompt() {
+        AttachChoice::StartNew
+    } else {
+        AttachChoice::UseExisting
+    }
+}
+
+/// Ask, on a TTY, whether to start a fresh engagement instead of joining the live one. Piped/
+/// non-interactive stdin keeps the historical behavior (attach to the existing session).
+fn prompt_start_new(machine: &str) -> bool {
+    use std::io::{IsTerminal, Write};
+    if !std::io::stdin().is_terminal() {
+        return false;
+    }
+    eprint!(
+        "[watcher-capture] a live session for '{machine}' is already recording.\n  \
+         Attach this terminal to it as a new lane, or start a new engagement? [A/n]: "
+    );
+    let _ = std::io::stderr().flush();
+    let mut line = String::new();
+    if std::io::stdin().read_line(&mut line).is_err() {
+        return false;
+    }
+    matches!(line.trim().to_ascii_lowercase().as_str(), "n" | "no" | "new")
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
 
@@ -659,25 +726,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // on this machine; if there is none, self-start one (cross-platform). `--machine <name>` names
     // the self-started session.
     if args.iter().any(|a| a == "--attach") {
-        let (path, base, self_started) = match find_active_session() {
-            Some((p, b)) => (p, b, false),
-            None => {
-                let target = arg_value(&args, "--machine").unwrap_or_else(|| "local session".to_string());
+        let force_new = args.iter().any(|a| a == "--new");
+        let requested_machine = arg_value(&args, "--machine");
+        let active = find_active_session();
+        let active_label = active.as_ref().map(|(_, b)| session_label(b));
+
+        // Same box already recording? Ask whether this is a second terminal or a fresh attempt.
+        let choice = resolve_attach(
+            active_label.as_deref(),
+            requested_machine.as_deref(),
+            force_new,
+            || prompt_start_new(active_label.as_deref().unwrap_or("session")),
+        );
+
+        let (path, base, self_started) = match (choice, active) {
+            (AttachChoice::UseExisting, Some((p, b))) => {
+                eprintln!("[watcher-capture] joining the live session '{}' as a new lane.", session_label(&b));
+                (p, b, false)
+            }
+            (_, prior) => {
+                if prior.is_some() {
+                    eprintln!("[watcher-capture] a session was already live — starting a new engagement.");
+                }
+                let target = requested_machine.clone().unwrap_or_else(|| "local session".to_string());
                 let context = arg_value(&args, "--context").unwrap_or_else(|| "host".to_string());
                 let base = build_base_report(&session, machine_arg(&args), &target, &context, "local_pty");
                 let dir = watcher_sessions_dir().ok_or("cannot resolve ~/.watcher/sessions")?;
                 std::fs::create_dir_all(&dir)?;
                 let path = dir.join(format!("{session}.json"));
                 write_session_episodes(&path, &base, vec![]); // visible in The Watcher immediately
-                eprintln!("[watcher-capture] no live session found — started a new one ('{target}').");
+                if prior.is_none() {
+                    eprintln!("[watcher-capture] no live session found — started a new one ('{target}').");
+                }
                 (path, base, true)
             }
         };
-        let name = base["session"]["machine"]["name"]
-            .as_str()
-            .or_else(|| base["session"]["target_scope"].as_str())
-            .unwrap_or("session")
-            .to_string();
+        let name = session_label(&base);
         eprintln!("[watcher-capture] attached to '{name}'. Your commands will appear in The Watcher live.");
         eprintln!("                  Hack as normal; type 'exit' to stop capturing.");
         run_attached(profile.as_ref(), &path, &base)?;
@@ -752,6 +836,36 @@ mod tests {
         assert_eq!(eps[0]["started_at_ms"], json!(5_000));
         // duration still spans the same window
         assert_eq!(eps[0]["duration_ms"], json!(3_000));
+    }
+
+    #[test]
+    fn attach_starts_new_when_no_active_session() {
+        let c = resolve_attach(None, Some("Knife"), false, || panic!("should not prompt"));
+        assert_eq!(c, AttachChoice::StartNew);
+    }
+
+    #[test]
+    fn attach_same_machine_prompts_and_respects_choice() {
+        assert_eq!(resolve_attach(Some("Knife"), Some("Knife"), false, || false), AttachChoice::UseExisting);
+        assert_eq!(resolve_attach(Some("Knife"), Some("Knife"), false, || true), AttachChoice::StartNew);
+    }
+
+    #[test]
+    fn attach_new_flag_skips_prompt() {
+        let c = resolve_attach(Some("Knife"), Some("Knife"), true, || panic!("--new must not prompt"));
+        assert_eq!(c, AttachChoice::StartNew);
+    }
+
+    #[test]
+    fn attach_different_machine_starts_new_without_prompt() {
+        let c = resolve_attach(Some("Knife"), Some("Sau"), false, || panic!("a different box must not prompt"));
+        assert_eq!(c, AttachChoice::StartNew);
+    }
+
+    #[test]
+    fn attach_without_requested_machine_treats_live_as_target() {
+        // No --machine: the live session is presumably the intended engagement, so still ask.
+        assert_eq!(resolve_attach(Some("Knife"), None, false, || false), AttachChoice::UseExisting);
     }
 
     #[test]
