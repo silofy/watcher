@@ -28,7 +28,7 @@ use uuid::Uuid;
 use envelope::TelemetryEvent;
 use watcher_core::{EndReason, SessionConfig, SessionController, SessionEvent};
 use shell::{platform_profile, ShellProfile};
-use terminal::{clean_lines, extract_sessions, Sink, Terminal};
+use terminal::{clean_lines, extract_sessions, Captured, Sink, Terminal};
 
 fn lifecycle_envelope(ev: &SessionEvent, platform: &str) -> TelemetryEvent {
     match ev {
@@ -257,6 +257,14 @@ fn run_interactive(
     write!(writer, "{}\r", profile.integration_command())?;
     writer.flush()?;
 
+    // Source the ssh() tap so interactive SSH sessions are captured per-command (POSIX only).
+    if let Some(tap) = profile.ssh_tap_command(session) {
+        install_ssh_tap();
+        write!(writer, "{}\r", tap)?;
+        writer.flush()?;
+        eprintln!("[watcher-capture] SSH sessions in this shell will be captured per-command.");
+    }
+
     // Real stdin -> PTY (forward the user's keystrokes).
     let stdin_running = running.clone();
     thread::spawn(move || {
@@ -389,7 +397,12 @@ fn tactic_for(bin: &str) -> (&'static str, &'static str) {
 /// Reconstruct the captured commands as report episodes (redacted defense-in-depth before they
 /// ever touch disk — the daemon re-redacts too, but this file is written directly).
 fn episodes_from_terminal(t: &Terminal) -> Vec<Value> {
-    let caps = extract_sessions(t);
+    episodes_from_captured(&extract_sessions(t))
+}
+
+/// Shape captured commands into report episodes. Split from `episodes_from_terminal` so the
+/// JSON contract (timing fields, provenance) is unit-testable without building a whole Terminal.
+fn episodes_from_captured(caps: &[Captured]) -> Vec<Value> {
     let mut out = Vec::with_capacity(caps.len());
     let mut prev_end: Option<u64> = None;
     for (i, c) in caps.iter().enumerate() {
@@ -403,6 +416,7 @@ fn episodes_from_terminal(t: &Terminal) -> Vec<Value> {
             "seq": (i as u64) + 1,
             "cmd": watcher_core::redact(&c.cmd),
             "binary": bin,
+            "started_at_ms": c.start_us / 1000,
             "duration_ms": duration_ms,
             "gap_before_ms": gap_before_ms,
             "exit_code": c.exit,
@@ -539,6 +553,7 @@ fn run_attached(profile: &dyn ShellProfile, path: &std::path::Path, base: &Value
         install_ssh_tap();
         write!(writer, "{}\r", tap)?;
         writer.flush()?;
+        eprintln!("[watcher-capture] SSH sessions in this shell will be captured per-command.");
     }
 
     // Stream episodes into the session file as commands complete.
@@ -716,6 +731,23 @@ mod tests {
         assert_eq!(v["class"], "source");
         assert_eq!(v["capabilities"]["boundary_confidence"], "exact");
         assert_eq!(v["context_template"], "cloud:htb:pwnbox");
+    }
+
+    #[test]
+    fn episode_carries_absolute_start_timestamp() {
+        // Absolute wall-clock is the linchpin for merge-sorting concurrent lanes into one report;
+        // it must survive the Captured -> episode conversion (start_us in µs -> started_at_ms).
+        let caps = vec![Captured {
+            cmd: "nmap -sC 10.10.10.5".into(),
+            output: "22/tcp open ssh".into(),
+            exit: Some(0),
+            start_us: 5_000_000, // 5.0s
+            end_us: 8_000_000,   // 8.0s
+        }];
+        let eps = episodes_from_captured(&caps);
+        assert_eq!(eps[0]["started_at_ms"], json!(5_000));
+        // duration still spans the same window
+        assert_eq!(eps[0]["duration_ms"], json!(3_000));
     }
 
     #[test]

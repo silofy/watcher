@@ -4,6 +4,7 @@ import { MachineAvatar } from "./MachineAvatar";
 import { DIFFICULTY_COLOR } from "../lib/machine";
 import { loadPwnboxConfig } from "../lib/pwnbox";
 import type { WatcherReport } from "../types/report";
+import type { SshLogFile } from "../lib/ssh/ingest";
 
 function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -24,6 +25,17 @@ async function fetchLiveSessions(): Promise<WatcherReport[]> {
         }
       })
       .filter((r): r is WatcherReport => r != null);
+  } catch {
+    return [];
+  }
+}
+
+/** The tap's captured SSH-session files (~/.watcher/ssh). Tauri-only; empty in dev browser. */
+async function fetchSshLogs(): Promise<SshLogFile[]> {
+  if (!isTauri()) return [];
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return ((await invoke("list_ssh_logs")) as SshLogFile[]) ?? [];
   } catch {
     return [];
   }
@@ -50,8 +62,8 @@ export function LiveBridge() {
   useEffect(() => {
     let active = true;
     const tick = async () => {
-      const reports = await fetchLiveSessions();
-      if (active) reports.forEach(ingestLiveReport);
+      const [reports, sshLogs] = await Promise.all([fetchLiveSessions(), fetchSshLogs()]);
+      if (active) reports.forEach((r) => ingestLiveReport(r, sshLogs));
     };
     tick();
     const h = setInterval(tick, 4000);

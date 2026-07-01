@@ -12,6 +12,7 @@ pub fn run() {
             llm::ollama_status,
             llm::start_ollama,
             sessions::list_sessions,
+            sessions::list_ssh_logs,
             pwnbox::pull_pwnbox
         ])
         .run(tauri::generate_context!())

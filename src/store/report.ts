@@ -14,6 +14,7 @@ import { applyTrim } from "../lib/trim";
 import { computeGrade } from "../lib/bridge/grade";
 import { machineOf, type MachineMeta } from "../lib/machine";
 import { finalizeLiveReport } from "../lib/finalize";
+import { sshSessionsFromDir, type SshLogFile } from "../lib/ssh/ingest";
 import { isLiveRecording } from "../lib/live";
 
 /**
@@ -168,8 +169,9 @@ interface ReportState extends Derived {
   /** Overlay a write-up-sourced golden DAG: re-align the active report against the intended path. */
   applyGoldenDag: (golden: GoldenObjective[], meta?: { source: string; confidence: number }) => void;
   switchSession: (id: string) => void;
-  /** Merge a session report written by the daemon (a spawned box) at runtime. */
-  ingestLiveReport: (report: WatcherReport) => void;
+  /** Merge a session report written by the daemon (a spawned box) at runtime, with any captured
+   *  SSH-session log files (folded in as on-target commands for the matching session). */
+  ingestLiveReport: (report: WatcherReport, sshFiles?: SshLogFile[]) => void;
   dismissLiveBanner: () => void;
   setTrim: (range: [number, number] | null) => void;
   clearTrim: () => void;
@@ -235,8 +237,10 @@ export const useReport = create<ReportState>((set, get) => ({
     set({ fullReport: next, writeup: meta ?? get().writeup, sessionCards: cardsFrom(), ...derive(applyTrim(next, get().trimSeq)) });
   },
 
-  ingestLiveReport: (report) => {
-    const finalized = finalizeLiveReport(report);
+  ingestLiveReport: (report, sshFiles = []) => {
+    // fold in this session's captured SSH sessions (files named <session-uuid>-<ts>.in|.meta)
+    const mine = sshFiles.filter((f) => f.name.startsWith(report.session.uuid));
+    const finalized = finalizeLiveReport(report, sshSessionsFromDir(mine));
     const id = `htb:${finalized.session.uuid}`;
     const isNew = !(id in REPORTS);
     REPORTS[id] = finalized;

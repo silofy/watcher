@@ -27,6 +27,38 @@ export interface SshIngestOptions {
   stepMs?: number;
 }
 
+/** One file the capture tap wrote under ~/.watcher/ssh (an `<id>.in` transcript or `<id>.meta`). */
+export interface SshLogFile {
+  name: string;
+  content: string;
+}
+
+/**
+ * Turn the tap's `~/.watcher/ssh` files into session inputs. Each `<id>.in` transcript is paired with
+ * its `<id>.meta` sidecar (JSON: target, startedAtMs) written by watcher-ssh.sh. Missing meta degrades
+ * gracefully — the provenance still marks it on-target, it just loses the host label and precise time.
+ */
+export function sshSessionsFromDir(files: SshLogFile[]): Array<SshIngestOptions & { inputLog: string }> {
+  const meta = new Map<string, { target?: string; startedAtMs?: number }>();
+  for (const f of files) {
+    const m = f.name.match(/^(.*)\.meta$/);
+    if (!m) continue;
+    try {
+      meta.set(m[1], JSON.parse(f.content));
+    } catch {
+      /* ignore a malformed sidecar */
+    }
+  }
+  const out: Array<SshIngestOptions & { inputLog: string }> = [];
+  for (const f of files) {
+    const m = f.name.match(/^(.*)\.in$/);
+    if (!m || !f.content.trim()) continue;
+    const meta_ = meta.get(m[1]) ?? {};
+    out.push({ inputLog: f.content, target: meta_.target ?? "target", startedAtMs: meta_.startedAtMs ?? 0 });
+  }
+  return out.sort((a, b) => a.startedAtMs - b.startedAtMs);
+}
+
 /**
  * Parse a `--log-in` transcript into on-target RawCommands. Timestamps are synthetic here (evenly
  * spaced); a production version threads `--log-timing` for real gaps. Every command is re-redacted.

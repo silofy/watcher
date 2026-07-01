@@ -5,13 +5,25 @@
  *
  *   vite-node scripts/ingest-capture.tsx [--ndjson <path>] [--golden <path>] [--out <path>]
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
+import { resolve, dirname, join } from "node:path";
+import { homedir } from "node:os";
 import Ajv from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import schema from "../schema/watcher-report.schema.json";
 import { parseEnvelopes, envelopesToRawCommands, assembleReport } from "../src/lib/pipeline/ingest";
+import { sshSessionsFromDir } from "../src/lib/ssh/ingest";
 import type { GoldenObjective, Session } from "../src/types/report";
+
+/** Read the tap's captured SSH sessions from ~/.watcher/ssh (or --ssh-dir), if any. */
+function loadSshSessions(): ReturnType<typeof sshSessionsFromDir> {
+  const dir = arg("ssh-dir", join(homedir(), ".watcher", "ssh"));
+  if (!existsSync(dir)) return [];
+  const files = readdirSync(dir)
+    .filter((n) => n.endsWith(".in") || n.endsWith(".meta"))
+    .map((n) => ({ name: n, content: readFileSync(join(dir, n), "utf8") }));
+  return sshSessionsFromDir(files);
+}
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -65,7 +77,9 @@ const session: Session = {
   ...(machine ? { machine } : {}),
 };
 
-const report = assembleReport(raw, { golden, session, redaction_profile: "full" });
+const ssh = loadSshSessions();
+if (ssh.length) console.error(`[ingest] folding in ${ssh.length} captured SSH session(s)`);
+const report = assembleReport(raw, { golden, session, redaction_profile: "full", ssh });
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 addFormats(ajv);

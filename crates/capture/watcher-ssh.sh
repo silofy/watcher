@@ -16,15 +16,27 @@
 # secrets — prefer key-based auth, and treat these logs as sensitive until the scrubber lands.
 
 ssh() {
-  # only tap interactive sessions; a one-shot `ssh host 'cmd'` is already captured locally as one command
-  if [ "$#" -ge 2 ]; then
-    command ssh "$@"
-    return
-  fi
-
+  # Tap every session. A one-shot `ssh host 'cmd'` passes its command as an argument (no interactive
+  # keystrokes), so its --log-in transcript is empty and ingests to nothing — no double-counting with
+  # the local capture. That means we don't need a fragile "is this interactive?" heuristic; always tap.
   local dir="${WATCHER_HOME:-$HOME/.watcher}/ssh"
   mkdir -p "$dir"
   local id="${WATCHER_SESSION:-$$}-$(date +%s 2>/dev/null || echo 0)"
+
+  # Recover the destination for the provenance label: first positional arg, skipping value-taking
+  # options; strip any user@ prefix. Best-effort — a wrong label doesn't affect on-target detection.
+  local dest="" skip=0 a
+  for a in "$@"; do
+    if [ "$skip" = 1 ]; then skip=0; continue; fi
+    case "$a" in
+      -[bcDEeFIiJLlmOopQRSWw]) skip=1 ;;
+      -*) ;;
+      *) dest="$a"; break ;;
+    esac
+  done
+  local target="${dest##*@}"
+  local started; started=$(( $(date +%s 2>/dev/null || echo 0) * 1000 ))
+  printf '{"target":"%s","startedAtMs":%s}\n' "$target" "$started" > "$dir/$id.meta" 2>/dev/null
 
   if command -v script >/dev/null 2>&1 && script --help 2>&1 | grep -q -- --log-in; then
     script -q \
