@@ -20,6 +20,13 @@ describe("buildPhaseAudits", () => {
     expect(phases.map((p) => p.tactic)).toEqual(report.phases.map((p) => p.mitre_tactic));
   });
 
+  it("scopes CWE weakness classes to the phase that exploited them", () => {
+    const access = phases.find((p) => p.tactic === "TA0001")!; // hydra runs here
+    expect(access.cwe).toEqual(["CWE-307"]);
+    // recon phase exploits no weakness — stays empty, not a guess
+    expect(phases.find((p) => p.tactic === "TA0007")!.cwe).toEqual([]);
+  });
+
   it("scopes objective coverage to each phase's tactic", () => {
     const discovery = phases.find((p) => p.tactic === "TA0007")!;
     // 3 discovery objectives in the fixture, all satisfied

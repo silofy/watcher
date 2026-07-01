@@ -3,6 +3,7 @@ import { useReport, activeSeq } from "../store/report";
 import { Section, Chip, tierColor } from "./ui";
 import { CAT_COLOR } from "../lib/coaching";
 import { buildPhaseAudits, SHORT_TACTIC, type AuditItem, type PhaseAudit as PhaseAuditT } from "../lib/audits";
+import { cweLabel } from "../lib/pipeline/frameworks";
 import { fmtDuration, fmtMinutes } from "../lib/format";
 
 const MD = "[&_code]:mono [&_code]:rounded [&_code]:bg-panel-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-fg [&_p]:m-0 [&_strong]:text-fg";
@@ -209,6 +210,18 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
           {p.techniques > 0 && <span>· {p.techniques} ATT&CK technique{p.techniques === 1 ? "" : "s"}</span>}
           <span className="text-faint/70">· {SHORT_TACTIC[p.tactic] ?? p.tactic}</span>
         </div>
+
+        {/* weakness classes exploited in this phase — the one framework lens that's genuinely phase-local */}
+        {p.cwe.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <span className="label shrink-0 text-faint">exploited</span>
+            {p.cwe.map((id) => (
+              <span key={id} className="mono rounded border border-tool/40 bg-tool/10 px-1.5 py-0.5 text-xs text-fg">
+                {cweLabel(id)}
+              </span>
+            ))}
+          </div>
+        )}
 
         <Objectives items={p.objectives} />
 

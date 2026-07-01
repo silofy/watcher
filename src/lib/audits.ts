@@ -14,6 +14,7 @@
 import type { CoachCategory, CoachingStep, Episode, WatcherReport } from "../types/report";
 import { activeMs, wasteByTactic, type WasteBreakdown } from "./metrics";
 import { normalizeCoaching } from "./coaching";
+import { runWeaknesses } from "./pipeline/frameworks";
 
 export type AuditKind = "insight" | "manual" | "pass";
 
@@ -57,6 +58,8 @@ export interface PhaseAudit {
   wasted_ms: number;
   commands: number;
   techniques: number;
+  /** distinct CWE weakness classes exploited in this phase (phase-scoped, unlike the run-level axes). */
+  cwe: string[];
   coverage: { satisfied: number; total: number; pct: number };
   /** the phase's goals on the intended path, each with reached/not-reached status. */
   objectives: ObjectiveStatus[];
@@ -250,6 +253,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
     }
 
     const techniques = new Set(eps.map((e) => e.technique).filter(Boolean)).size;
+    const cwe = runWeaknesses(eps);
     const total = objectives.length;
 
     return {
@@ -261,6 +265,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       wasted_ms,
       commands: eps.length,
       techniques,
+      cwe,
       coverage: { satisfied: satisfied.length, total, pct: total === 0 ? 0 : (satisfied.length / total) * 100 },
       objectives: objectiveStatus,
       loudest: noiseByTactic.get(tactic) ?? null,
