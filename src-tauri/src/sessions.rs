@@ -31,7 +31,7 @@ pub fn list_ssh_logs() -> Vec<SshLogFile> {
         for e in entries.flatten() {
             let p = e.path();
             let ext = p.extension().and_then(|x| x.to_str());
-            if matches!(ext, Some("in") | Some("out") | Some("meta")) {
+            if matches!(ext, Some("in") | Some("out") | Some("tm") | Some("meta")) {
                 if let (Some(name), Ok(content)) = (p.file_name().and_then(|n| n.to_str()), fs::read_to_string(&p)) {
                     out.push(SshLogFile { name: name.to_string(), content });
                 }

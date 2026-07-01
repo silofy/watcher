@@ -36,3 +36,41 @@ export function parseScriptInputLog(raw: string): string[] {
   }
   return out;
 }
+
+// Alternate-screen enter/leave — how vim/less/top/man/nano/htop take over and release the terminal.
+const ALT_ENTER = /\x1b\[\?(?:1049|1047|47)h/g;
+const ALT_LEAVE = /\x1b\[\?(?:1049|1047|47)l/g;
+const TIMING_LINE = /^([IO])\s+[\d.]+\s+(\d+)/;
+
+/**
+ * Remove keystrokes typed inside a full-screen program from the input transcript. Uses the
+ * `--log-timing` interleave to walk input/output in order and track the alternate-screen buffer;
+ * keystrokes typed while the output is in alt-screen mode are program input (vim/less/top/man/nano),
+ * not shell commands, so parsing them yields junk episodes. Without the output+timing logs the input
+ * is returned unchanged (documented weakness). Byte counts are approximated as UTF-16 units — exact
+ * for ASCII shell/TUI sessions.
+ */
+export function stripInteractiveInput(inputLog: string, outputLog?: string, timingLog?: string): string {
+  if (!outputLog || !timingLog) return inputLog;
+  let inPos = 0;
+  let outPos = 0;
+  let alt = 0;
+  let kept = "";
+  for (const line of timingLog.split(/\r?\n/)) {
+    const m = line.match(TIMING_LINE);
+    if (!m) continue;
+    const n = parseInt(m[2], 10);
+    if (m[1] === "O") {
+      const chunk = outputLog.slice(outPos, outPos + n);
+      outPos += n;
+      alt += (chunk.match(ALT_ENTER) ?? []).length;
+      alt -= (chunk.match(ALT_LEAVE) ?? []).length;
+      if (alt < 0) alt = 0;
+    } else {
+      const chunk = inputLog.slice(inPos, inPos + n);
+      inPos += n;
+      if (alt === 0) kept += chunk; // only keystrokes typed at the shell, not inside a TUI
+    }
+  }
+  return kept;
+}

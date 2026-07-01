@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseScriptInputLog } from "./parse";
+import { parseScriptInputLog, stripInteractiveInput } from "./parse";
 import { sshTargetOf, ingestSshSession, sshSessionsFromDir, scrubUnechoed } from "./ingest";
 import { finalizeLiveReport } from "../finalize";
 import { classifyCommand, isOnTarget } from "../pipeline/mitre";
@@ -86,6 +86,26 @@ describe("end-to-end: ssh log → episodes carry post-exploitation tactics", () 
     expect(byBinary["whoami"]).toBe("TA0007"); // Discovery, not local noise
     expect(byBinary["sudo"]).toBe("TA0004"); // PrivEsc
     expect(byBinary["wget"]).toBe("TA0011"); // Ingress tool transfer
+  });
+});
+
+describe("stripInteractiveInput (drop full-screen TUI keystrokes)", () => {
+  // typed: `vim x`↵, then vim keystrokes, then `ls`↵. Output enters/leaves the alternate screen.
+  const inputLog = "vim x\riHELLO\x1b:wq\rls\r";
+  const outputLog = "PS> vim x\n\x1b[?1049h\x1b[?1049l PS> ls\nfile1\n";
+  const timingLog = "I 0.0 6\nO 0.0 18\nI 0.0 11\nO 0.0 22\nI 0.0 3\n";
+
+  it("keeps shell keystrokes and drops those typed inside the alt-screen", () => {
+    expect(stripInteractiveInput(inputLog, outputLog, timingLog)).toBe("vim x\rls\r");
+  });
+
+  it("returns input unchanged without the output+timing logs", () => {
+    expect(stripInteractiveInput("a\rb\r")).toBe("a\rb\r");
+  });
+
+  it("end-to-end: vim keystrokes never become episodes", () => {
+    const cmds = ingestSshSession(inputLog, { target: "10.10.10.5", startedAtMs: 0, outputLog, timingLog });
+    expect(cmds.map((c) => c.cmd)).toEqual(["vim x", "ls"]);
   });
 });
 

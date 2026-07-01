@@ -10,7 +10,7 @@
  */
 import type { RawCommand } from "../pipeline/types";
 import { redactText } from "../redact";
-import { parseScriptInputLog } from "./parse";
+import { parseScriptInputLog, stripInteractiveInput } from "./parse";
 
 /** The target host from an `ssh [opts] user@host` / `ssh host` command, or null if not an ssh line. */
 export function sshTargetOf(cmd: string): string | null {
@@ -27,6 +27,8 @@ export interface SshIngestOptions {
   stepMs?: number;
   /** the session's `--log-out` transcript, used to scrub un-echoed input (typed secrets). */
   outputLog?: string;
+  /** the session's `--log-timing` transcript, used to drop keystrokes typed inside a full-screen TUI. */
+  timingLog?: string;
 }
 
 const ANSI_ALL = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-Z\\-_]/g;
@@ -63,6 +65,7 @@ export interface SshLogFile {
 export function sshSessionsFromDir(files: SshLogFile[]): Array<SshIngestOptions & { inputLog: string }> {
   const meta = new Map<string, { target?: string; startedAtMs?: number }>();
   const outLog = new Map<string, string>();
+  const tmLog = new Map<string, string>();
   for (const f of files) {
     const metaM = f.name.match(/^(.*)\.meta$/);
     if (metaM) {
@@ -74,13 +77,21 @@ export function sshSessionsFromDir(files: SshLogFile[]): Array<SshIngestOptions 
     }
     const outM = f.name.match(/^(.*)\.out$/);
     if (outM) outLog.set(outM[1], f.content);
+    const tmM = f.name.match(/^(.*)\.tm$/);
+    if (tmM) tmLog.set(tmM[1], f.content);
   }
   const out: Array<SshIngestOptions & { inputLog: string }> = [];
   for (const f of files) {
     const m = f.name.match(/^(.*)\.in$/);
     if (!m || !f.content.trim()) continue;
     const meta_ = meta.get(m[1]) ?? {};
-    out.push({ inputLog: f.content, outputLog: outLog.get(m[1]), target: meta_.target ?? "target", startedAtMs: meta_.startedAtMs ?? 0 });
+    out.push({
+      inputLog: f.content,
+      outputLog: outLog.get(m[1]),
+      timingLog: tmLog.get(m[1]),
+      target: meta_.target ?? "target",
+      startedAtMs: meta_.startedAtMs ?? 0,
+    });
   }
   return out.sort((a, b) => a.startedAtMs - b.startedAtMs);
 }
@@ -92,7 +103,9 @@ export function sshSessionsFromDir(files: SshLogFile[]): Array<SshIngestOptions 
 export function ingestSshSession(inputLog: string, opts: SshIngestOptions): RawCommand[] {
   const step = opts.stepMs ?? 1000;
   const contextPath = `host->ssh:${opts.target}`;
-  const commands = scrubUnechoed(parseScriptInputLog(inputLog), opts.outputLog);
+  // 1) drop keystrokes typed inside a full-screen TUI (vim/less/top), 2) drop un-echoed secrets.
+  const shellInput = stripInteractiveInput(inputLog, opts.outputLog, opts.timingLog);
+  const commands = scrubUnechoed(parseScriptInputLog(shellInput), opts.outputLog);
   return commands.map((cmd, i) => {
     const started = opts.startedAtMs + i * step;
     return {
