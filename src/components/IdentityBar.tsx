@@ -4,6 +4,7 @@ import { tierColor } from "./ui";
 import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
 import { detectFlags } from "../lib/flags";
+import { WriteupControl } from "./WriteupControl";
 
 /**
  * A machine attribute chip. `filled` tints the whole chip by its color — used for the attributes that
@@ -158,6 +159,8 @@ export function IdentityBar() {
         </div>
       </div>
 
+      {/* reference path — a minimal accordion tucked right under the band */}
+      <WriteupControl />
     </div>
   );
 }

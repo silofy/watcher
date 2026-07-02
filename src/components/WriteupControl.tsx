@@ -17,15 +17,13 @@ function errMsg(e: unknown, fallback: string): string {
 }
 
 /**
- * Reference-path control — the high-level "unlock the comparison" action, docked at the top of the
- * debrief where the key takeaway lives. Quick source shortcuts (0xdf auto-fetches via its sitemap;
- * IppSec/HTB open a search since video/auth-gated content can't be auto-extracted), plus URL and
- * paste. Everything is read by the local model only; your session never leaves the machine.
+ * Reference-path control — a minimal accordion docked just under the identity band. Collapsed it's a
+ * one-line status; expanded it offers the load actions (0xdf auto-fetches via its sitemap; IppSec/HTB
+ * open a search or fetch with a token; plus URL and paste). Read by the local model only.
  */
 export function WriteupControl() {
   const { report, applyGoldenDag, writeup } = useReport();
   const box = machineOf(report);
-  const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -52,7 +50,6 @@ export function WriteupControl() {
       setStatus({ kind: "idle" });
       setText("");
       setUrl("");
-      setOpen(false);
     } catch {
       setStatus({ kind: "error", msg: "Extraction failed — is the local model reachable?" });
     }
@@ -62,8 +59,7 @@ export function WriteupControl() {
     if (!u.trim()) return;
     setStatus({ kind: "working", msg: "Fetching the write-up…" });
     try {
-      const content = await fetchWriteupUrl(u.trim());
-      await extract(content, "pasted");
+      await extract(await fetchWriteupUrl(u.trim()), "pasted");
     } catch {
       setStatus({ kind: "error", msg: "Couldn't fetch that URL — check the link, or paste the write-up text instead." });
     }
@@ -72,8 +68,7 @@ export function WriteupControl() {
   async function from0xdf() {
     setStatus({ kind: "working", msg: `Finding 0xdf's write-up for ${box.name}…` });
     try {
-      const content = await fetchWriteupFrom0xdf(box.name);
-      await extract(content, "0xdf");
+      await extract(await fetchWriteupFrom0xdf(box.name), "0xdf");
     } catch (e) {
       setStatus({ kind: "error", msg: errMsg(e, "0xdf lookup failed — paste the URL instead.") });
     }
@@ -86,8 +81,7 @@ export function WriteupControl() {
     }
     setStatus({ kind: "working", msg: `Fetching HTB's official write-up for ${box.name}…` });
     try {
-      const content = await fetchHtbWriteup(box.name);
-      await extract(content, "htb-official");
+      await extract(await fetchHtbWriteup(box.name), "htb-official");
     } catch (e) {
       setStatus({ kind: "error", msg: `${errMsg(e, "HTB fetch failed")} — or use URL / paste.` });
     }
@@ -101,158 +95,118 @@ export function WriteupControl() {
       setTokenInput("");
       setShowToken(false);
       setHtbReady(true);
-      await fromHtb(); // token in place — go straight to the fetch
+      await fromHtb();
     } catch (e) {
       setStatus({ kind: "error", msg: errMsg(e, "Couldn't save the token.") });
     }
   }
 
+  const btnSecondary =
+    "rounded-md border border-edge px-2.5 py-1 text-xs text-muted transition-colors hover:border-edge-bright hover:text-fg disabled:opacity-40";
+
   return (
-    <div className="rounded-lg border border-edge bg-panel-2/50 px-4 py-3">
-      {/* status row: what's loaded, or the retired/active availability hint */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="label text-faint">Reference path</span>
+    <details className="group border-b border-edge">
+      <summary className="flex cursor-pointer list-none items-center gap-2 py-2.5">
+        <span className="label shrink-0 text-faint">Reference path</span>
         {writeup ? (
-          <span className="flex flex-wrap items-center gap-x-1.5 text-sm">
+          <span className="flex items-center gap-1.5 text-sm">
             <span className="text-match">✓</span>
-            <span className="font-semibold text-fg">{SRC[writeup.source] ?? writeup.source}</span>
-            <span className="text-muted">write-up</span>
-            <span className="text-xs text-faint">· {Math.round(writeup.confidence * 100)}% confidence</span>
+            <span className="font-medium text-fg">{SRC[writeup.source] ?? writeup.source}</span>
+            <span className="text-xs text-faint">· {Math.round(writeup.confidence * 100)}%</span>
           </span>
         ) : (
-          <span className="label text-xs text-faint">{box.retired ? "Retired · write-ups available" : "Active · may not be published yet"}</span>
+          <span className="truncate text-sm text-muted">
+            None yet — <span className="text-fg">grading your run only</span>
+          </span>
         )}
-      </div>
+        <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs text-faint">
+          {writeup ? "Replace" : "Add to compare"}
+          <span className="transition-transform group-open:rotate-90">▸</span>
+        </span>
+      </summary>
 
-      {/* PRIMARY action — loading the write-up is the point of this container, so it leads */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="label shrink-0 pr-0.5 text-faint">{writeup ? "Replace from" : "Load from"}</span>
-        <button
-          type="button"
-          onClick={from0xdf}
-          disabled={working}
-          title={`Auto-fetch 0xdf's write-up for ${box.name}`}
-          className="rounded-md bg-signal px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-signal/90 disabled:opacity-40"
-        >
-          0xdf
-        </button>
-        <a
-          href={writeupSearchUrl("ippsec", box.name)}
-          target="_blank"
-          rel="noreferrer"
-          title="IppSec is video — opens a search to find it"
-          className="rounded-md border border-edge px-3 py-1.5 text-sm text-muted transition-colors hover:border-edge-bright hover:text-fg"
-        >
-          IppSec ↗
-        </a>
-        {isDesktop() ? (
+      <div className="space-y-2.5 pb-3">
+        {!writeup && (
+          <p className="text-xs leading-relaxed text-faint">
+            We grade <span className="text-muted">how</span> you worked, not <span className="text-muted">what</span> you did — link this box's write-up to compare your route against the intended solution: detours, skipped steps, and missed objectives.
+          </p>
+        )}
+
+        {/* load actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="label shrink-0 text-faint">Load from</span>
           <button
             type="button"
-            onClick={fromHtb}
+            onClick={from0xdf}
             disabled={working}
-            title={htbReady ? `Fetch HTB's official write-up for ${box.name}` : "Add your HTB App Token to auto-fetch the official write-up"}
-            className="rounded-md border border-edge px-3 py-1.5 text-sm text-muted transition-colors hover:border-edge-bright hover:text-fg disabled:opacity-40"
+            title={`Auto-fetch 0xdf's write-up for ${box.name}`}
+            className="rounded-md bg-signal px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:bg-signal/90 disabled:opacity-40"
           >
-            HTB{htbReady ? "" : " ⚙"}
+            0xdf
           </button>
-        ) : (
-          <a
-            href={writeupSearchUrl("htb", box.name)}
-            target="_blank"
-            rel="noreferrer"
-            title="HTB write-ups are auth-gated — opens a search to find it"
-            className="rounded-md border border-edge px-3 py-1.5 text-sm text-muted transition-colors hover:border-edge-bright hover:text-fg"
-          >
-            HTB ↗
+          <a href={writeupSearchUrl("ippsec", box.name)} target="_blank" rel="noreferrer" title="IppSec is video — opens a search to find it" className={btnSecondary}>
+            IppSec ↗
           </a>
-        )}
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="rounded-md border border-edge px-3 py-1.5 text-sm text-muted transition-colors hover:border-edge-bright hover:text-fg"
-        >
-          {open ? "Cancel" : "URL / paste"}
-        </button>
-      </div>
-
-      {/* SECONDARY — the why, demoted beneath the action */}
-      {!writeup && (
-        <p className="mt-2.5 text-xs leading-relaxed text-faint">
-          We grade <span className="text-muted">how</span> you worked, not <span className="text-muted">what</span> you did — link this box's write-up to compare your path against the intended solution: detours, skipped steps, and missed objectives.
-        </p>
-      )}
-
-      {showToken && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-edge/60 pt-3">
+          {isDesktop() ? (
+            <button type="button" onClick={fromHtb} disabled={working} title={htbReady ? "Fetch HTB's official write-up" : "Add your HTB App Token first"} className={btnSecondary}>
+              HTB{htbReady ? "" : " ⚙"}
+            </button>
+          ) : (
+            <a href={writeupSearchUrl("htb", box.name)} target="_blank" rel="noreferrer" title="HTB write-ups are auth-gated — opens a search" className={btnSecondary}>
+              HTB ↗
+            </a>
+          )}
+          <span className="mx-1 text-faint">or</span>
           <input
-            type="password"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && saveToken()}
-            placeholder="Paste your HTB App Token (HTB profile → settings)"
-            className="mono min-w-0 flex-1 rounded border border-edge bg-ink/60 p-2 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && fromUrl(url)}
+            placeholder="paste a write-up URL…"
+            className="mono min-w-0 flex-1 rounded-md border border-edge bg-ink/60 px-2 py-1 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
           />
-          <button
-            type="button"
-            onClick={saveToken}
-            disabled={working || !tokenInput.trim()}
-            className={`label rounded px-3 py-1.5 transition-colors ${
-              tokenInput.trim() && !working
-                ? "bg-fg text-ink hover:bg-fg/90"
-                : "bg-signal/20 text-signal disabled:opacity-40"
-            }`}
-          >
-            Save &amp; fetch
+          <button type="button" onClick={() => fromUrl(url)} disabled={working || !url.trim()} className="label rounded-md bg-signal/20 px-2.5 py-1 text-signal transition-colors hover:bg-signal/30 disabled:opacity-40">
+            Fetch
           </button>
-          <span className="w-full text-xs text-faint">Stored locally on this machine — never uploaded. Retired write-ups need HTB VIP.</span>
         </div>
-      )}
 
-      {open && (
-        <div className="mt-3 space-y-2 border-t border-edge/60 pt-3">
-          {/* URL */}
+        {showToken && (
           <div className="flex flex-wrap items-center gap-2">
             <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && fromUrl(url)}
-              placeholder={`Write-up URL for ${box.name} (0xdf, a GitHub gist, any page)`}
-              className="mono min-w-0 flex-1 rounded border border-edge bg-ink/60 p-2 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
+              type="password"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveToken()}
+              placeholder="Paste your HTB App Token (profile → settings) — stored locally, needs VIP"
+              className="mono min-w-0 flex-1 rounded-md border border-edge bg-ink/60 px-2 py-1 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
             />
-            <button
-              type="button"
-              onClick={() => fromUrl(url)}
-              disabled={working || !url.trim()}
-              className="label rounded bg-signal/20 px-3 py-1.5 text-signal transition-colors hover:bg-signal/30 disabled:opacity-40"
-            >
-              Fetch
+            <button type="button" onClick={saveToken} disabled={working || !tokenInput.trim()} className="label rounded-md bg-fg px-2.5 py-1 text-ink transition-colors hover:bg-fg/90 disabled:opacity-40">
+              Save &amp; fetch
             </button>
           </div>
-          {/* paste */}
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={5}
-            placeholder="…or paste the write-up text here. Read locally to extract the intended path — nothing is uploaded."
-            className="mono w-full resize-y rounded border border-edge bg-ink/60 p-2 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
-          />
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => extract(text, "pasted")}
-              disabled={working || !text.trim()}
-              className="label rounded bg-signal/20 px-3 py-1 text-signal transition-colors hover:bg-signal/30 disabled:opacity-40"
-            >
-              {working ? status.msg ?? "Analyzing…" : "Analyze"}
-            </button>
-            <span className="text-xs text-faint">Offline — read by the local model only; your session stays on this machine.</span>
-          </div>
-        </div>
-      )}
+        )}
 
-      {status.kind === "error" && status.msg && <p className="mt-2 text-xs text-detour">{status.msg}</p>}
-      {working && !open && <p className="mt-2 text-xs text-faint">{status.msg}</p>}
-    </div>
+        {/* paste */}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={3}
+          placeholder="…or paste the write-up text here. Read locally to extract the intended path — nothing is uploaded."
+          className="mono w-full resize-y rounded-md border border-edge bg-ink/60 px-2 py-1.5 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
+        />
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => extract(text, "pasted")} disabled={working || !text.trim()} className="label rounded-md bg-signal/20 px-2.5 py-1 text-signal transition-colors hover:bg-signal/30 disabled:opacity-40">
+            {working ? "Working…" : "Analyze"}
+          </button>
+          {status.kind === "error" && status.msg ? (
+            <span className="text-xs text-detour">{status.msg}</span>
+          ) : working ? (
+            <span className="text-xs text-faint">{status.msg}</span>
+          ) : (
+            <span className="text-xs text-faint">Offline — your session stays on this machine.</span>
+          )}
+        </div>
+      </div>
+    </details>
   );
 }

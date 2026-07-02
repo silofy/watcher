@@ -2,7 +2,6 @@ import type { CSSProperties, ReactNode } from "react";
 import { useReport } from "./store/report";
 import { PhaseAudit } from "./components/PhaseAudit";
 import { IdentityBar } from "./components/IdentityBar";
-import { WriteupControl } from "./components/WriteupControl";
 import { SessionFacts } from "./components/SessionFacts";
 import { TrimControl } from "./components/TrimControl";
 import { Collapse } from "./components/ui";
@@ -90,11 +89,6 @@ export function App() {
             {/* 1 — the verdict band: identity, did you root it, the grade + key numbers, the one lesson */}
             <Rise i={0} className="lg:col-span-12">
               <IdentityBar />
-            </Rise>
-            {/* the reference-path control — high-level, docked at the top so unlocking the comparison
-                is a first-class action next to the takeaway, not buried in a details pane */}
-            <Rise i={1} className="lg:col-span-12">
-              <WriteupControl />
             </Rise>
             {/* 2 — the spine: Lighthouse-style phase audit, one card per MITRE phase, actionable text */}
             <Rise i={1} id="audit" className="lg:col-span-12">
