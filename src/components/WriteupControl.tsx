@@ -9,6 +9,13 @@ type Status = { kind: "idle" | "working" | "error"; msg?: string };
 
 const SRC: Record<string, string> = { "htb-official": "HTB official", "0xdf": "0xdf", "ippsec-notes": "IppSec notes", "htb-auto": "HTB", pasted: "pasted write-up" };
 
+/** Tauri rejects a command with the raw `Err(String)`, not an Error — surface either form. */
+function errMsg(e: unknown, fallback: string): string {
+  if (typeof e === "string" && e.trim()) return e;
+  if (e instanceof Error && e.message) return e.message;
+  return fallback;
+}
+
 /**
  * Reference-path control — the high-level "unlock the comparison" action, docked at the top of the
  * debrief where the key takeaway lives. Quick source shortcuts (0xdf auto-fetches via its sitemap;
@@ -25,7 +32,6 @@ export function WriteupControl() {
   const [htbReady, setHtbReady] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
-  const hasDag = report.golden_dag.length > 0;
   const working = status.kind === "working";
 
   useEffect(() => {
@@ -69,7 +75,7 @@ export function WriteupControl() {
       const content = await fetchWriteupFrom0xdf(box.name);
       await extract(content, "0xdf");
     } catch (e) {
-      setStatus({ kind: "error", msg: e instanceof Error ? e.message : "0xdf lookup failed — paste the URL instead." });
+      setStatus({ kind: "error", msg: errMsg(e, "0xdf lookup failed — paste the URL instead.") });
     }
   }
 
@@ -83,7 +89,7 @@ export function WriteupControl() {
       const content = await fetchHtbWriteup(box.name);
       await extract(content, "htb-official");
     } catch (e) {
-      setStatus({ kind: "error", msg: `${e instanceof Error ? e.message : "HTB fetch failed"} — or use URL / paste.` });
+      setStatus({ kind: "error", msg: `${errMsg(e, "HTB fetch failed")} — or use URL / paste.` });
     }
   }
 
@@ -97,88 +103,84 @@ export function WriteupControl() {
       setHtbReady(true);
       await fromHtb(); // token in place — go straight to the fetch
     } catch (e) {
-      setStatus({ kind: "error", msg: e instanceof Error ? e.message : "Couldn't save the token." });
+      setStatus({ kind: "error", msg: errMsg(e, "Couldn't save the token.") });
     }
   }
 
   return (
     <div className="rounded-lg border border-edge bg-panel-2/50 px-4 py-3">
-      {/* header: title + how-to-add actions on one aligned row */}
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+      {/* status row: what's loaded, or the retired/active availability hint */}
+      <div className="flex items-center justify-between gap-2">
         <span className="label text-faint">Reference path</span>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {!writeup && <span className="label text-xs text-faint">Load from</span>}
-          <button
-            type="button"
-            onClick={from0xdf}
-            disabled={working}
-            title={`Auto-fetch 0xdf's write-up for ${box.name}`}
-            className="rounded border border-signal/50 px-2 py-1 text-xs font-medium text-signal transition-colors hover:bg-signal/15 disabled:opacity-40"
-          >
-            0xdf
-          </button>
-          <a
-            href={writeupSearchUrl("ippsec", box.name)}
-            target="_blank"
-            rel="noreferrer"
-            title="IppSec is video — opens a search to find it"
-            className="rounded border border-edge px-2 py-1 text-xs text-muted transition-colors hover:text-fg"
-          >
-            IppSec ↗
-          </a>
-          {isDesktop() ? (
-            <button
-              type="button"
-              onClick={fromHtb}
-              disabled={working}
-              title={htbReady ? `Fetch HTB's official write-up for ${box.name}` : "Add your HTB App Token to auto-fetch the official write-up"}
-              className="rounded border border-edge px-2 py-1 text-xs text-muted transition-colors hover:text-fg disabled:opacity-40"
-            >
-              HTB{htbReady ? "" : " ⚙"}
-            </button>
-          ) : (
-            <a
-              href={writeupSearchUrl("htb", box.name)}
-              target="_blank"
-              rel="noreferrer"
-              title="HTB write-ups are auth-gated — opens a search to find it"
-              className="rounded border border-edge px-2 py-1 text-xs text-muted transition-colors hover:text-fg"
-            >
-              HTB ↗
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="rounded border border-edge px-2 py-1 text-xs text-muted transition-colors hover:text-fg"
-          >
-            {open ? "Cancel" : hasDag ? "Replace" : "URL / paste"}
-          </button>
-        </div>
-      </div>
-
-      {/* status / explanation on its own full-width line */}
-      <div className="mt-2 text-sm">
         {writeup ? (
-          <span className="flex flex-wrap items-center gap-x-1.5">
+          <span className="flex flex-wrap items-center gap-x-1.5 text-sm">
             <span className="text-match">✓</span>
             <span className="font-semibold text-fg">{SRC[writeup.source] ?? writeup.source}</span>
             <span className="text-muted">write-up</span>
-            <span className="text-xs text-faint">· {Math.round(writeup.confidence * 100)}% extraction confidence</span>
+            <span className="text-xs text-faint">· {Math.round(writeup.confidence * 100)}% confidence</span>
           </span>
         ) : (
-          <div className="space-y-1">
-            <p className="text-muted">
-              No reference yet — we grade <span className="text-fg">how</span> you worked, not <span className="text-fg">what</span> you did. Link this box's write-up to compare your path against the intended solution — surfacing detours, skipped steps, and missed objectives.
-            </p>
-            <p className="text-xs text-faint">
-              {box.retired
-                ? "This box is retired, so community write-ups are available."
-                : "Write-ups are usually published once a box retires — active boxes may not have one yet."}
-            </p>
-          </div>
+          <span className="label text-xs text-faint">{box.retired ? "Retired · write-ups available" : "Active · may not be published yet"}</span>
         )}
       </div>
+
+      {/* PRIMARY action — loading the write-up is the point of this container, so it leads */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="label shrink-0 pr-0.5 text-faint">{writeup ? "Replace from" : "Load from"}</span>
+        <button
+          type="button"
+          onClick={from0xdf}
+          disabled={working}
+          title={`Auto-fetch 0xdf's write-up for ${box.name}`}
+          className="rounded-md bg-signal px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-signal/90 disabled:opacity-40"
+        >
+          0xdf
+        </button>
+        <a
+          href={writeupSearchUrl("ippsec", box.name)}
+          target="_blank"
+          rel="noreferrer"
+          title="IppSec is video — opens a search to find it"
+          className="rounded-md border border-edge px-3 py-1.5 text-sm text-muted transition-colors hover:border-edge-bright hover:text-fg"
+        >
+          IppSec ↗
+        </a>
+        {isDesktop() ? (
+          <button
+            type="button"
+            onClick={fromHtb}
+            disabled={working}
+            title={htbReady ? `Fetch HTB's official write-up for ${box.name}` : "Add your HTB App Token to auto-fetch the official write-up"}
+            className="rounded-md border border-edge px-3 py-1.5 text-sm text-muted transition-colors hover:border-edge-bright hover:text-fg disabled:opacity-40"
+          >
+            HTB{htbReady ? "" : " ⚙"}
+          </button>
+        ) : (
+          <a
+            href={writeupSearchUrl("htb", box.name)}
+            target="_blank"
+            rel="noreferrer"
+            title="HTB write-ups are auth-gated — opens a search to find it"
+            className="rounded-md border border-edge px-3 py-1.5 text-sm text-muted transition-colors hover:border-edge-bright hover:text-fg"
+          >
+            HTB ↗
+          </a>
+        )}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-md border border-edge px-3 py-1.5 text-sm text-muted transition-colors hover:border-edge-bright hover:text-fg"
+        >
+          {open ? "Cancel" : "URL / paste"}
+        </button>
+      </div>
+
+      {/* SECONDARY — the why, demoted beneath the action */}
+      {!writeup && (
+        <p className="mt-2.5 text-xs leading-relaxed text-faint">
+          We grade <span className="text-muted">how</span> you worked, not <span className="text-muted">what</span> you did — link this box's write-up to compare your path against the intended solution: detours, skipped steps, and missed objectives.
+        </p>
+      )}
 
       {showToken && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-edge/60 pt-3">
@@ -194,7 +196,11 @@ export function WriteupControl() {
             type="button"
             onClick={saveToken}
             disabled={working || !tokenInput.trim()}
-            className="label rounded bg-signal/20 px-3 py-1.5 text-signal transition-colors hover:bg-signal/30 disabled:opacity-40"
+            className={`label rounded px-3 py-1.5 transition-colors ${
+              tokenInput.trim() && !working
+                ? "bg-fg text-ink hover:bg-fg/90"
+                : "bg-signal/20 text-signal disabled:opacity-40"
+            }`}
           >
             Save &amp; fetch
           </button>
