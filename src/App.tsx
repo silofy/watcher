@@ -19,6 +19,7 @@ import { LlmStatusChip } from "./components/LlmStatusChip";
 import { PwnboxSync } from "./components/PwnboxSync";
 import { AiBanner } from "./components/AiBanner";
 import { LiveBridge } from "./components/LiveBridge";
+import { DemoDriver } from "./components/DemoDriver";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
   return (
@@ -51,6 +52,8 @@ export function App() {
 
   return (
     <div className="min-h-full">
+      {/* self-driving live-mode demo — only active on ?demo=live, otherwise renders nothing */}
+      <DemoDriver />
       <header className="sticky top-0 z-10 bg-ink/90 backdrop-blur">
         <div className="border-b border-edge">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-5">
