@@ -1,6 +1,8 @@
 // Capture README screenshots from the running dev server (npm run dev on :5173).
 // Drives the built-in Forge demo (a real HTB box) — live mid-run, then the resolved report and each
-// section. Run: node scripts/screenshots.mjs
+// section. Capture tooling only, not a project dep — install first:
+//   npm i -D playwright && npx playwright install chromium
+// Run: node scripts/screenshots.mjs
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 

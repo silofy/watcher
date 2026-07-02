@@ -1,5 +1,7 @@
 // Record a GIF of the live Forge demo (kill-chain climbing, stealth burning, commands streaming).
 // Pure JS (no ffmpeg): capture element PNG frames with Playwright, decode with pngjs, encode with gifenc.
+// Capture tooling only, not a project dep — install first:
+//   npm i -D playwright pngjs gifenc && npx playwright install chromium
 // Run: node scripts/gif.mjs
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
