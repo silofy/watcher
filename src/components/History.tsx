@@ -30,7 +30,15 @@ function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate font-display text-lg font-bold leading-tight text-fg">{m.name}</span>
-          {c.recording ? (
+          {c.demo ? (
+            <span
+              title="A scripted demo — opens and plays the run live, start to finish."
+              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-signal"
+              style={{ background: "color-mix(in oklch, var(--color-signal) 14%, transparent)" }}
+            >
+              ▶ Watch live demo
+            </span>
+          ) : c.recording ? (
             <span
               title="Live — capturing now. Stops when you exit the capture agent (or the box is terminated)."
               className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-signal"
@@ -75,7 +83,7 @@ function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
 }
 
 export function History() {
-  const { sessionCards, switchSession, ingestLiveReport } = useReport();
+  const { sessionCards, switchSession, ingestLiveReport, startLiveDemo } = useReport();
   const fileRef = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
@@ -140,7 +148,7 @@ export function History() {
       ) : (
         <div className="space-y-2">
           {cards.map((c) => (
-            <Row key={c.id} c={c} onOpen={() => switchSession(c.id)} />
+            <Row key={c.id} c={c} onOpen={() => (c.demo ? startLiveDemo() : switchSession(c.id))} />
           ))}
         </div>
       )}

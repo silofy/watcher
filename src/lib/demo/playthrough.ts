@@ -8,8 +8,9 @@
  * time-compressed replay. Tactics follow the real classifier, and the golden path is authored so the
  * alignment resolves to 9/10 objectives (one skipped — the cron check) for a believable comparison.
  */
-import type { GoldenObjective, Session } from "../../types/report";
+import type { GoldenObjective, Session, WatcherReport } from "../../types/report";
 import type { RawCommand } from "../pipeline/types";
+import { assembleReport } from "../pipeline/ingest";
 
 const START = Date.parse("2026-06-01T20:00:00Z");
 
@@ -57,16 +58,21 @@ export const DEMO_RAW: RawCommand[] = (() => {
   });
 })();
 
+const DEMO_END = DEMO_RAW[DEMO_RAW.length - 1].ended_at_ms;
+
 export const DEMO_SESSION: Session = {
   uuid: "demo-forge-0001-0001-000000000001",
   started_at: new Date(START).toISOString(),
-  ended_at: new Date(START).toISOString(),
+  ended_at: new Date(DEMO_END).toISOString(),
   target_scope: "HTB :: Forge",
   context_path: "host",
   shell: "bash",
   source: "local_pty",
   machine: { name: "Forge", os: "Linux", difficulty: "Medium", retired: true },
 };
+
+/** Stable store id for the demo session (matches what the live driver streams into). */
+export const DEMO_ID = `htb:${DEMO_SESSION.uuid}`;
 
 /** The intended path from the (pretend) write-up. Authored so alignment resolves to 9/10 — the cron
  *  check (pspy) is never run, so it stays skipped and shows up in "What you'd do differently". */
@@ -82,3 +88,12 @@ export const DEMO_GOLDEN: GoldenObjective[] = [
   { objective: "escalate_to_root", tactic: "TA0004", satisfied_by: ["sudo tar", "sudo"], depends_on: ["abuse_sudo_rule"] },
   { objective: "capture_root_flag", tactic: "TA0004", satisfied_by: ["cat root.txt"], depends_on: ["escalate_to_root"] },
 ];
+
+/**
+ * The fully-resolved demo report — the whole playthrough graded against the intended path. Pre-registered
+ * in the store so a "Forge" card always shows in History; opening it replays the run live (see runLiveDemo).
+ */
+export const DEMO_REPORT: WatcherReport = {
+  ...assembleReport(DEMO_RAW, { session: DEMO_SESSION, golden: DEMO_GOLDEN }),
+  recording: false,
+};

@@ -16,6 +16,8 @@ import { machineOf, type MachineMeta } from "../lib/machine";
 import { finalizeLiveReport } from "../lib/finalize";
 import { sshSessionsFromDir, type SshLogFile } from "../lib/ssh/ingest";
 import { isLiveRecording } from "../lib/live";
+import { assembleReport } from "../lib/pipeline/ingest";
+import { DEMO_RAW, DEMO_SESSION, DEMO_GOLDEN, DEMO_ID, DEMO_REPORT } from "../lib/demo/playthrough";
 
 /**
  * The normalized store. The report blob is resolved from, in order:
@@ -101,6 +103,8 @@ export interface SessionCard {
   episodes: number;
   recording: boolean;
   isLatest: boolean;
+  /** The scripted demo session — opening it replays the run live rather than opening a static debrief. */
+  demo: boolean;
 }
 
 function toCard(id: string, r: WatcherReport): SessionCard {
@@ -121,6 +125,7 @@ function toCard(id: string, r: WatcherReport): SessionCard {
     episodes: r.episodes.length,
     recording: isLiveRecording(r), // flag + heartbeat — a dead capture isn't "live"
     isLatest: false,
+    demo: id === DEMO_ID,
   };
 }
 
@@ -133,6 +138,10 @@ function cardsFrom(): SessionCard[] {
 // Open on the fullest engagement (most episodes), tie-broken by recency — the headline debrief.
 const DEFAULT_ID =
   [...cardsFrom()].sort((a, b) => b.episodes - a.episodes || Date.parse(b.ended_at) - Date.parse(a.ended_at))[0]?.id ?? SESSIONS[0].id;
+
+// Register the scripted demo AFTER DEFAULT_ID is chosen, so it shows as a History card (openable as a
+// live replay) without ever being the session the app lands on.
+REPORTS[DEMO_ID] = DEMO_REPORT;
 
 type View = "debrief" | "history" | "install";
 
@@ -162,6 +171,8 @@ interface ReportState extends Derived {
   liveBanner: { id: string; name: string } | null;
   /** Layer-2 provenance once a write-up's golden DAG is applied to the active report. */
   writeup: { source: string; confidence: number } | null;
+  /** Live-demo progress, when the scripted playthrough is streaming; null when idle. */
+  demo: { phase: "recording" | "resolved" | "compared"; n: number; total: number } | null;
 
   setView: (v: View) => void;
   /** Dismiss the write-up gate for this session and show the run-only report. */
@@ -173,6 +184,9 @@ interface ReportState extends Derived {
    *  SSH-session log files (folded in as on-target commands for the matching session). */
   ingestLiveReport: (report: WatcherReport, sshFiles?: SshLogFile[]) => void;
   dismissLiveBanner: () => void;
+  /** Start (or restart) the scripted live-box demo — streams DEMO_RAW into the live pipeline one
+   *  command at a time, then resolves and unlocks the intended-path comparison. */
+  startLiveDemo: () => void;
   setTrim: (range: [number, number] | null) => void;
   clearTrim: () => void;
   hover: (seq: number | null) => void;
@@ -187,6 +201,13 @@ interface ReportState extends Derived {
 
 const RESET = { hoveredSeq: null, selectedSeq: null, zoomWin: null, playheadMs: 0, playing: false, gateDismissed: false } as const;
 const DEFAULT_ENTRY = SESSIONS.find((s) => s.id === DEFAULT_ID) ?? SESSIONS[0];
+
+// The live-demo driver runs on real timers outside React; module-scoped so a re-entrant start is a no-op
+// and a restart can clear the prior run cleanly.
+const DEMO_TICK_MS = 1500;
+const DEMO_GOLDEN_DELAY_MS = 2200;
+let demoTick: ReturnType<typeof setInterval> | undefined;
+let demoGoldenTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useReport = create<ReportState>((set, get) => ({
   sessions: SESSIONS.map((s) => ({ id: s.id, label: s.label })),
@@ -207,6 +228,7 @@ export const useReport = create<ReportState>((set, get) => ({
   playing: false,
   liveBanner: null,
   writeup: null,
+  demo: null,
 
   setView: (view) => set({ view }),
   setGateDismissed: (gateDismissed) => set({ gateDismissed }),
@@ -217,7 +239,7 @@ export const useReport = create<ReportState>((set, get) => ({
     // Explicitly opening a session (from History, the live banner, etc.) goes straight to the debrief —
     // never re-prompt for a write-up here. The gate is for the initial landing; you can still add a
     // reference path from inside the debrief (Reference path → Add write-up).
-    set({ activeId: id, view: "debrief", fullReport: r, trimSeq: null, ...derive(r), ...RESET, gateDismissed: true, liveBanner: banner?.id === id ? null : banner, writeup: null });
+    set({ activeId: id, view: "debrief", fullReport: r, trimSeq: null, ...derive(r), ...RESET, gateDismissed: true, liveBanner: banner?.id === id ? null : banner, writeup: null, demo: id === DEMO_ID ? get().demo : null });
   },
 
   applyGoldenDag: (golden, meta) => {
@@ -250,6 +272,39 @@ export const useReport = create<ReportState>((set, get) => ({
     set(patch);
   },
   dismissLiveBanner: () => set({ liveBanner: null }),
+
+  startLiveDemo: () => {
+    // restart cleanly if a prior run is mid-flight (e.g. re-clicked from History)
+    if (demoTick) clearInterval(demoTick);
+    if (demoGoldenTimer) clearTimeout(demoGoldenTimer);
+    const total = DEMO_RAW.length;
+    let step = 0;
+
+    const advance = () => {
+      step += 1;
+      const live = step < total;
+      // heartbeat: while live, ended_at = now so isLiveRecording() keeps the debrief in live mode
+      const session = { ...DEMO_SESSION, ended_at: live ? new Date().toISOString() : DEMO_SESSION.ended_at };
+      const base = assembleReport(DEMO_RAW.slice(0, step), { session, golden: [] });
+      get().ingestLiveReport({ ...base, recording: live });
+      if (step === 1) get().switchSession(DEMO_ID); // land on the debrief, viewing the live session
+      set({ demo: { phase: live ? "recording" : "resolved", n: step, total } });
+
+      if (step >= total) {
+        clearInterval(demoTick);
+        demoTick = undefined;
+        // the run is done and archived; a beat later "the writeup loads" and unlocks the comparison
+        demoGoldenTimer = setTimeout(() => {
+          get().applyGoldenDag(DEMO_GOLDEN, { source: "0xdf", confidence: 0.92 });
+          set({ demo: { phase: "compared", n: total, total } });
+        }, DEMO_GOLDEN_DELAY_MS);
+      }
+    };
+
+    set({ view: "debrief", demo: { phase: "recording", n: 0, total } });
+    demoTick = setInterval(advance, DEMO_TICK_MS);
+    advance(); // fire the first command immediately
+  },
 
   setTrim: (range) => {
     set({ trimSeq: range, ...derive(applyTrim(get().fullReport, range)), ...RESET });

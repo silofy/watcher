@@ -3,6 +3,8 @@ import { assembleReport } from "../src/lib/pipeline/ingest";
 import { DEMO_RAW, DEMO_SESSION, DEMO_GOLDEN } from "../src/lib/demo/playthrough";
 import { detectFlags } from "../src/lib/flags";
 import { finalizeLiveReport } from "../src/lib/finalize";
+import { DEMO_ID } from "../src/lib/demo/playthrough";
+import { useReport } from "../src/store/report";
 
 /**
  * The scripted demo doubles as a validation harness for the live branch: it exercises assembleReport →
@@ -30,6 +32,14 @@ describe("demo playthrough", () => {
     expect(satisfied).toHaveLength(9);
     expect(skipped.map((o) => o.objective)).toEqual(["check_cron_jobs"]);
     expect(Math.round(report.metrics.objective_coverage_pct)).toBe(90);
+  });
+
+  it("registers a demo card in History without becoming the default session", () => {
+    const s = useReport.getState();
+    const card = s.sessionCards.find((c) => c.id === DEMO_ID);
+    expect(card?.demo).toBe(true);
+    expect(card?.machine.name).toBe("Forge");
+    expect(s.activeId).not.toBe(DEMO_ID); // never the session the app lands on
   });
 
   it("marks a live snapshot as recording and resolves when it ends", () => {
