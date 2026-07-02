@@ -24,10 +24,15 @@ Best when you attack from a local Kali/WSL/PowerShell over HTB's OpenVPN. Fully 
 3. Hack as normal — `nmap`, `evil-winrm`, etc. Each completed command appears in the debrief within
    ~1–4 s. Type `exit` to stop.
 
-`--attach` first looks for the newest still-recording session in `~/.watcher/sessions/` (so a second
-terminal can join one that's already recording). If there is none, it **self-starts a session** named
-by `--machine`. Either way it must run on the **same machine** as the desktop app (it reads that local
+`--attach` first looks for a still-recording session in `~/.watcher/sessions/`. If one for the **same
+box** is already live, it asks whether to join it as a second terminal or start a fresh engagement
+(`--new` forces a new one, no prompt); if there is none, it **self-starts a session** named by
+`--machine`. Either way it must run on the **same machine** as the desktop app (it reads that local
 folder), and it closes the session it started on `exit`.
+
+Pass `--shell bash` (or `pwsh`, `zsh`, …) to watch a specific shell rather than your login shell —
+handy for git-bash / WSL on Windows. The shell's *family* picks the boundary markers, so `--shell bash`
+on Windows still gets bash's shell-integration, not PowerShell's.
 
 Note: if you `ssh`/`openvpn` into the box and then run a *nested* shell, OSC-133 boundaries bracket
 the **outer** shell — the nested session is one block. Run commands in the watched shell directly,
@@ -72,7 +77,9 @@ to watch. Instead, run the agent **inside** Pwnbox and import the result.
 | flag | meaning |
 |------|---------|
 | `--attach` | stream into a live local session; self-starts one if none is recording (same machine) |
+| `--new` | with `--attach`, skip the join-or-new prompt and force a fresh engagement |
 | `--export <file>` | standalone capture → write a complete report to `<file>` (for Pwnbox) |
 | `--machine <name>` | name the box — identity for `--export` and for a self-started `--attach` (also `--os`, `--difficulty`) |
+| `--shell <name>` | shell to watch, by family — `bash`/`zsh`/`sh` or `pwsh`/`powershell` (default: your login shell) |
 | `-i` / `--interactive` | raw capture to NDJSON on stdout (no session file) |
 | `--forward <addr>` | ship envelopes to a daemon `--listen` socket instead of a file |

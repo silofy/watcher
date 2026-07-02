@@ -46,7 +46,8 @@ export function Install() {
         <Tier n={1} title="Capture your runs" req={<Req tone="desktop">desktop app · any OS</Req>} unlocks="Run a watched shell while you attack a box over OpenVPN — each command streams into the debrief live.">
           <Code>watcher-capture --attach --machine &lt;name&gt;</Code>
           <Step>Live — self-starts a session and streams each command as you run it. <code>exit</code> to stop. macOS / Linux / Windows.</Step>
-          <Step>A second terminal can run plain <code>watcher-capture --attach</code> to join a session that's already recording.</Step>
+          <Step>A second terminal running <code>watcher-capture --attach</code> on the same box asks whether to join the live session or start fresh — <code>--new</code> forces a new one.</Step>
+          <Step>Pick the shell with <code>--shell bash</code> (or <code>pwsh</code>, <code>zsh</code>, …) — handy for git-bash / WSL on Windows; defaults to your login shell.</Step>
         </Tier>
 
         <Tier n={2} title="Capture in Pwnbox" req={<Req tone="desktop">desktop app + SSH</Req>} unlocks="Pwnbox is a pixel stream — run the agent inside it, pull results over your own key (PC ↔ Pwnbox, no third party).">
@@ -54,8 +55,9 @@ export function Install() {
           <Step>Agent: <code>crates/capture/dist/watcher-capture-linux-x86_64</code> (<code>chmod +x</code>). Then top bar → <span className="text-fg">Pwnbox sync</span> → SSH host/user/key. scp-pulls every 15s into History.</Step>
         </Tier>
 
-        <Tier n={3} title="Reference path — the comparison" req={<Req tone="none">paste, no install</Req>} unlocks="Powers coverage, “What you'd do differently”, and the golden-path graph. Without it: your own deviations, time, stealth and techniques — no comparison.">
-          <Step><span className="text-fg">Paste:</span> <span className="text-fg">What you'd do differently → Reference path → Add write-up</span> (HTB / 0xdf / IppSec). Extracts the intended path locally — keyword fallback if Ollama is off.</Step>
+        <Tier n={3} title="Reference path — the comparison" req={<Req tone="none">1-click / paste</Req>} unlocks="Powers coverage, “What you'd do differently”, and the golden-path graph. Without it: your own deviations, time, stealth and techniques — no comparison.">
+          <Step><span className="text-fg">Reference path → Load from:</span> <code>0xdf</code> auto-fetches free, <code>URL / paste</code> takes any write-up, <code>IppSec</code> opens a search. Extracts the intended path locally — keyword fallback if Ollama is off.</Step>
+          <Step><span className="text-fg">HTB official (desktop):</span> click <code>HTB ⚙</code> and paste your HTB <span className="text-fg">App Token</span> to auto-pull the official write-up for a retired box. Needs HTB VIP; the token is stored only on your machine, never uploaded.</Step>
           <Step>Retired boxes have public write-ups; an active box has none, so the comparison stays off until it retires. Your own run is still graded in full.</Step>
         </Tier>
 

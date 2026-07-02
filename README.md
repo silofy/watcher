@@ -28,7 +28,7 @@ Everything runs on your machine. No account, no telemetry, no cloud.
 - **Verdict** — an explainable grade (coverage · technique breadth · efficiency · stealth ·
   independence) plus a skill radar.
 - **Supporting views** — timeline, deviations, stealth/noise, and the command log on one shared axis.
-- **Intended-path comparison** — paste a write-up and your run is diffed against the optimal route.
+- **Intended-path comparison** — auto-pull or paste a write-up and your run is diffed against the optimal route.
 
 ## Capture your own runs
 
@@ -66,4 +66,5 @@ fixtures/       sample sessions   ·   scripts/ tests/   tooling & tests
 ## Privacy
 
 Your session never leaves the machine, redaction runs before anything hits disk, and the only optional
-outbound traffic is fetching public write-ups. More in [TESTING.md](TESTING.md).
+outbound traffic is fetching write-ups you ask for — a public blog, or your own HTB write-up via the
+API once you add a token (which stays on your machine). More in [TESTING.md](TESTING.md).
