@@ -194,8 +194,12 @@ fn run_scripted(
         events.push(TelemetryEvent::output(session, seq, now_us(), &cleaned, masked, confidence, platform));
     }
 
+    // Redaction runs before anything hits disk (the same invariant the attach path enforces): mask
+    // IPs, flag hashes, and credential tokens so this debug transcript can't leak a live IP or a root
+    // flag into a world-readable temp file.
     let dump = std::env::temp_dir().join("watcher-capture-transcript.txt");
-    let _ = std::fs::write(&dump, term.lock().unwrap().lines.join("\n"));
+    let transcript = watcher_core::redact(&term.lock().unwrap().lines.join("\n"));
+    let _ = std::fs::write(&dump, transcript);
     eprintln!("[watcher-capture] transcript -> {}", dump.display());
 
     let _ = write!(writer, "exit\r");

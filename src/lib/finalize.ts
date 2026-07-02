@@ -70,6 +70,12 @@ export function finalizeLiveReport(r: WatcherReport, sshSessions: SshSessionInpu
     evidence_seq: null,
   };
 
+  // Prepend our recap, but only drop the source's leading step if it is ITSELF a recap — otherwise the
+  // unconditional slice(1) threw away the highest-priority real insight (deriveCoaching puts advice
+  // like "Trim ~N min of detours" / "Quiet down nmap" at index 0, not a recap).
+  const sourceSteps = normalizeCoaching(r.coaching?.next_steps);
+  const body = sourceSteps[0]?.category === "Recap" ? sourceSteps.slice(1) : sourceSteps;
+
   return {
     ...aligned,
     phases,
@@ -87,7 +93,7 @@ export function finalizeLiveReport(r: WatcherReport, sshSessions: SshSessionInpu
     coaching: {
       ...r.coaching,
       skill_radar: deriveSkillRadar(episodes),
-      next_steps: [lead, ...normalizeCoaching(r.coaching?.next_steps).slice(1)],
+      next_steps: [lead, ...body],
     },
   };
 }

@@ -190,7 +190,7 @@ export function AttackTimeline() {
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="text-faint">#{hovered.ep.seq}</span>
             <span className="mono text-fg">{hovered.ep.binary}</span>
-            {hovered.ep.alignment && <Chip color={ALIGNMENT_COLORS[hovered.ep.alignment]}>{hovered.ep.alignment.replace("_", "-")}</Chip>}
+            {hovered.ep.alignment && <Chip color={ALIGNMENT_COLORS[hovered.ep.alignment]}>{hovered.ep.alignment.replace(/_/g, "-")}</Chip>}
             <span className="text-xs" style={{ color: ACTOR_COLORS[hovered.ep.actor] }}>
               {hovered.ep.actor.replace("_", " ")}
             </span>

@@ -1,6 +1,6 @@
 import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
-import { computeGrade, gradeColor, RUBRIC, type RubricKey } from "../lib/bridge/grade";
+import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
 import { minimizedBundle } from "../lib/bridge/bundle";
 import { isLiveRecording } from "../lib/live";
 
@@ -17,8 +17,8 @@ const RUBRIC_AXES: { key: RubricKey; short: string }[] = [
 const CX = 120;
 const CY = 115;
 const R = 78;
-function point(i: number, frac: number): [number, number] {
-  const angle = -Math.PI / 2 + (i * 2 * Math.PI) / RUBRIC_AXES.length;
+function point(i: number, frac: number, n: number): [number, number] {
+  const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
   return [CX + Math.cos(angle) * R * frac, CY + Math.sin(angle) * R * frac];
 }
 
@@ -60,7 +60,12 @@ export function Assessment() {
   const flagged = grade.independence_gate.flagged;
   const satisfied = bundle.evidence_digests.filter((d) => d.satisfied).length;
 
-  const valuePoly = RUBRIC_AXES.map((a, i) => point(i, grade.components[a.key].raw / 100).join(",")).join(" ");
+  // Independence is only a rubric axis when it was actually measured; otherwise it's excluded from the
+  // grade (see computeGrade) and so it drops off the radar and the breakdown table too.
+  const axes = RUBRIC_AXES.filter((a) => a.key !== "independence" || grade.independence_gate.measured);
+  const n = axes.length;
+
+  const valuePoly = axes.map((a, i) => point(i, grade.components[a.key].raw / 100, n).join(",")).join(" ");
 
   return (
     <Section
@@ -84,22 +89,22 @@ export function Assessment() {
         {/* the grade radar — the five weighted dimensions, letter in the center */}
         <svg viewBox="0 0 240 230" className="mx-auto w-full max-w-[300px]">
           {[0.25, 0.5, 0.75, 1].map((ring) => (
-            <polygon key={ring} points={RUBRIC_AXES.map((_, i) => point(i, ring).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
+            <polygon key={ring} points={axes.map((_, i) => point(i, ring, n).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
           ))}
-          {RUBRIC_AXES.map((_, i) => {
-            const [x, y] = point(i, 1);
+          {axes.map((_, i) => {
+            const [x, y] = point(i, 1, n);
             return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-edge)" strokeWidth={1} />;
           })}
           <polygon points={valuePoly} fill="var(--color-alt)" fillOpacity={0.18} stroke="var(--color-alt)" strokeWidth={2} />
           {/* vertices colored by tier — independence turns red when it trips the gate */}
-          {RUBRIC_AXES.map((a, i) => {
+          {axes.map((a, i) => {
             const raw = grade.components[a.key].raw;
-            const [x, y] = point(i, raw / 100);
+            const [x, y] = point(i, raw / 100, n);
             const col = a.key === "independence" && flagged ? "var(--color-loud)" : tierColor(raw);
             return <circle key={a.key} cx={x} cy={y} r={3.2} fill={col} />;
           })}
-          {RUBRIC_AXES.map((a, i) => {
-            const [x, y] = point(i, 1.24);
+          {axes.map((a, i) => {
+            const [x, y] = point(i, 1.24, n);
             const lit = a.key === "independence" && flagged;
             return (
               <text key={a.key} x={x} y={y} fontSize="11" fill={lit ? "var(--color-loud)" : "var(--color-faint)"} textAnchor="middle" dominantBaseline="middle">
@@ -126,7 +131,7 @@ export function Assessment() {
             <span className="text-right">→ pts</span>
           </div>
           <div className="divide-y divide-edge/50">
-            {(Object.keys(RUBRIC) as RubricKey[]).map((k) => {
+            {axes.map(({ key: k }) => {
               const c = grade.components[k];
               const gate = k === "independence" && flagged;
               const barColor = gate ? "var(--color-loud)" : tierColor(c.raw);
@@ -175,7 +180,7 @@ export function Assessment() {
             </div>
             <ul className="space-y-1 text-muted">
               <li>The box: <span className="text-fg">{bundle.session.target_scope}</span> <span className="text-faint">(IP removed)</span></li>
-              <li>Your grade, plus the {RUBRIC_AXES.length} scores behind it</li>
+              <li>Your grade, plus the {axes.length} scores behind it</li>
               <li>
                 Which objectives you reached — <span className="text-fg">{satisfied} of {bundle.evidence_digests.length}</span>{" "}
                 <span className="text-faint">(just a checkmark per objective, not how you did it)</span>

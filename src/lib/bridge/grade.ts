@@ -39,7 +39,7 @@ export interface Grade {
   score: number;
   letter: string;
   components: Record<RubricKey, GradeComponent>;
-  independence_gate: { score: number; threshold: number; flagged: boolean };
+  independence_gate: { score: number; threshold: number; flagged: boolean; measured: boolean };
   routed_to: "grade" | "integrity_queue";
   rationale: string[];
 }
@@ -64,6 +64,12 @@ export function gradeColor(letter: string): string {
 
 export function computeGrade(report: WatcherReport): Grade {
   const m = report.metrics;
+  // Independence is a MEASURED integrity signal, not a score that defaults to zero. Today only seeded
+  // fixtures carry it — no live capture ever computes it — so treating "absent" as 0 both docked a real
+  // run 15 points and falsely routed it to the integrity queue. When it wasn't measured, drop it from
+  // the rubric and the gate entirely and re-normalize the remaining weights.
+  const measured = m.independence != null;
+
   const raws: Record<RubricKey, number> = {
     coverage: clamp(m.objective_coverage_pct),
     breadth: clamp((m.technique_breadth / BREADTH_TARGET) * 100),
@@ -73,10 +79,15 @@ export function computeGrade(report: WatcherReport): Grade {
     independence: clamp(m.independence?.score ?? 0),
   };
 
+  const activeKeys = (Object.keys(RUBRIC) as RubricKey[]).filter((k) => k !== "independence" || measured);
+  const totalWeight = activeKeys.reduce((sum, k) => sum + RUBRIC[k], 0);
+
   const components = {} as Record<RubricKey, GradeComponent>;
   let score = 0;
   for (const key of Object.keys(RUBRIC) as RubricKey[]) {
-    const weight = RUBRIC[key];
+    // An excluded dimension carries weight 0; the rest are re-normalized so a missing independence
+    // signal neither inflates nor deflates the total.
+    const weight = activeKeys.includes(key) ? RUBRIC[key] / totalWeight : 0;
     const weighted = raws[key] * weight;
     components[key] = { raw: round1(raws[key]), weight, weighted: round1(weighted) };
     score += weighted;
@@ -84,7 +95,7 @@ export function computeGrade(report: WatcherReport): Grade {
   score = round1(score);
 
   const indep = raws.independence;
-  const flagged = indep < INDEPENDENCE_GATE;
+  const flagged = measured && indep < INDEPENDENCE_GATE;
 
   const rationale: string[] = [];
   if (flagged) {
@@ -101,7 +112,7 @@ export function computeGrade(report: WatcherReport): Grade {
     score,
     letter: letterFor(score),
     components,
-    independence_gate: { score: round1(indep), threshold: INDEPENDENCE_GATE, flagged },
+    independence_gate: { score: round1(indep), threshold: INDEPENDENCE_GATE, flagged, measured },
     routed_to: flagged ? "integrity_queue" : "grade",
     rationale,
   };

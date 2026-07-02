@@ -25,6 +25,20 @@ describe("equivalenceIndex (deterministic stand-in for the LLM judgment)", () =>
   it("requires the tactic to match", () => {
     expect(equivalenceIndex(ep({ binary: "nmap", tactic: "TA0004" }), obj)).toBe(-1);
   });
+
+  it("does not satisfy a flagged method with a different action of the same tool", () => {
+    const sudoObj: GoldenObjective = { objective: "enum_sudo", tactic: "TA0004", satisfied_by: ["sudo -l"] };
+    // shares the binary but not the `-l` flag → a different action, must not match
+    expect(equivalenceIndex(ep({ binary: "sudo", tactic: "TA0004", cmd: "sudo cat /root/notes" }), sudoObj)).toBe(-1);
+    expect(equivalenceIndex(ep({ binary: "sudo", tactic: "TA0004", cmd: "sudo -l" }), sudoObj)).toBe(0);
+  });
+
+  it("matches a tool token by equality, not as a substring inside a longer word", () => {
+    const idObj: GoldenObjective = { objective: "whoami", tactic: "TA0004", satisfied_by: ["id"] };
+    // "id" must not false-match inside "guid" / "printuid"
+    expect(equivalenceIndex(ep({ binary: "echo", tactic: "TA0004", cmd: "echo $guid" }), idObj)).toBe(-1);
+    expect(equivalenceIndex(ep({ binary: "id", tactic: "TA0004", cmd: "id" }), idObj)).toBe(0);
+  });
 });
 
 describe("alignEpisodes — full diff vs the golden DAG (§4.3)", () => {

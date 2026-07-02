@@ -61,7 +61,10 @@ export function CommandReplay() {
     const rate = timeline.totalMs / 22000;
     const tick = (ts: number) => {
       if (lastTs.current != null) {
-        const next = s.playheadMs + (ts - lastTs.current) * rate;
+        // Read the live playhead from the store, not the `s` snapshot captured when the effect ran —
+        // that value is frozen for the life of this closure, so accumulating off it stalled the DVR a
+        // fraction of a second in and it never reached totalMs to auto-stop.
+        const next = useReport.getState().playheadMs + (ts - lastTs.current) * rate;
         if (next >= timeline.totalMs) {
           s.scrub(timeline.totalMs);
           s.setPlaying(false);

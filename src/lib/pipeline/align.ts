@@ -25,13 +25,23 @@ function firstWord(s: string): string {
  */
 export function equivalenceIndex(ep: Episode, objective: GoldenObjective): number {
   if (ep.tactic !== objective.tactic) return -1;
-  const lowerCmd = ep.cmd.toLowerCase();
+  const cmdTokens = ep.cmd.toLowerCase().split(/\s+/).filter(Boolean);
+  const binary = ep.binary.toLowerCase();
   for (let i = 0; i < objective.satisfied_by.length; i++) {
-    const method = objective.satisfied_by[i].toLowerCase();
-    const tool = firstWord(method);
-    if (ep.binary.toLowerCase() === tool) return i;
-    if (tool && lowerCmd.includes(tool)) return i;
-    if (lowerCmd.includes(method)) return i;
+    const method = objective.satisfied_by[i].toLowerCase().trim();
+    if (!method) continue;
+    const parts = method.split(/\s+/);
+    const tool = firstWord(parts[0]);
+    // The method's tool must be the episode's binary, or appear as a whole command TOKEN — matched by
+    // equality, not substring, so short tools like "id"/"sh"/"ssh" don't false-match inside a longer
+    // word ("guid", "bash"). Matching stays at the intent layer, so a flagless method ("nmap",
+    // "cat user.txt") is satisfied by any use of that tool.
+    const toolMatches = binary === tool || cmdTokens.some((t) => firstWord(t) === tool);
+    if (!toolMatches) continue;
+    // But when the method pins a specific flag ("sudo -l"), that flag must actually be present — a bare
+    // `sudo cat /root/notes` shares the tool yet is a different action and must not satisfy it.
+    const flags = parts.slice(1).filter((a) => a.startsWith("-"));
+    if (flags.every((f) => cmdTokens.includes(f))) return i;
   }
   return -1;
 }

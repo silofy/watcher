@@ -108,21 +108,19 @@ export function DeviationTimeline() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.report.session.uuid, s.report.golden_dag.length, timeline.items.length]);
 
-  // honest, self-computed waste accounting (don't trust upstream metrics for the headline)
-  let detourMs = 0;
-  let loopMs = 0;
   const deviations: typeof items = [];
   for (const it of items) {
-    const k = kindOf(it.ep);
-    if (k === "detour") detourMs += it.ep.duration_ms;
-    if (k === "loop") loopMs += it.ep.duration_ms;
-    if (k !== "ontrack") deviations.push(it);
+    if (kindOf(it.ep) !== "ontrack") deviations.push(it);
   }
   const stalls = items.filter((it) => it.ep.gap_before_ms >= STUCK_MS);
-  const stuckMs = stalls.reduce((a, it) => a + it.ep.gap_before_ms, 0);
-  const lostMs = detourMs + loopMs + stuckMs;
-  const lostPct = timeline.totalMs ? Math.round((lostMs / timeline.totalMs) * 100) : 0;
   const biggestStall = stalls.slice().sort((a, b) => b.ep.gap_before_ms - a.ep.gap_before_ms)[0];
+
+  // Time lost — the canonical wasted / active-time figure the grade's efficiency and the bento "time
+  // lost" tile both report, so this detail headline can't contradict the glance. (It was self-computed
+  // over wall-clock totalMs before, which disagreed with the tile's t_active_ms basis.)
+  const tw = s.report.metrics.time_waster;
+  const lostMs = tw.detour_ms + tw.stuck_ms + tw.loop_ms;
+  const lostPct = Math.round((lostMs / Math.max(1, tw.t_active_ms)) * 100);
 
   // scale deviation-bar height by time cost relative to the worst one
   const maxCost = Math.max(1, ...deviations.map((it) => it.ep.duration_ms));
@@ -177,7 +175,7 @@ export function DeviationTimeline() {
         <Readout
           label="Time lost"
           value={fmtDuration(lostMs)}
-          sub={`${lostPct}% of the session`}
+          sub={`${lostPct}% of active time`}
           color={lostPct >= 30 ? "var(--color-detour)" : lostPct >= 15 ? "var(--color-stuck)" : "var(--color-match)"}
         />
         <Readout label="Dead-ends" value={String(deadEnds)} color={deadEnds ? "var(--color-detour)" : undefined} />

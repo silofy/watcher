@@ -6,6 +6,7 @@
  */
 import type { Coaching, CoachingStep, GoldenObjective, Metrics, Session, WatcherReport } from "../../types/report";
 import { round, type ComputedMetrics } from "../metrics";
+import { redactText } from "../redact";
 import { classifyCoaching } from "../coaching";
 import { ingestSshSession, type SshIngestOptions } from "../ssh/ingest";
 import { runPipeline } from "./index";
@@ -27,13 +28,21 @@ export interface TelemetryEvent {
   provenance?: { context_path?: string; platform?: string };
 }
 
-/** Parse a newline-delimited JSON telemetry stream. */
+/** Parse a newline-delimited JSON telemetry stream. Malformed lines are skipped (like the Rust
+ *  parse_ndjson's filter_map) so a single truncated line — e.g. a capture killed mid-write — doesn't
+ *  abort the whole ingest. */
 export function parseEnvelopes(ndjson: string): TelemetryEvent[] {
-  return ndjson
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => JSON.parse(l) as TelemetryEvent);
+  const out: TelemetryEvent[] = [];
+  for (const line of ndjson.split(/\r?\n/)) {
+    const l = line.trim();
+    if (!l) continue;
+    try {
+      out.push(JSON.parse(l) as TelemetryEvent);
+    } catch {
+      /* skip a malformed / truncated line */
+    }
+  }
+  return out;
 }
 
 /** Join command + output envelopes by seq into RawCommands (the daemon's clock-join). */
@@ -52,13 +61,16 @@ export function envelopesToRawCommands(events: TelemetryEvent[]): RawCommand[] {
       const o = outs.get(seq);
       const startMs = Math.floor(c.ts_utc_us / 1000);
       const endMs = o ? Math.floor(o.ts_utc_us / 1000) : startMs;
+      // Re-redact on the way in — the daemon never trusts an upstream agent's own scrubbing, and this
+      // direct capture→report→disk path (npm run ingest) would otherwise persist live IPs, 32-hex flag
+      // hashes, and key=value credentials verbatim. Mirrors what the Rust attach path does per episode.
       return {
-        cmd: c.payload.cmd ?? "",
+        cmd: redactText(c.payload.cmd ?? ""),
         started_at_ms: startMs,
         ended_at_ms: Math.max(startMs, endMs),
         exit_code: c.payload.exit_code ?? null,
         output_line_count: o?.payload.line_count ?? 0,
-        output_digest: o?.payload.text,
+        output_digest: o?.payload.text != null ? redactText(o.payload.text) : undefined,
         context_path: c.provenance?.context_path,
       } satisfies RawCommand;
     });

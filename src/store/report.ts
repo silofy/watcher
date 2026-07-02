@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { GoldenObjective, WatcherReport } from "../types/report";
-import { alignEpisodes, objectiveCoverage, ukcCoverage } from "../lib/pipeline";
+import { alignEpisodes } from "../lib/pipeline";
 import {
   buildTimeline,
   phaseWindows as computePhaseWindows,
@@ -9,7 +9,7 @@ import {
   type PhaseWindow,
   type TimeScale,
 } from "../lib/scale";
-import { computeMetrics, type ComputedMetrics } from "../lib/metrics";
+import { computeMetrics, round, type ComputedMetrics } from "../lib/metrics";
 import { applyTrim } from "../lib/trim";
 import { computeGrade } from "../lib/bridge/grade";
 import { machineOf, type MachineMeta } from "../lib/machine";
@@ -245,14 +245,24 @@ export const useReport = create<ReportState>((set, get) => ({
   applyGoldenDag: (golden, meta) => {
     const r = get().fullReport;
     const { episodes, golden: aligned } = alignEpisodes(r.episodes, golden);
+    // Re-alignment reclassifies episodes (detour → match/alternative), which moves efficiency and the
+    // other alignment-derived metrics — so re-derive the whole block, not just coverage, or the Grade
+    // would keep the stale efficiency while the KPI cards showed the improved one.
+    const scoped: WatcherReport = { ...r, episodes, golden_dag: aligned };
+    const cm = computeMetrics(scoped);
     const next: WatcherReport = {
-      ...r,
-      episodes,
-      golden_dag: aligned,
+      ...scoped,
       metrics: {
         ...r.metrics,
-        objective_coverage_pct: objectiveCoverage(aligned),
-        ukc_coverage_pct: ukcCoverage(episodes, aligned.map((o) => o.tactic)),
+        efficiency_pct: round(cm.efficiency_pct),
+        objective_coverage_pct: round(cm.objective_coverage_pct),
+        stealth_score: round(cm.stealth_score),
+        technique_breadth: cm.technique_breadth,
+        time_waster: cm.time_waster,
+        loud_moments: cm.loud_moments.map((l) => ({ seq: l.seq, noise: round(l.noise, 1) })),
+        ukc_coverage_pct: round(cm.ukc_coverage_pct),
+        ukc_progression: round(cm.ukc_progression),
+        weakness_breadth: cm.weakness_breadth,
       },
     };
     REPORTS[get().activeId] = next;
@@ -332,10 +342,16 @@ export const useReport = create<ReportState>((set, get) => ({
 export function episodeAtPlayhead(state: ReportState): number | null {
   const { items } = state.timeline;
   const t = state.playheadMs;
+  // The item whose window has most recently opened at time t. Don't `break` on the first future item:
+  // with a tapped SSH sub-session, items aren't strictly time-ordered by seq, so an early break would
+  // stop at an out-of-order gap and highlight the wrong command.
   let seq: number | null = null;
+  let best = -Infinity;
   for (const it of items) {
-    if (it.gapStart <= t) seq = it.ep.seq;
-    else break;
+    if (it.gapStart <= t && it.gapStart >= best) {
+      best = it.gapStart;
+      seq = it.ep.seq;
+    }
   }
   return seq;
 }
