@@ -45,8 +45,8 @@ Commands stream into the app live; `exit` to stop. Full guide (incl. Pwnbox):
 A small Rust agent captures your shell through a normal PTY (ConPTY on Windows, openpty on Unix — **no
 eBPF, ptrace, or kernel hooks**). The capture is processed **deterministically** (segmentation, MITRE
 tagging, golden-path diff, metrics) into one versioned JSON report
-(`schema/watcher-report.schema.json`) that the UI renders. An optional local LLM (Ollama) only sharpens
-the coaching text — it never changes the numbers.
+(`schema/watcher-report.schema.json`) that the UI renders. An optional model — local Ollama, or an
+opt-in cloud model — only sharpens the coaching text; it never changes the numbers.
 
 ## Layout
 
@@ -65,6 +65,9 @@ fixtures/       sample sessions   ·   scripts/ tests/   tooling & tests
 
 ## Privacy
 
-Your session never leaves the machine, redaction runs before anything hits disk, and the only optional
-outbound traffic is fetching write-ups you ask for — a public blog, or your own HTB write-up via the
-API once you add a token (which stays on your machine). More in [TESTING.md](TESTING.md).
+By default your session never leaves the machine, and redaction runs before anything hits disk. Two
+opt-in paths make outbound requests, each by your action: fetching a write-up you asked for (a public
+blog, or your own HTB write-up via the API once you add a token), and — only if you pick a **cloud**
+coaching model (Claude / ChatGPT / Gemini) over the local one — sending that model your commands,
+redacted first (IPs, creds, flags stripped). Rules-based and local (Ollama) coaching stay fully
+offline; API keys and tokens are stored only on your machine. More in [TESTING.md](TESTING.md).

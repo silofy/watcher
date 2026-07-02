@@ -61,9 +61,9 @@ export function Install() {
           <Step>Retired boxes have public write-ups; an active box has none, so the comparison stays off until it retires. Your own run is still graded in full.</Step>
         </Tier>
 
-        <Tier n={4} title="AI-refined coaching" req={<Req tone="advanced">optional · Ollama</Req>} unlocks="Rewrites coaching into command-aware advice. Fully local — session never leaves the device. Off = rules-based, still solid.">
-          <Code>ollama pull llama3.2</Code>
-          <Step>Then <span className="text-fg">Local AI · enable</span> in the top bar — refined steps carry an <span className="mono rounded bg-signal/20 px-1 text-signal">ai</span> tag.</Step>
+        <Tier n={4} title="AI-refined coaching" req={<Req tone="advanced">optional</Req>} unlocks="Rewrites each coaching step into command-aware advice (those carry an ai tag). Off = rules-based, still solid.">
+          <Step><span className="text-fg">Local (Ollama):</span> pick it in the top-bar <span className="text-fg">AI</span> menu — one click downloads the model (~2&nbsp;GB), then coaching runs fully offline; your commands go to the local model only.</Step>
+          <Step><span className="text-fg">Cloud (Claude / ChatGPT / Gemini):</span> pick one and paste your API key. Stronger models, but your commands leave the device (IPs, creds, flags redacted first) — off by default, key stored only on your machine.</Step>
         </Tier>
       </div>
 
