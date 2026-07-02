@@ -2,11 +2,44 @@ import ReactMarkdown from "react-markdown";
 import { useReport, activeSeq } from "../store/report";
 import { Section, Chip, tierColor } from "./ui";
 import { CAT_COLOR } from "../lib/coaching";
-import { buildPhaseAudits, SHORT_TACTIC, type AuditItem, type PhaseAudit as PhaseAuditT } from "../lib/audits";
+import { buildPhaseAudits, type AuditItem, type PhaseAudit as PhaseAuditT } from "../lib/audits";
 import { cweLabel } from "../lib/pipeline/frameworks";
 import { fmtDuration, fmtMinutes } from "../lib/format";
 
 const MD = "[&_code]:mono [&_code]:rounded [&_code]:bg-panel-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-fg [&_p]:m-0 [&_strong]:text-fg";
+
+/** Small inline glyphs for the phase context line — a bolt (efficiency), a terminal (commands), and
+ *  a crosshair (ATT&CK techniques). Stroke icons in currentColor; no emoji. */
+function Icon({ name }: { name: "efficiency" | "commands" | "techniques" }) {
+  const attrs = {
+    width: 13,
+    height: 13,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    className: "shrink-0 opacity-70",
+  };
+  if (name === "efficiency") return <svg {...attrs}><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" /></svg>;
+  if (name === "commands")
+    return (
+      <svg {...attrs}>
+        <polyline points="4 17 10 11 4 5" />
+        <line x1="12" y1="19" x2="20" y2="19" />
+      </svg>
+    );
+  return (
+    <svg {...attrs}>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="2" x2="12" y2="6" />
+      <line x1="12" y1="18" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="6" y2="12" />
+      <line x1="18" y1="12" x2="22" y2="12" />
+    </svg>
+  );
+}
 
 /** A small Lighthouse-style score ring (efficiency 0–100), colored by tier. */
 function ScoreRing({ value }: { value: number }) {
@@ -203,12 +236,26 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
       </summary>
 
       <div className="border-t border-edge px-4 py-3">
-        {/* quiet reference context — the raw counts, demoted out of the headline */}
-        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-faint">
-          <span>{p.efficiency}% time spent productively</span>
-          <span>· {p.commands} command{p.commands === 1 ? "" : "s"} over {fmtDuration(p.active_ms)}</span>
-          {p.techniques > 0 && <span>· {p.techniques} ATT&CK technique{p.techniques === 1 ? "" : "s"}</span>}
-          <span className="text-faint/70">· {SHORT_TACTIC[p.tactic] ?? p.tactic}</span>
+        {/* phase context — icon-led facts, promoted from a faint caption; the phase name is the card
+            title already, so it's not repeated here */}
+        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted">
+          <span className="flex items-center gap-1.5">
+            <Icon name="efficiency" />
+            <span className="font-semibold tabular-nums" style={{ color: tierColor(p.efficiency) }}>
+              {p.efficiency}%
+            </span>
+            time spent productively
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Icon name="commands" />
+            {p.commands} command{p.commands === 1 ? "" : "s"} over {fmtDuration(p.active_ms)}
+          </span>
+          {p.techniques > 0 && (
+            <span className="flex items-center gap-1.5">
+              <Icon name="techniques" />
+              {p.techniques} ATT&CK technique{p.techniques === 1 ? "" : "s"}
+            </span>
+          )}
         </div>
 
         {/* weakness classes exploited in this phase — the one framework lens that's genuinely phase-local */}
