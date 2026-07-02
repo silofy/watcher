@@ -79,12 +79,13 @@ export function WriteupControl() {
           </span>
         ) : (
           <span className="text-sm text-muted">
-            None yet — <span className="text-fg">grading your run only</span>. Add one to unlock the comparison.
+            No reference yet — we're grading <span className="text-fg">how</span> you worked, not <span className="text-fg">what</span> you did. Add this box's write-up to compare your run against the intended solution.
           </span>
         )}
 
         {/* quick source shortcuts — choose a source instead of hunting for a URL */}
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          {!writeup && <span className="label text-xs text-faint">Add from:</span>}
           <button
             type="button"
             onClick={from0xdf}
