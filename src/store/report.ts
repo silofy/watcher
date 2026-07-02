@@ -204,7 +204,7 @@ const DEFAULT_ENTRY = SESSIONS.find((s) => s.id === DEFAULT_ID) ?? SESSIONS[0];
 
 // The live-demo driver runs on real timers outside React; module-scoped so a re-entrant start is a no-op
 // and a restart can clear the prior run cleanly.
-const DEMO_TICK_MS = 1500;
+const DEMO_TICK_MS = 2000;
 const DEMO_GOLDEN_DELAY_MS = 2200;
 let demoTick: ReturnType<typeof setInterval> | undefined;
 let demoGoldenTimer: ReturnType<typeof setTimeout> | undefined;

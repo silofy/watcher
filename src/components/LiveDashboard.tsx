@@ -49,7 +49,10 @@ function Tile({ label, right, className = "", i = 0, children }: { label: string
 function VerticalBurn({ items, baseline, loudSeq }: { items: TimedEpisode[]; baseline: number; loudSeq: Set<number> }) {
   const noises = items.map((it) => ({ seq: it.ep.seq, noise: episodeNoise(it.ep) }));
   const totalCum = noises.reduce((a, b) => a + b.noise, 0);
-  const scaleMax = Math.max(baseline, totalCum, 1);
+  // keep headroom above the baseline so the ceiling line is always visible (not pinned to the clipped
+  // top edge) when the run is still quiet; once noise passes the baseline the column scales to it and the
+  // fill climbs into the "over-baseline" zone above the line.
+  const scaleMax = Math.max(baseline * 1.18, totalCum, 1);
   const ceilingPct = Math.min(100, (baseline / scaleMax) * 100); // where the lab-baseline sits on the column
 
   return (
