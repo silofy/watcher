@@ -86,10 +86,9 @@ function FlagStat({ label, state, at }: { label: string; state: "yes" | "no" | "
 
 /** The machine "about" header — identity, flags/tasks, session context, and the key takeaway. */
 export function IdentityBar() {
-  const { report, timeline, sessionCards, activeId, metrics } = useReport();
+  const { report, timeline, metrics } = useReport();
   const { golden_dag, coaching } = report;
   const machine = machineOf(report);
-  const card = sessionCards.find((c) => c.id === activeId);
   const first = normalizeCoaching(coaching.next_steps)[0];
   const narrative = first ? stepText(first) : undefined;
 
@@ -129,7 +128,6 @@ export function IdentityBar() {
               {machine.os && <Pill text={machine.os} />}
               {machine.retired && <Pill text="Retired" />}
               {machine.local && <Pill text="Local" />}
-              {card?.isLatest && <Pill text="Latest" color="var(--color-signal)" filled />}
             </div>
           </div>
         </div>
