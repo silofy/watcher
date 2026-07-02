@@ -14,7 +14,7 @@ function ScoreRing({ value }: { value: number }) {
   const c = 2 * Math.PI * r;
   const col = tierColor(value);
   return (
-    <div className="relative h-9 w-9 shrink-0">
+    <div className="relative h-14 w-14 shrink-0">
       <svg viewBox="0 0 32 32" className="h-full w-full -rotate-90">
         <circle cx="16" cy="16" r={r} fill="none" stroke="var(--color-edge)" strokeWidth="3" />
         <circle
@@ -30,7 +30,7 @@ function ScoreRing({ value }: { value: number }) {
           style={{ transition: "stroke-dashoffset 640ms var(--ease-out-expo)" }}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center font-display text-xs font-bold tabular-nums" style={{ color: col }}>
+      <span className="absolute inset-0 flex items-center justify-center font-display text-base font-bold tabular-nums" style={{ color: col }}>
         {value}
       </span>
     </div>
@@ -248,7 +248,7 @@ function GeneralCard({ items }: { items: AuditItem[] }) {
   return (
     <details className="rise rounded-lg border border-edge bg-panel">
       <summary className="flex cursor-pointer list-none items-center gap-3.5 px-4 py-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel-2 text-faint">∗</span>
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-panel-2 text-xl text-faint">∗</span>
         <div className="min-w-0 flex-1">
           <span className="font-display text-sm font-semibold tracking-tight text-fg">General</span>
           <div className="mt-0.5 text-xs text-muted">cross-cutting — not tied to a single phase</div>

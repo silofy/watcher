@@ -120,7 +120,7 @@ export function IdentityBar() {
       {/* identity + the headline grade */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3.5">
-          <MachineAvatar machine={machine} size={64} />
+          <MachineAvatar machine={machine} size={88} />
           <div className="min-w-0">
             <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{machine.name}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
