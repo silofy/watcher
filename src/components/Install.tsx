@@ -90,7 +90,7 @@ export function Install() {
 
         <Tier n="+" title="AI-refined coaching" req={<Req tone="advanced">optional</Req>} unlocks="Rewrites each coaching step into command-aware advice (those carry an ai tag). Off = rules-based, still solid.">
           <Step><span className="text-fg">Local (Ollama):</span> pick it in the top-bar <span className="text-fg">AI</span> menu — one click downloads the model (~2&nbsp;GB), then coaching runs fully offline; your commands go to the local model only.</Step>
-          <Step><span className="text-fg">Cloud (Claude / ChatGPT / Gemini):</span> pick one and paste your API key. Stronger models, but your commands leave the device (IPs, creds, flags redacted first) — off by default, key stored only on your machine.</Step>
+          <Step><span className="text-fg">Cloud (Claude / ChatGPT / OpenRouter / Gemini):</span> pick one and paste your API key. Stronger models, but your commands leave the device (IPs, creds, flags redacted first) — off by default, key stored only on your machine. OpenRouter routes to a namespaced model (default <code>openai/gpt-4o</code>).</Step>
         </Tier>
       </div>
 

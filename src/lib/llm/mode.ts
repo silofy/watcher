@@ -11,7 +11,7 @@ const KEY = "watcher.coachMode";
 export function getCoachMode(): CoachMode {
   try {
     const v = localStorage.getItem(KEY);
-    if (v === "rules" || v === "local" || v === "anthropic" || v === "openai" || v === "gemini") return v;
+    if (v === "rules" || v === "local" || v === "anthropic" || v === "openai" || v === "gemini" || v === "openrouter") return v;
   } catch {
     /* no localStorage (SSR / tests) */
   }

@@ -25,7 +25,7 @@ export * from "./refine";
 export async function resolveProvider(opts?: { url?: string; model?: string; mode?: CoachMode }): Promise<LlmProvider> {
   const mode = opts?.mode ?? getCoachMode();
   if (mode === "rules") return new NullProvider();
-  if (mode === "anthropic" || mode === "openai" || mode === "gemini") {
+  if (mode === "anthropic" || mode === "openai" || mode === "gemini" || mode === "openrouter") {
     const cloud = new CloudProvider(mode);
     return (await cloud.available()) ? cloud : new NullProvider();
   }

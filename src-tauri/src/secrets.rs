@@ -20,6 +20,7 @@ fn key_field(provider: &str) -> Option<&'static str> {
         "anthropic" => Some("anthropic_key"),
         "openai" => Some("openai_key"),
         "gemini" => Some("gemini_key"),
+        "openrouter" => Some("openrouter_key"),
         _ => None,
     }
 }
@@ -106,6 +107,7 @@ mod tests {
         assert_eq!(key_field("anthropic"), Some("anthropic_key"));
         assert_eq!(key_field("openai"), Some("openai_key"));
         assert_eq!(key_field("gemini"), Some("gemini_key"));
+        assert_eq!(key_field("openrouter"), Some("openrouter_key"));
         assert_eq!(key_field("evil"), None); // allowlist blocks arbitrary keys
     }
 

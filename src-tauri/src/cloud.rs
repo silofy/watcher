@@ -1,4 +1,4 @@
-//! Cloud coaching providers (Claude / OpenAI / Gemini). This is the opt-in path that trades the
+//! Cloud coaching providers (Claude / OpenAI / OpenRouter / Gemini). This is the opt-in path that trades the
 //! offline guarantee for a stronger model: the caller redacts the prompt before invoking, the UI
 //! carries a data-leaves-device warning, and the API key is read server-side (secrets.rs) and never
 //! returned to the webview. One `cloud_generate` command fans out to each provider's REST shape.
@@ -61,18 +61,35 @@ pub fn cloud_generate(provider: String, model: String, system: String, prompt: S
                 .map(String::from)
                 .ok_or_else(|| "no text in the Claude response.".into())
         }
-        "openai" => {
-            let body = json!({
+        // OpenRouter is OpenAI-compatible (same /chat/completions shape + Bearer auth), just a different
+        // base URL — so both share one arm.
+        "openai" | "openrouter" => {
+            let openrouter = provider == "openrouter";
+            let url = if openrouter {
+                "https://openrouter.ai/api/v1/chat/completions"
+            } else {
+                "https://api.openai.com/v1/chat/completions"
+            };
+            let mut body = json!({
                 "model": model,
                 "messages": [{ "role": "system", "content": system }, { "role": "user", "content": prompt }],
-                "response_format": { "type": "json_object" },
             });
-            let out = post_json(&agent, "https://api.openai.com/v1/chat/completions", &[("authorization", &format!("Bearer {key}"))], &body)?;
+            // OpenAI supports strict JSON mode; OpenRouter fans out to many models that may not, so there
+            // we lean on the system prompt + the client's JSON extraction instead.
+            if !openrouter {
+                body["response_format"] = json!({ "type": "json_object" });
+            }
+            let auth = format!("Bearer {key}");
+            let mut headers: Vec<(&str, &str)> = vec![("authorization", &auth)];
+            if openrouter {
+                headers.push(("x-title", "The Watcher")); // app attribution on OpenRouter's dashboard
+            }
+            let out = post_json(&agent, url, &headers, &body)?;
             let v = parse(&out)?;
             v["choices"][0]["message"]["content"]
                 .as_str()
                 .map(String::from)
-                .ok_or_else(|| "no content in the OpenAI response.".into())
+                .ok_or_else(|| "no content in the response.".into())
         }
         "gemini" => {
             let url = format!("https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}");

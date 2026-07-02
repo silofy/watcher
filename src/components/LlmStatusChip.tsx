@@ -31,21 +31,22 @@ const OPTIONS: { mode: CoachMode; label: string; sub: string }[] = [
   { mode: "anthropic", label: "Claude", sub: "Cloud · leaves device" },
   { mode: "openai", label: "ChatGPT", sub: "Cloud · leaves device" },
   { mode: "gemini", label: "Gemini", sub: "Cloud · leaves device" },
+  { mode: "openrouter", label: "OpenRouter", sub: "Cloud · leaves device" },
 ];
 
-const CLOUD_NAMES: CloudName[] = ["anthropic", "openai", "gemini"];
+const CLOUD_NAMES: CloudName[] = ["anthropic", "openai", "gemini", "openrouter"];
 const asCloud = (m: CoachMode): CloudName | null => (CLOUD_NAMES as string[]).includes(m) ? (m as CloudName) : null;
 
 /**
  * Coaching-model selector — replaces the old on/off "Local AI" chip. Pick rules-based, a local Ollama
- * (guided setup), or a cloud model (Claude / ChatGPT / Gemini). Cloud is a deliberate opt-in: it
+ * (guided setup), or a cloud model (Claude / ChatGPT / OpenRouter / Gemini). Cloud is a deliberate opt-in: it
  * carries a data-leaves-device warning and a note that commands are redacted before they're sent.
  */
 export function LlmStatusChip() {
   const [status, setStatus] = useState<LlmRuntimeStatus | null>(null);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<CoachMode>(getCoachMode());
-  const [cloudReady, setCloudReady] = useState<Record<CloudName, boolean>>({ anthropic: false, openai: false, gemini: false });
+  const [cloudReady, setCloudReady] = useState<Record<CloudName, boolean>>({ anthropic: false, openai: false, gemini: false, openrouter: false });
   const [keyDraft, setKeyDraft] = useState("");
   const [busy, setBusy] = useState<null | "starting" | "pulling">(null);
   const [err, setErr] = useState<string | null>(null);

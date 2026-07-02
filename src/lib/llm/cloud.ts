@@ -1,5 +1,5 @@
 /**
- * Cloud coaching providers (Claude / OpenAI / Gemini). Opt-in and off by default: sending a command
+ * Cloud coaching providers (Claude / OpenAI / OpenRouter / Gemini). Opt-in and off by default: sending a command
  * to a cloud model contradicts the "your session never leaves the device" guarantee, so this path is
  * a deliberate trade the user makes. Two safeguards ride along: the prompt is redacted (IPs, creds,
  * flags stripped) before it leaves, and the API key stays native-side — the webview only ever calls
@@ -9,19 +9,22 @@ import type { GenOptions, LlmProvider } from "./provider";
 import { redactText } from "../redact";
 import { isDesktop } from "../net";
 
-export type CloudName = "anthropic" | "openai" | "gemini";
+export type CloudName = "anthropic" | "openai" | "gemini" | "openrouter";
 
-/** Default model per provider. Configurable — override via the CloudProvider constructor. */
+/** Default model per provider. Configurable — override via the CloudProvider constructor. OpenRouter
+ *  takes a namespaced model id (provider/model); this default routes to GPT-4o through it. */
 export const CLOUD_DEFAULT_MODEL: Record<CloudName, string> = {
   anthropic: "claude-opus-4-8",
   openai: "gpt-4o",
   gemini: "gemini-1.5-pro",
+  openrouter: "openai/gpt-4o",
 };
 
 export const CLOUD_LABEL: Record<CloudName, string> = {
   anthropic: "Claude",
   openai: "ChatGPT",
   gemini: "Gemini",
+  openrouter: "OpenRouter",
 };
 
 /** Pull a JSON object out of a model reply that may wrap it in prose or a ```json fence. */
