@@ -8,7 +8,11 @@ import { episodeColor, ALIGNMENT_COLORS } from "../lib/scale";
 import { SHORT_TACTIC } from "../lib/audits";
 import { ukcOf, ukcLabel } from "../lib/pipeline/frameworks";
 import { detectFlags } from "../lib/flags";
+import { techniqueName } from "../lib/attack";
 import { openDetail } from "../lib/nav";
+
+// plain-language actor labels for the detail card
+const ACTOR_TEXT: Record<string, string> = { machine_bound: "machine bound", human_active: "typed by hand", think_pause: "thinking", idle: "idle" };
 import { KillChainTrajectory } from "./KillChainTrajectory";
 import { AnimatedNumber } from "./AnimatedNumber";
 import type { Episode, WatcherReport } from "../types/report";
@@ -83,24 +87,39 @@ function VerticalBurn({ items, baseline, loudSeq, focus, onSelect }: { items: Ti
   );
 }
 
-/** A compact inline detail — appears in the summary when you click a kill-chain dot or a stealth bar. */
-function FocusReadout({ timeline, focus, onReveal }: { timeline: Timeline; focus: number | null; onReveal: (seq: number) => void }) {
-  if (focus == null) return null;
+/** The clicked fragment's detail — shown under the run ribbon (fills the tile), and driven by any
+ *  dot/bar/block selection. Mirrors the kill-chain detail card: identity, alignment, actor, technique,
+ *  the command itself, and its result. */
+function RunDetail({ timeline, focus, onOpen }: { timeline: Timeline; focus: number; onOpen: () => void }) {
   const it = timeline.bySeq.get(focus);
   if (!it) return null;
   const ep = it.ep;
-  const phase = ukcOf(ep);
   return (
-    <div className="fade-in mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-edge bg-ink/40 px-3 py-2 text-xs">
-      <span className="mono text-sm font-semibold text-fg">{ep.binary || "pause"}</span>
-      {phase && <Chip color="var(--color-alt)">{ukcLabel(phase)}</Chip>}
-      {ep.alignment && <Chip color={ALIGNMENT_COLORS[ep.alignment]}>{ep.alignment.replace(/_/g, " ")}</Chip>}
-      <span className="text-faint">t+{fmtDuration(it.t0)}</span>
-      <span className="text-faint">noise {Math.round(episodeNoise(ep))}</span>
-      {ep.output_digest && <span className="min-w-0 flex-1 truncate text-muted">{ep.output_digest}</span>}
-      <button type="button" onClick={() => onReveal(ep.seq)} className="label ml-auto shrink-0 rounded border border-edge px-1.5 py-0.5 text-faint transition-colors hover:text-fg">
-        view in log ↗
-      </button>
+    <div className="fade-in flex h-full flex-col rounded-lg border border-edge bg-ink/40 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+        <span className="mono text-faint">#{ep.seq}</span>
+        <span className="mono text-sm font-semibold text-fg">{ep.binary || "pause"}</span>
+        {ep.alignment && <Chip color={ALIGNMENT_COLORS[ep.alignment]}>{ep.alignment.replace(/_/g, " ")}</Chip>}
+        <span className="text-faint">{ACTOR_TEXT[ep.actor] ?? ep.actor.replace(/_/g, " ")}</span>
+        <span className="text-faint">{fmtDuration(ep.duration_ms + ep.gap_before_ms)}</span>
+        {ep.technique && (
+          <span className="text-faint">
+            <span className="mono text-muted">{ep.technique}</span> {techniqueName(ep.technique)}
+          </span>
+        )}
+        <button type="button" onClick={onOpen} title="Open How the run unfolded" className="label ml-auto shrink-0 rounded border border-edge px-1.5 py-0.5 text-faint transition-colors hover:text-fg">
+          view ↗
+        </button>
+      </div>
+      <div className="mono mt-1.5 flex items-start gap-2 overflow-x-auto rounded bg-ink/60 px-2 py-1.5 text-xs">
+        <span className="select-none text-match">$</span>
+        <span className="whitespace-pre text-fg">{ep.cmd || "— (thinking)"}</span>
+      </div>
+      {ep.output_digest && (
+        <div className="mt-1.5 truncate text-xs text-faint">
+          <span className="text-muted">→</span> {ep.output_digest}
+        </div>
+      )}
     </div>
   );
 }
@@ -111,32 +130,29 @@ function RunRibbon({ items, totalMs, focus, onPick }: { items: TimedEpisode[]; t
   const W = 1000;
   const H = 34;
   return (
-    <div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-9 w-full">
-        <line x1={0} y1={H - 1} x2={W} y2={H - 1} stroke="var(--color-edge)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-        {items.map((it) => {
-          const x = (it.t0 / Math.max(1, totalMs)) * W;
-          const w = Math.max(2.5, ((it.t1 - it.t0) / Math.max(1, totalMs)) * W);
-          return (
-            <rect
-              key={it.ep.seq}
-              x={x}
-              y={5}
-              width={w}
-              height={H - 12}
-              rx={1.5}
-              fill={episodeColor(it.ep)}
-              opacity={focus == null || focus === it.ep.seq ? 0.9 : 0.5}
-              className="fade-in cursor-pointer"
-              onClick={() => onPick(it.ep.seq)}
-            >
-              <title>{it.ep.binary || "pause"}</title>
-            </rect>
-          );
-        })}
-      </svg>
-      <p className="mt-1 text-xs text-faint">each block = a command · width = time on it · click to inspect</p>
-    </div>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-11 w-full">
+      <line x1={0} y1={H - 1} x2={W} y2={H - 1} stroke="var(--color-edge)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      {items.map((it) => {
+        const x = (it.t0 / Math.max(1, totalMs)) * W;
+        const w = Math.max(2.5, ((it.t1 - it.t0) / Math.max(1, totalMs)) * W);
+        return (
+          <rect
+            key={it.ep.seq}
+            x={x}
+            y={5}
+            width={w}
+            height={H - 12}
+            rx={1.5}
+            fill={episodeColor(it.ep)}
+            opacity={focus == null || focus === it.ep.seq ? 0.9 : 0.5}
+            className="fade-in cursor-pointer"
+            onClick={() => onPick(it.ep.seq)}
+          >
+            <title>{it.ep.binary || "pause"}</title>
+          </rect>
+        );
+      })}
+    </svg>
   );
 }
 
@@ -351,17 +367,19 @@ export function LiveDashboard() {
           )}
         </Tile>
 
-        {/* the run unfolding on a time axis — clicking a block opens the full "How the run unfolded" */}
+        {/* the run unfolding on a time axis — click a block to inspect it below (fills the tile);
+            a kill-chain dot or stealth bar lands its detail here too */}
         <Tile label="Run unfolding" i={3} className="sm:col-span-2 lg:col-span-2">
-          <RunRibbon
-            items={timeline.items}
-            totalMs={timeline.totalMs}
-            focus={focus}
-            onPick={(seq) => {
-              s.select(seq);
-              openDetail("unfolded");
-            }}
-          />
+          <div className="flex h-full flex-col">
+            <RunRibbon items={timeline.items} totalMs={timeline.totalMs} focus={focus} onPick={(seq) => s.select(s.selectedSeq === seq ? null : seq)} />
+            <div className="mt-2 flex-1">
+              {focus != null ? (
+                <RunDetail timeline={timeline} focus={focus} onOpen={() => openDetail("unfolded")} />
+              ) : (
+                <p className="text-xs text-faint">each block = a command · width = time on it · <span className="text-muted">click one to inspect it here</span></p>
+              )}
+            </div>
+          </div>
         </Tile>
 
         {/* where you deviated — opens the full deviation timeline */}
@@ -371,9 +389,6 @@ export function LiveDashboard() {
           </button>
         </Tile>
       </div>
-
-      {/* clicking a kill-chain dot or a stealth bar surfaces that command's detail right here */}
-      <FocusReadout timeline={timeline} focus={focus} onReveal={(seq) => s.reveal(seq)} />
     </div>
   );
 }
