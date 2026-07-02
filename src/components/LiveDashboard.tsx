@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useReport, activeSeq } from "../store/report";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
@@ -7,89 +8,153 @@ import { episodeColor } from "../lib/scale";
 import { SHORT_TACTIC } from "../lib/audits";
 import { reachedUkcPhases, UKC_ORDER, ukcRank, ukcOf, ukcLabel, type UkcPhase } from "../lib/pipeline/frameworks";
 import type { Episode } from "../types/report";
+import type { TimedEpisode } from "../lib/scale";
 
 /**
- * Live Ops — the mid-run companion. While a session is recording, the debrief's verdict views (grade,
- * writeup comparison, phase audit) are premature; this panel instead surfaces the three things a player
- * actually references while playing, all derivable from telemetry alone (no write-up needed):
+ * Live Ops — the mid-run companion, laid out as a bento of small, glanceable instruments. While a
+ * session is recording the verdict views (grade, writeup comparison, phase audit) are premature; this
+ * shows what a player references WHILE playing, all from telemetry alone (no write-up needed):
  *
- *   1. Kill-chain progress — how far up the chain am I, and is my progression clean?
- *   2. Stealth burn       — am I getting loud right now?
- *   3. Command feed        — what did my last few moves actually map to?
+ *   Kill chain      — how far up the chain am I, is my progression clean?
+ *   Stealth burn    — am I getting loud right now?
+ *   Run unfolding   — the session as a live time ribbon, each block a command
+ *   Where you deviated — dead-ends, loops, stalls, time lost, live
+ *   Latest commands — what my last few moves mapped to (the tall tile)
  *
- * Everything here streams: it grows organically as commands land, so the report is a live instrument,
- * not a post-mortem. It renders nothing once the run ends — the resolved debrief takes over.
+ * Every tile streams — it grows as commands land, so the report is a live instrument, not a
+ * post-mortem. Renders nothing once the run ends; the resolved debrief takes over.
  */
 
-/** The kill-chain breadcrumb: the UKC phases reached so far, in attack order, + the next expected one. */
-function KillChainRail({ episodes, progression }: { episodes: Episode[]; progression: number }) {
+/** A bento tile — a bordered card with a stenciled label header and an optional right-aligned readout. */
+function Tile({ label, right, className = "", children }: { label: string; right?: ReactNode; className?: string; children: ReactNode }) {
+  return (
+    <div className={`flex flex-col rounded-lg border border-edge bg-ink/30 p-3 ${className}`}>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className="label text-faint">{label}</span>
+        {right}
+      </div>
+      <div className="min-h-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+/** The kill-chain breadcrumb: UKC phases reached so far, in attack order, + the next expected one. */
+function KillChain({ episodes }: { episodes: Episode[] }) {
   const reached = reachedUkcPhases(episodes);
   const ordered = [...reached].sort((a, b) => ukcRank(a) - ukcRank(b));
   const furthest = ordered.length ? ukcRank(ordered[ordered.length - 1]) : -1;
   const next = UKC_ORDER.find((p) => ukcRank(p) > furthest);
   const current = ordered[ordered.length - 1];
 
+  if (ordered.length === 0) return <p className="text-sm text-faint">Waiting for the first classified command…</p>;
   return (
-    <div>
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="label text-faint">Kill chain</span>
-        <span className="text-xs text-faint">
-          progression{" "}
-          <span className="mono tabular-nums" style={{ color: tierColor(progression) }}>
-            {Math.round(progression)}%
-          </span>
-        </span>
-      </div>
-      {ordered.length === 0 ? (
-        <p className="text-sm text-faint">Waiting for the first classified command…</p>
-      ) : (
-        <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5">
-          {ordered.map((p, i) => {
-            const isCurrent = p === current;
-            const color = isCurrent ? "var(--color-loud)" : "var(--color-match)";
-            return (
-              <span key={p} className="flex items-center gap-1">
-                {i > 0 && <span className="text-faint">›</span>}
-                <span
-                  className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs font-medium"
-                  style={{ color, backgroundColor: `color-mix(in oklch, ${color} 15%, transparent)` }}
-                >
-                  {isCurrent && <span className="animate-pulse">●</span>}
-                  {ukcLabel(p as UkcPhase)}
-                </span>
-              </span>
-            );
-          })}
-          {next && (
-            <span className="flex items-center gap-1">
-              <span className="text-faint">›</span>
-              <span className="rounded border border-dashed border-edge px-1.5 py-0.5 text-xs text-faint">{ukcLabel(next)}</span>
+    <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5">
+      {ordered.map((p, i) => {
+        const isCurrent = p === current;
+        const color = isCurrent ? "var(--color-loud)" : "var(--color-match)";
+        return (
+          <span key={p} className="flex items-center gap-1">
+            {i > 0 && <span className="text-faint">›</span>}
+            <span className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs font-medium" style={{ color, backgroundColor: `color-mix(in oklch, ${color} 15%, transparent)` }}>
+              {isCurrent && <span className="animate-pulse">●</span>}
+              {ukcLabel(p as UkcPhase)}
             </span>
-          )}
-        </div>
+          </span>
+        );
+      })}
+      {next && (
+        <span className="flex items-center gap-1">
+          <span className="text-faint">›</span>
+          <span className="rounded border border-dashed border-edge px-1.5 py-0.5 text-xs text-faint">{ukcLabel(next)}</span>
+        </span>
       )}
     </div>
   );
 }
 
 /** A cumulative-noise sparkline — the run's stealth burn, monotonic and streaming-friendly. */
-function NoiseSparkline({ episodes, totalMs }: { episodes: { ep: Episode; t0: number }[]; totalMs: number }) {
+function NoiseSparkline({ items, totalMs }: { items: TimedEpisode[]; totalMs: number }) {
   let cum = 0;
-  const pts = episodes.map((it) => {
+  const pts = items.map((it) => {
     cum += episodeNoise(it.ep);
     return { x: it.t0 / Math.max(1, totalMs), y: cum };
   });
   const maxY = Math.max(1, cum);
-  if (pts.length < 2) return <div className="h-8" />;
+  if (pts.length < 2) return <div className="h-10" />;
   const W = 100;
-  const H = 32;
+  const H = 40;
   const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${(p.x * W).toFixed(1)} ${(H - (p.y / maxY) * H).toFixed(1)}`).join(" ");
-  const area = `${line} L ${W} ${H} L 0 ${H} Z`;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-8 w-full">
-      <path d={area} fill="var(--color-loud)" fillOpacity={0.12} />
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-10 w-full">
+      <path d={`${line} L ${W} ${H} L 0 ${H} Z`} fill="var(--color-loud)" fillOpacity={0.12} />
       <path d={line} fill="none" stroke="var(--color-loud)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
     </svg>
+  );
+}
+
+/** The run unfolding as a time ribbon — one block per command, positioned/sized by when and how long. */
+function RunRibbon({ items, totalMs, focus, onPick }: { items: TimedEpisode[]; totalMs: number; focus: number | null; onPick: (seq: number) => void }) {
+  if (items.length === 0) return <p className="text-sm text-faint">No commands captured yet.</p>;
+  const W = 1000;
+  const H = 34;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-9 w-full">
+        <line x1={0} y1={H - 1} x2={W} y2={H - 1} stroke="var(--color-edge)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        {items.map((it) => {
+          const x = (it.t0 / Math.max(1, totalMs)) * W;
+          const w = Math.max(2.5, ((it.t1 - it.t0) / Math.max(1, totalMs)) * W);
+          return (
+            <rect
+              key={it.ep.seq}
+              x={x}
+              y={5}
+              width={w}
+              height={H - 12}
+              rx={1.5}
+              fill={episodeColor(it.ep)}
+              opacity={focus == null || focus === it.ep.seq ? 0.9 : 0.5}
+              className="cursor-pointer"
+              onClick={() => onPick(it.ep.seq)}
+            >
+              <title>{it.ep.binary || "pause"}</title>
+            </rect>
+          );
+        })}
+      </svg>
+      <p className="mt-1 text-xs text-faint">each block = a command · width = time on it · click to inspect</p>
+    </div>
+  );
+}
+
+/** A compact "where you deviated" glance — the self-relative waste signals, live. */
+function DeviationGlance({ episodes, lostPct }: { episodes: Episode[]; lostPct: number }) {
+  const detours = episodes.filter((e) => e.alignment === "detour").length;
+  const loops = episodes.filter((e) => e.loop_of_seq != null).length;
+  const stalls = episodes.filter((e) => e.actor === "think_pause").length;
+  const lostColor = lostPct >= 30 ? "var(--color-detour)" : lostPct >= 15 ? "var(--color-tool)" : "var(--color-match)";
+  const Item = ({ n, label, color }: { n: number; label: string; color: string }) => (
+    <div className="flex flex-col">
+      <span className="mono text-lg tabular-nums leading-none" style={{ color: n > 0 ? color : "var(--color-faint)" }}>
+        {n}
+      </span>
+      <span className="label mt-0.5 text-faint">{label}</span>
+    </div>
+  );
+  return (
+    <div className="flex h-full flex-col justify-between gap-2">
+      <div>
+        <span className="mono text-2xl font-semibold tabular-nums leading-none" style={{ color: lostColor }}>
+          {lostPct}%
+        </span>
+        <span className="label ml-1.5 text-faint">time lost</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <Item n={detours} label="dead-ends" color="var(--color-detour)" />
+        <Item n={loops} label="loops" color="var(--color-tool)" />
+        <Item n={stalls} label="stalls" color="var(--color-stuck)" />
+      </div>
+    </div>
   );
 }
 
@@ -100,9 +165,12 @@ export function LiveDashboard() {
 
   const focus = activeSeq(s);
   const cmds = report.episodes.filter((e) => e.binary);
-  const feed = [...cmds].reverse().slice(0, 7); // newest first — the quick glance
+  const feed = [...cmds].reverse().slice(0, 8); // newest first — the quick glance
   const loudSeq = new Set(metrics.loud_moments?.map((l) => l.seq) ?? []);
   const stealth = Math.round(metrics.stealth_score);
+  const tw = metrics.time_waster;
+  const lostPct = Math.round(((tw.detour_ms + tw.stuck_ms + tw.loop_ms) / Math.max(1, tw.t_active_ms)) * 100);
+  const loudestBinary = loudSeq.size ? report.episodes.find((e) => e.seq === metrics.loud_moments![0].seq)?.binary : null;
 
   return (
     <div
@@ -122,41 +190,44 @@ export function LiveDashboard() {
         </span>
       </div>
 
-      {/* where am I in the attack */}
-      <KillChainRail episodes={report.episodes} progression={metrics.ukc_progression ?? 100} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* where am I in the attack */}
+        <Tile
+          label="Kill chain"
+          className="sm:col-span-2 lg:col-span-2"
+          right={
+            <span className="text-xs text-faint">
+              progression <span className="mono tabular-nums" style={{ color: tierColor(metrics.ukc_progression ?? 100) }}>{Math.round(metrics.ukc_progression ?? 100)}%</span>
+            </span>
+          }
+        >
+          <KillChain episodes={report.episodes} />
+        </Tile>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         {/* am I getting loud */}
-        <div className="rounded-lg border border-edge bg-ink/30 p-3">
-          <div className="mb-2 flex items-baseline justify-between">
-            <span className="label text-faint">Stealth burn</span>
+        <Tile
+          label="Stealth burn"
+          right={
             <span className="mono text-sm tabular-nums" style={{ color: tierColor(stealth) }}>
               {stealth}
               <span className="text-xs text-faint">/100</span>
             </span>
-          </div>
-          <NoiseSparkline episodes={timeline.items} totalMs={timeline.totalMs} />
-          <p className="mt-1.5 text-xs text-faint">
-            {loudSeq.size === 0
-              ? "Quiet so far — no standout noise."
-              : (() => {
-                  const top = metrics.loud_moments![0];
-                  const b = report.episodes.find((e) => e.seq === top.seq)?.binary ?? "a command";
-                  return (
-                    <>
-                      Loudest: <span className="mono text-muted">{b}</span> — pushing your footprint up.
-                    </>
-                  );
-                })()}
+          }
+        >
+          <NoiseSparkline items={timeline.items} totalMs={timeline.totalMs} />
+          <p className="mt-1 truncate text-xs text-faint">
+            {loudestBinary ? (
+              <>
+                Loudest: <span className="mono text-muted">{loudestBinary}</span>
+              </>
+            ) : (
+              "Quiet so far."
+            )}
           </p>
-        </div>
+        </Tile>
 
-        {/* what did my last moves map to */}
-        <div className="rounded-lg border border-edge bg-ink/30 p-3">
-          <div className="mb-2 flex items-baseline justify-between">
-            <span className="label text-faint">Latest commands</span>
-            <span className="text-xs text-faint">newest first · click to inspect</span>
-          </div>
+        {/* what my last moves mapped to — the tall tile on the right */}
+        <Tile label="Latest commands" className="lg:row-span-2" right={<span className="text-xs text-faint">newest first</span>}>
           {feed.length === 0 ? (
             <p className="text-sm text-faint">No commands captured yet.</p>
           ) : (
@@ -173,22 +244,30 @@ export function LiveDashboard() {
                     >
                       <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ backgroundColor: episodeColor(e) }} />
                       <span className="mono truncate text-fg">{e.binary}</span>
-                      {phase && (
-                        <span className="shrink-0 rounded bg-edge/60 px-1 py-0.5 text-[10px] text-muted">{SHORT_TACTIC[e.tactic] ?? ukcLabel(phase)}</span>
-                      )}
+                      {phase && <span className="shrink-0 rounded bg-edge/60 px-1 py-0.5 text-[10px] text-muted">{SHORT_TACTIC[e.tactic] ?? ukcLabel(phase)}</span>}
                       {loudSeq.has(e.seq) && (
                         <span className="shrink-0 text-[10px]" style={{ color: "var(--color-loud)" }} title="one of your loudest moments">
                           🔊
                         </span>
                       )}
-                      <span className="mono ml-auto shrink-0 text-xs text-faint tabular-nums">{fmtDuration(t * 1000)}</span>
+                      <span className="mono ml-auto shrink-0 text-xs tabular-nums text-faint">{fmtDuration(t * 1000)}</span>
                     </button>
                   </li>
                 );
               })}
             </ul>
           )}
-        </div>
+        </Tile>
+
+        {/* the run unfolding on a time axis */}
+        <Tile label="Run unfolding" className="sm:col-span-2 lg:col-span-2">
+          <RunRibbon items={timeline.items} totalMs={timeline.totalMs} focus={focus} onPick={(seq) => s.reveal(seq)} />
+        </Tile>
+
+        {/* where you deviated */}
+        <Tile label="Where you deviated">
+          <DeviationGlance episodes={report.episodes} lostPct={lostPct} />
+        </Tile>
       </div>
     </div>
   );
