@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import { useReport, activeSeq } from "../store/report";
 import { Section, Chip, tierColor } from "./ui";
-import { CAT_COLOR } from "../lib/coaching";
+import { CAT_COLOR, normalizeCoaching, stepText } from "../lib/coaching";
 import { buildPhaseAudits, type AuditItem, type PhaseAudit as PhaseAuditT } from "../lib/audits";
 import { cweLabel } from "../lib/pipeline/frameworks";
 import { TechniqueChip } from "./TechniqueChip";
@@ -354,8 +354,18 @@ export function PhaseAudit() {
   // keep the focus reactive so deep-links from here highlight elsewhere (and vice-versa)
   void activeSeq(s);
 
+  // the single most important lesson — the top-ranked coaching step, led here as the audit's headline
+  const lead = normalizeCoaching(s.report.coaching?.next_steps)[0];
+  const takeaway = lead ? stepText(lead) : undefined;
+
   return (
     <Section title="Phase audit" subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}>
+      {takeaway && (
+        <div className="mb-3 rounded-lg bg-signal/10 px-3.5 py-3">
+          <span className="label text-signal">Key takeaway</span>
+          <p className="mt-1 text-base leading-relaxed text-fg">{takeaway}</p>
+        </div>
+      )}
       <div className="space-y-2.5">
         {phases.map((p) => (
           <PhaseCard key={p.tactic} p={p} />

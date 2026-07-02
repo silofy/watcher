@@ -4,7 +4,6 @@ import { tierColor } from "./ui";
 import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
 import { detectFlags } from "../lib/flags";
-import { normalizeCoaching, stepText } from "../lib/coaching";
 
 /**
  * A machine attribute chip. `filled` tints the whole chip by its color — used for the attributes that
@@ -87,10 +86,8 @@ function FlagStat({ label, state, at }: { label: string; state: "yes" | "no" | "
 /** The machine "about" header — identity, flags/tasks, session context, and the key takeaway. */
 export function IdentityBar() {
   const { report, timeline, metrics } = useReport();
-  const { golden_dag, coaching } = report;
+  const { golden_dag } = report;
   const machine = machineOf(report);
-  const first = normalizeCoaching(coaching.next_steps)[0];
-  const narrative = first ? stepText(first) : undefined;
 
   // verdict numbers folded in from the old KPI bar — grade + the quality metrics
   const grade = computeGrade(report);
@@ -161,13 +158,6 @@ export function IdentityBar() {
         </div>
       </div>
 
-      {/* the lesson — the heart of the debrief */}
-      {narrative && (
-        <div className="mt-3.5 rounded-lg bg-signal/10 px-3.5 py-3">
-          <span className="label text-signal">Key takeaway</span>
-          <p className="mt-1 text-base leading-relaxed text-fg">{narrative}</p>
-        </div>
-      )}
     </div>
   );
 }
