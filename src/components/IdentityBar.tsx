@@ -5,7 +5,6 @@ import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
 import { detectFlags } from "../lib/flags";
 import { normalizeCoaching, stepText } from "../lib/coaching";
-import { fmtDuration } from "../lib/format";
 
 function Pill({ text, color }: { text: string; color?: string }) {
   return (
@@ -100,9 +99,18 @@ export function IdentityBar() {
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-5">
-          <Stat label="Total time" value={fmtDuration(timeline.totalMs)} />
+        <div className="flex shrink-0 items-center gap-6">
+          {/* Stealth, elevated to grade prominence — the two headline scores */}
           <div className="text-right">
+            <div className="label text-faint">Stealth</div>
+            <div className="font-display text-5xl font-bold leading-none" style={{ color: tierColor(metrics.stealth_score) }}>
+              {Math.round(metrics.stealth_score)}
+            </div>
+            <div className="label mt-1 tabular-nums text-faint">/100 · {tierWord(metrics.stealth_score)}</div>
+          </div>
+          {/* the headline grade */}
+          <div className="text-right">
+            <div className="label text-faint">Grade</div>
             <div className="font-display text-5xl font-bold leading-none" style={{ color: gradeColor(grade.letter) }}>
               {grade.letter}
             </div>
@@ -120,7 +128,6 @@ export function IdentityBar() {
         <div className="flex flex-wrap items-end justify-end gap-x-7 gap-y-3">
           <Stat label="Objectives" value={hasRef ? `${tasksDone}/${golden_dag.length}` : "—"} color={hasRef ? tierColor(tasksPct) : undefined} />
           <Stat label="Time lost" value={`${lost}%`} color={lostColor} />
-          <Stat label="Stealth" value={`${Math.round(metrics.stealth_score)}/100`} rating={tierWord(metrics.stealth_score)} color={tierColor(metrics.stealth_score)} />
           <Stat label="Techniques" value={String(metrics.technique_breadth)} />
         </div>
       </div>
