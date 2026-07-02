@@ -4,7 +4,7 @@ import { Section, Chip, tierColor } from "./ui";
 import { CAT_COLOR } from "../lib/coaching";
 import { buildPhaseAudits, type AuditItem, type PhaseAudit as PhaseAuditT } from "../lib/audits";
 import { cweLabel } from "../lib/pipeline/frameworks";
-import { techniqueName } from "../lib/attack";
+import { TechniqueChip } from "./TechniqueChip";
 import { fmtDuration, fmtMinutes } from "../lib/format";
 
 const MD = "[&_code]:mono [&_code]:rounded [&_code]:bg-panel-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-fg [&_p]:m-0 [&_strong]:text-fg";
@@ -252,10 +252,15 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
             {p.commands} command{p.commands === 1 ? "" : "s"} over {fmtDuration(p.active_ms)}
           </span>
           {p.techniqueIds.length > 0 && (
-            <span className="flex flex-wrap items-center gap-1.5" title={p.techniqueIds.map((t) => `${t} — ${techniqueName(t)}`).join("\n")}>
+            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
               <Icon name="techniques" />
               <span className="text-faint">ATT&amp;CK</span>
-              <span className="mono text-xs text-muted">{p.techniqueIds.join(" · ")}</span>
+              {p.techniqueIds.map((t, i) => (
+                <span key={t} className="flex items-center gap-1.5">
+                  {i > 0 && <span className="text-faint">·</span>}
+                  <TechniqueChip id={t} />
+                </span>
+              ))}
             </span>
           )}
           {/* the phase-local weakness, right-aligned on the same summary row */}
