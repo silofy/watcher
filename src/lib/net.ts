@@ -29,6 +29,35 @@ export async function fetchWriteupFrom0xdf(box: string): Promise<string> {
   return fetchWriteupUrl(m[0]);
 }
 
+/**
+ * HTB App Token — a bearer credential stored only by the native side (~/.watcher/config.json), never
+ * held in the JS bundle or returned to the webview. The UI only ever learns whether one is set.
+ */
+export async function hasHtbToken(): Promise<boolean> {
+  if (!isDesktop()) return false;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return (await invoke("has_htb_token")) as boolean;
+}
+
+export async function setHtbToken(token: string): Promise<void> {
+  if (!isDesktop()) throw new Error("The HTB token can only be saved in the desktop app.");
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("set_htb_token", { token });
+}
+
+export async function clearHtbToken(): Promise<void> {
+  if (!isDesktop()) return;
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("clear_htb_token");
+}
+
+/** Pull the official HTB write-up for a retired box (native-side, using the stored token). */
+export async function fetchHtbWriteup(box: string): Promise<string> {
+  if (!isDesktop()) throw new Error("Fetching the HTB write-up needs the desktop app.");
+  const { invoke } = await import("@tauri-apps/api/core");
+  return (await invoke("fetch_htb_writeup", { name: box })) as string;
+}
+
 /** A web search that lands on the box's write-up for a source that can't be auto-fetched. */
 export function writeupSearchUrl(source: "ippsec" | "htb", box: string): string {
   const q = source === "ippsec" ? `ippsec ${box}` : `hackthebox ${box} official writeup`;

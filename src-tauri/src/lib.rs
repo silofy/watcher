@@ -1,6 +1,7 @@
 // The Watcher desktop shell. A thin window around the React report, plus commands the webview
 // invokes — here, managing the offline LLM (Ollama) sidecar (brief §5.1).
 
+mod htb;
 mod llm;
 mod net;
 mod pwnbox;
@@ -15,6 +16,10 @@ pub fn run() {
             sessions::list_sessions,
             sessions::list_ssh_logs,
             net::fetch_writeup,
+            htb::set_htb_token,
+            htb::has_htb_token,
+            htb::clear_htb_token,
+            htb::fetch_htb_writeup,
             pwnbox::pull_pwnbox
         ])
         .run(tauri::generate_context!())
