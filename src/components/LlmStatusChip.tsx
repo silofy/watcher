@@ -17,7 +17,7 @@ import {
   type CloudName,
   type LlmRuntimeStatus,
 } from "../lib/llm";
-import { isDesktop } from "../lib/net";
+import { isDesktop, openExternal } from "../lib/net";
 
 function errMsg(e: unknown, fallback: string): string {
   if (typeof e === "string" && e.trim()) return e;
@@ -191,7 +191,7 @@ export function LlmStatusChip() {
                     <button type="button" onClick={localAction} disabled={!!busy} className="label rounded bg-signal/20 px-2.5 py-1 text-signal transition-colors hover:bg-signal/30 disabled:opacity-40">
                       {ollamaStep === "needs-model" ? `Download ${DEFAULT_MODEL} (~2GB)` : "Start Ollama"}
                     </button>
-                    <a href={OLLAMA_DOWNLOAD_URL} target="_blank" rel="noreferrer" className="text-signal hover:underline">Get Ollama ↗</a>
+                    <a href={OLLAMA_DOWNLOAD_URL} onClick={(e) => { e.preventDefault(); openExternal(OLLAMA_DOWNLOAD_URL); }} className="text-signal hover:underline">Get Ollama ↗</a>
                   </div>
                 )
               ) : (

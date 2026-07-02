@@ -19,6 +19,7 @@ pub fn run() {
             sessions::list_sessions,
             sessions::list_ssh_logs,
             net::fetch_writeup,
+            net::open_url,
             htb::set_htb_token,
             htb::has_htb_token,
             htb::clear_htb_token,

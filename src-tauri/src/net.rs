@@ -23,3 +23,21 @@ pub fn fetch_writeup(url: String) -> Result<String, String> {
         .map_err(|e| e.to_string())?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
+
+/// Open an http(s) URL in the user's default browser. In the desktop webview a `target="_blank"` link
+/// doesn't escape to the OS browser, so external links (IppSec/HTB searches, MITRE, downloads) route
+/// through here. Uses the platform opener; the URL is scheme-checked so only web links are launched.
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    if !(url.starts_with("http://") || url.starts_with("https://")) {
+        return Err("only http(s) URLs are supported".into());
+    }
+    #[cfg(target_os = "windows")]
+    let spawned = std::process::Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+    #[cfg(target_os = "macos")]
+    let spawned = std::process::Command::new("open").arg(&url).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let spawned = std::process::Command::new("xdg-open").arg(&url).spawn();
+
+    spawned.map(|_| ()).map_err(|e| format!("could not open the browser: {e}"))
+}

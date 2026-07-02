@@ -8,6 +8,24 @@ export function isDesktop(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
+/**
+ * Open an http(s) URL in the system browser. In the desktop webview a `target="_blank"` link doesn't
+ * escape to the OS browser (it silently does nothing), so route through the native `open_url` command;
+ * on the web, a normal new tab. Use this for every external link instead of a bare anchor.
+ */
+export async function openExternal(url: string): Promise<void> {
+  if (isDesktop()) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_url", { url });
+      return;
+    } catch {
+      /* fall through to window.open */
+    }
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export async function fetchWriteupUrl(url: string): Promise<string> {
   if (isDesktop()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -58,8 +76,10 @@ export async function fetchHtbWriteup(box: string): Promise<string> {
   return (await invoke("fetch_htb_writeup", { name: box })) as string;
 }
 
-/** A web search that lands on the box's write-up for a source that can't be auto-fetched. */
+/** A web search that lands on the box's write-up for a source that can't be auto-fetched. IppSec is
+ *  video, so go straight to a YouTube search (lands on his walkthrough); HTB write-ups are auth-gated,
+ *  so a general search is the best we can do. */
 export function writeupSearchUrl(source: "ippsec" | "htb", box: string): string {
-  const q = source === "ippsec" ? `ippsec ${box}` : `hackthebox ${box} official writeup`;
-  return `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
+  if (source === "ippsec") return `https://www.youtube.com/results?search_query=${encodeURIComponent(`ippsec ${box}`)}`;
+  return `https://duckduckgo.com/?q=${encodeURIComponent(`hackthebox ${box} official writeup`)}`;
 }

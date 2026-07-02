@@ -3,7 +3,7 @@ import { useReport } from "../store/report";
 import { machineOf } from "../lib/machine";
 import { resolveProvider } from "../lib/llm";
 import { goldenFromText } from "../lib/writeup";
-import { fetchWriteupUrl, fetchWriteupFrom0xdf, writeupSearchUrl, isDesktop, hasHtbToken, setHtbToken, fetchHtbWriteup } from "../lib/net";
+import { fetchWriteupUrl, fetchWriteupFrom0xdf, writeupSearchUrl, isDesktop, hasHtbToken, setHtbToken, fetchHtbWriteup, openExternal } from "../lib/net";
 
 type Status = { kind: "idle" | "working" | "error"; msg?: string };
 
@@ -155,17 +155,17 @@ export function WriteupControl() {
           >
             0xdf
           </button>
-          <a href={writeupSearchUrl("ippsec", box.name)} target="_blank" rel="noreferrer" title="IppSec is video — opens a search to find it" className={btnSecondary}>
+          <button type="button" onClick={() => openExternal(writeupSearchUrl("ippsec", box.name))} title="IppSec is video — opens his walkthrough on YouTube" className={btnSecondary}>
             IppSec ↗
-          </a>
+          </button>
           {isDesktop() ? (
             <button type="button" onClick={fromHtb} disabled={working} title={htbReady ? "Fetch HTB's official write-up" : "Add your HTB App Token first"} className={btnSecondary}>
               HTB{htbReady ? "" : " ⚙"}
             </button>
           ) : (
-            <a href={writeupSearchUrl("htb", box.name)} target="_blank" rel="noreferrer" title="HTB write-ups are auth-gated — opens a search" className={btnSecondary}>
+            <button type="button" onClick={() => openExternal(writeupSearchUrl("htb", box.name))} title="HTB write-ups are auth-gated — opens a search" className={btnSecondary}>
               HTB ↗
-            </a>
+            </button>
           )}
           <span className="mx-1 text-faint">or</span>
           <input
