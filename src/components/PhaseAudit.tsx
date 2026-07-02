@@ -175,10 +175,10 @@ function Objectives({ items }: { items: PhaseAuditT["objectives"] }) {
   if (items.length === 0) return null;
   const reached = items.filter((o) => o.reached).length;
   return (
-    <div className="mb-3">
-      <div className="label mb-1.5 text-faint">
+    <div>
+      <h3 className="label mb-1.5 text-faint">
         Objectives <span className="text-muted">· {reached}/{items.length} reached</span>
-      </div>
+      </h3>
       <ul className="space-y-0.5">
         {items.map((o) => (
           <li
@@ -235,56 +235,70 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
         </div>
       </summary>
 
-      <div className="border-t border-edge px-4 py-3">
-        {/* phase context — icon-led facts, promoted from a faint caption; the phase name is the card
-            title already, so it's not repeated here */}
-        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted">
-          <span className="flex items-center gap-1.5">
-            <Icon name="efficiency" />
-            <span className="font-semibold tabular-nums" style={{ color: tierColor(p.efficiency) }}>
-              {p.efficiency}%
-            </span>
-            time spent productively
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Icon name="commands" />
-            {p.commands} command{p.commands === 1 ? "" : "s"} over {fmtDuration(p.active_ms)}
-          </span>
-          {p.techniques > 0 && (
+      <div className="border-t border-edge">
+        {/* summary band — the phase's quick facts, set apart from the deeper breakdown below.
+            The phase name is the card title already, so it isn't repeated here. */}
+        <div className="flex flex-col gap-2 bg-panel-2/30 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted">
             <span className="flex items-center gap-1.5">
-              <Icon name="techniques" />
-              {p.techniques} ATT&CK technique{p.techniques === 1 ? "" : "s"}
+              <Icon name="efficiency" />
+              <span className="font-semibold tabular-nums" style={{ color: tierColor(p.efficiency) }}>
+                {p.efficiency}%
+              </span>
+              time spent productively
             </span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="commands" />
+              {p.commands} command{p.commands === 1 ? "" : "s"} over {fmtDuration(p.active_ms)}
+            </span>
+            {p.techniques > 0 && (
+              <span className="flex items-center gap-1.5">
+                <Icon name="techniques" />
+                {p.techniques} ATT&CK technique{p.techniques === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
+          {p.cwe.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="label shrink-0 text-faint">Exploited</span>
+              {p.cwe.map((id) => (
+                <span key={id} className="mono rounded border border-tool/40 bg-tool/10 px-1.5 py-0.5 text-xs text-fg">
+                  {cweLabel(id)}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 
-        {/* weakness classes exploited in this phase — the one framework lens that's genuinely phase-local */}
-        {p.cwe.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            <span className="label shrink-0 text-faint">exploited</span>
-            {p.cwe.map((id) => (
-              <span key={id} className="mono rounded border border-tool/40 bg-tool/10 px-1.5 py-0.5 text-xs text-fg">
-                {cweLabel(id)}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* deeper breakdown — each a clearly-headed section, separated so they don't run together */}
+        <div className="divide-y divide-edge/60 px-4">
+          {p.objectives.length > 0 && (
+            <section className="py-3.5">
+              <Objectives items={p.objectives} />
+            </section>
+          )}
 
-        <Objectives items={p.objectives} />
+          {p.insights.length > 0 && (
+            <section className="py-3.5">
+              <h3 className="label mb-2 text-faint">
+                Insights <span className="text-muted">· {p.insights.length} to improve</span>
+              </h3>
+              <ul className="space-y-2">
+                {p.insights.map((it) => (
+                  <InsightRow key={it.id} item={it} />
+                ))}
+              </ul>
+            </section>
+          )}
 
-        {p.insights.length > 0 && (
-          <>
-            <div className="label mb-2 text-faint">Insights</div>
-            <ul className="space-y-2">
-              {p.insights.map((it) => (
-                <InsightRow key={it.id} item={it} />
-              ))}
-            </ul>
-          </>
-        )}
-        <Group title="Additional items to manually check" items={p.manual} dot="var(--color-tool)" />
+          {p.manual.length > 0 && (
+            <section className="py-3.5">
+              <Group title="Additional items to manually check" items={p.manual} dot="var(--color-tool)" />
+            </section>
+          )}
 
-        {clean && p.objectives.length === 0 && <p className="text-xs text-match">Clean phase — no detours, loops, or stalls.</p>}
+          {clean && p.objectives.length === 0 && <p className="py-3.5 text-sm text-match">Clean phase — no detours, loops, or stalls.</p>}
+        </div>
       </div>
     </details>
   );
