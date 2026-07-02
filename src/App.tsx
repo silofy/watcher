@@ -3,6 +3,7 @@ import { useReport } from "./store/report";
 import { PhaseAudit } from "./components/PhaseAudit";
 import { IdentityBar } from "./components/IdentityBar";
 import { WriteupControl } from "./components/WriteupControl";
+import { SessionFacts } from "./components/SessionFacts";
 import { TrimControl } from "./components/TrimControl";
 import { Collapse } from "./components/ui";
 import { AttackTimeline } from "./components/AttackTimeline";
@@ -114,7 +115,8 @@ export function App() {
               <div id="deviated"><DeviationTimeline /></div>
               <div id="stealth"><StealthReport /></div>
               <div id="log"><CommandReplay /></div>
-              <Collapse name="debrief-details" title="Session window" subtitle="retroactively trim the report">
+              <Collapse name="debrief-details" title="Session window" subtitle="session facts · retroactively trim the report">
+                <SessionFacts />
                 <TrimControl />
               </Collapse>
             </div>

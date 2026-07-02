@@ -47,16 +47,10 @@ function FlagStat({ label, state, at }: { label: string; state: "yes" | "no" | "
   );
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  local_pty: "Local terminal",
-  in_vm_daemon: "Pwnbox / VM",
-  plugin: "Plugin",
-};
-
 /** The machine "about" header — identity, flags/tasks, session context, and the key takeaway. */
 export function IdentityBar() {
   const { report, timeline, sessionCards, activeId, metrics } = useReport();
-  const { session, golden_dag, coaching } = report;
+  const { golden_dag, coaching } = report;
   const machine = machineOf(report);
   const card = sessionCards.find((c) => c.id === activeId);
   const first = normalizeCoaching(coaching.next_steps)[0];
@@ -113,19 +107,17 @@ export function IdentityBar() {
         </div>
       </div>
 
-      {/* result + quality on the left, session facts on the right — one band (folded-in KPIs) */}
+      {/* flags on the left, the quality metrics right-aligned — one verdict band */}
       <div className="my-3.5 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-y border-edge py-3">
         <div className="flex flex-wrap items-end gap-x-7 gap-y-3">
           <FlagStat label="User flag" state={userState} at={flagAt(userStep)} />
           <FlagStat label="System flag" state={systemState} at={flagAt(flags.system)} />
+        </div>
+        <div className="flex flex-wrap items-end justify-end gap-x-7 gap-y-3">
           <Stat label="Objectives" value={hasRef ? `${tasksDone}/${golden_dag.length}` : "—"} color={hasRef ? tierColor(tasksPct) : undefined} />
           <Stat label="Time lost" value={`${lost}%`} color={lostColor} />
           <Stat label="Stealth" value={String(Math.round(metrics.stealth_score))} color={tierColor(metrics.stealth_score)} />
           <Stat label="Techniques" value={String(metrics.technique_breadth)} />
-        </div>
-        <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-          <Stat label="Date" value={new Date(session.started_at).toISOString().slice(0, 10)} />
-          <Stat label="Location" value={SOURCE_LABEL[session.source] ?? session.source} />
         </div>
       </div>
 
