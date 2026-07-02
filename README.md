@@ -151,10 +151,6 @@ schema/         the versioned JSON contracts
 fixtures/       sample sessions   ·   scripts/ tests/   tooling & tests
 ```
 
-The screenshots above are regenerated from the live demo with `node scripts/screenshots.mjs` and
-`node scripts/gif.mjs` — needs `npm i -D playwright gifenc pngjs` (+ `npx playwright install chromium`)
-and a running `npm run dev`. Those aren't project dependencies, just capture tooling.
-
 ## Privacy
 
 By default your session never leaves the machine, and redaction runs before anything hits disk. Two
