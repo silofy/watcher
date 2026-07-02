@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { loadPwnboxConfig, savePwnboxConfig, pullPwnbox, parseSshTarget, formatSshTarget, type PwnboxConfig } from "../lib/pwnbox";
+import { useReport } from "../store/report";
 
 type Sync = { kind: "idle" | "ok" | "error"; msg?: string; at?: number };
 
@@ -18,89 +19,17 @@ function Field({ label, value, onChange, placeholder, type = "text" }: { label: 
   );
 }
 
-/** A copy-to-clipboard command line — click to copy the exact command. */
-function Cmd({ children }: { children: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="group relative">
-      <button
-        type="button"
-        onClick={() => {
-          navigator.clipboard?.writeText(children);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
-        }}
-        title="Click to copy"
-        className="mono block w-full overflow-x-auto whitespace-pre rounded border border-edge bg-ink/60 px-2 py-1.5 pr-12 text-left text-[11px] text-fg transition-colors hover:border-edge-bright"
-      >
-        {children}
-      </button>
-      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-faint opacity-0 transition-opacity group-hover:opacity-100">
-        {copied ? "copied" : "copy"}
-      </span>
-    </div>
-  );
-}
-
-const AGENT = "watcher-capture-linux-x86_64";
-
-/** The simple, no-config path: run the agent in Pwnbox, bring the file back, drop it on History. */
-function SimpleSteps({ conn }: { conn: string }) {
-  return (
-    <ol className="space-y-3 text-xs text-muted">
-      <li>
-        <div className="mb-1">
-          <span className="text-fg">1. Put the agent in Pwnbox.</span>{" "}
-          <span className="text-faint">
-            It's in your checkout at <span className="mono">crates/capture/dist/{AGENT}</span> — upload it with Pwnbox's file-transfer button, or scp it:
-          </span>
-        </div>
-        <Cmd>{`scp crates/capture/dist/${AGENT} ${conn}:~/`}</Cmd>
-      </li>
-      <li>
-        <div className="mb-1">
-          <span className="text-fg">2. Capture your run</span> <span className="text-faint">— paste in the Pwnbox terminal, hack, then <span className="mono">exit</span>:</span>
-        </div>
-        <Cmd>{`chmod +x ${AGENT} && ./${AGENT} --export ~/box.json --machine <box>`}</Cmd>
-      </li>
-      <li>
-        <span className="text-fg">3. Bring it back.</span>{" "}
-        <span className="text-faint">
-          Download <span className="mono">box.json</span> from Pwnbox, then drag it onto the <span className="text-fg">History</span> tab — it opens as a debrief. No keys,
-          no config.
-        </span>
-      </li>
-    </ol>
-  );
-}
-
-/** The one extra command the optional live auto-pull needs: install your key (uses the password once). */
-function KeyGuide({ conn }: { conn: string }) {
-  return (
-    <div className="space-y-1.5 text-xs text-muted">
-      <div className="text-faint">The pull is non-interactive, so it needs key login. Enable it once — type your Pwnbox password when asked:</div>
-      <Cmd>{`ssh-copy-id ${conn}`}</Cmd>
-      <details>
-        <summary className="cursor-pointer list-none text-faint hover:text-muted">Windows, or no ssh-copy-id? ▾</summary>
-        <div className="mt-1 space-y-1">
-          <div className="text-faint">No key yet? make one: <span className="mono text-muted">ssh-keygen -t ed25519</span></div>
-          <Cmd>{`type $env:USERPROFILE\\.ssh\\id_ed25519.pub | ssh ${conn} "mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys"`}</Cmd>
-        </div>
-      </details>
-    </div>
-  );
-}
-
 /**
- * Pwnbox SSH auto-pull — a header control that lives with the active machine, not buried in History.
- * Mounted persistently so it keeps polling the Rust `pull_pwnbox` command regardless of the open view;
- * pulled exports land in ~/.watcher/sessions/ and the live bridge ingests them automatically.
+ * Pwnbox header control. The dropdown is deliberately minimal — three plain steps and a link to the
+ * full commands in Setup — so it reads at a glance instead of dumping CLI. The optional live auto-pull
+ * (SSH) is a compact toggle; when on it keeps polling the Rust `pull_pwnbox` command and the live
+ * bridge ingests what lands. The step-by-step commands live in the Setup tab, which has room for them.
  */
 export function PwnboxSync() {
+  const setView = useReport((s) => s.setView);
   const [cfg, setCfg] = useState<PwnboxConfig>(loadPwnboxConfig);
   const [open, setOpen] = useState(false);
-  const [advanced, setAdvanced] = useState(false);
-  const [showAuto, setShowAuto] = useState(() => loadPwnboxConfig().enabled); // expand the SSH section only if already using it
+  const [showConfig, setShowConfig] = useState(false); // the SSH connection fields, hidden until you want them
   const [target, setTarget] = useState(() => formatSshTarget(loadPwnboxConfig()));
   const [sync, setSync] = useState<Sync>({ kind: "idle" });
   const busy = useRef(false);
@@ -118,8 +47,10 @@ export function PwnboxSync() {
     set({ user, host, port });
   };
 
-  // the connection the copy-paste setup commands are built around (placeholder until entered)
-  const conn = cfg.user && cfg.host ? `${cfg.user}@${cfg.host}` : "<user>@<host>";
+  const openSetup = () => {
+    setOpen(false);
+    setView("install");
+  };
 
   useEffect(() => {
     if (!cfg.enabled || !cfg.host || !cfg.user) return;
@@ -161,53 +92,60 @@ export function PwnboxSync() {
           {cfg.enabled && sync.kind === "ok" && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-match opacity-50" />}
           <span className="relative h-2 w-2 rounded-full" style={{ background: dot }} />
         </span>
-        <span>Pwnbox sync{cfg.enabled ? " · on" : ""}</span>
+        <span>Pwnbox{cfg.enabled ? " · live" : ""}</span>
       </button>
 
       {open && (
         <>
           {/* click-away */}
           <button type="button" aria-label="Close" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full z-20 mt-2 w-[25rem] rounded-lg border border-edge bg-panel p-3 text-left shadow-xl">
-            {/* the simple, recommended path — no SSH config at all */}
-            <div className="mb-1 flex items-baseline justify-between">
-              <span className="label text-fg">Capture in Pwnbox</span>
-              <span className="text-xs text-faint">the easy way</span>
-            </div>
-            <SimpleSteps conn={conn} />
+          <div className="absolute right-0 top-full z-20 mt-2 w-[20rem] rounded-lg border border-edge bg-panel p-3 text-left shadow-xl">
+            <div className="mb-2 label text-fg">Capture in Pwnbox</div>
 
-            {/* optional: live auto-pull over SSH, collapsed so it doesn't dominate */}
+            {/* three plain steps — no commands, so it reads at a glance */}
+            <ol className="space-y-2 text-sm text-muted">
+              <li className="flex gap-2">
+                <span className="text-faint">1.</span>
+                <span>Run the <span className="text-fg">Watcher agent</span> in your Pwnbox terminal.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-faint">2.</span>
+                <span>Download the export file it writes.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-faint">3.</span>
+                <span>Drag it onto the <span className="text-fg">History</span> tab — it opens as a debrief.</span>
+              </li>
+            </ol>
+
+            <button type="button" onClick={openSetup} className="mt-3 w-full rounded-md bg-signal/15 px-3 py-1.5 text-xs font-medium text-signal transition-colors hover:bg-signal/25">
+              Full setup &amp; commands →
+            </button>
+
+            {/* optional live auto-pull — one compact toggle, config hidden until wanted */}
             <div className="mt-3 border-t border-edge pt-2.5">
-              <button type="button" onClick={() => setShowAuto((v) => !v)} className="label flex w-full items-center gap-1.5 text-faint transition-colors hover:text-muted">
-                <span className={`transition-transform ${showAuto ? "rotate-90" : ""}`}>▸</span> Or auto-pull it live over SSH
-                <span className="ml-auto font-normal normal-case tracking-normal text-faint">{cfg.enabled ? "on" : "optional"}</span>
-              </button>
+              <div className="flex items-center justify-between gap-3">
+                <button type="button" onClick={() => set({ enabled: !cfg.enabled })} className="flex items-center gap-2" title="Auto-pull exports over SSH">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: dot }} />
+                  <span className="label text-muted">Auto-pull over SSH</span>
+                </button>
+                <span className="text-xs" style={{ color: cfg.enabled ? statusColor : "var(--color-faint)" }}>
+                  {cfg.enabled ? sync.msg ?? "starting…" : "off"}
+                </span>
+              </div>
 
-              {showAuto && (
-                <div className="mt-2.5 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => set({ enabled: !cfg.enabled })} className="flex items-center gap-2" title="Toggle auto-pull">
-                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: dot }} />
-                      <span className="label text-fg">Auto-pull {cfg.enabled ? "on" : "off"}</span>
-                    </button>
-                    {cfg.enabled && (
-                      <span className="text-xs" style={{ color: statusColor }}>
-                        {sync.msg ?? "starting…"}
-                        {sync.at ? ` · ${new Date(sync.at).toLocaleTimeString()}` : ""}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs leading-relaxed text-faint">
-                    Skips the download — Watcher scp-pulls new exports straight into History every 15s. Run the agent with{" "}
-                    <span className="mono text-muted">--export {cfg.remoteDir || "~/.watcher-exports"}/&lt;box&gt;.json</span>, then:
+              {cfg.enabled && (
+                <button type="button" onClick={() => setShowConfig((v) => !v)} className="mt-2 label flex items-center gap-1.5 text-faint transition-colors hover:text-muted">
+                  <span className={`transition-transform ${showConfig ? "rotate-90" : ""}`}>▸</span> Connection
+                </button>
+              )}
+              {cfg.enabled && showConfig && (
+                <div className="mt-2 space-y-2.5">
+                  <Field label="Pwnbox SSH" value={target} onChange={onTarget} placeholder="username@hostname" />
+                  <Field label="SSH key (optional)" value={cfg.identity ?? ""} onChange={(v) => set({ identity: v })} placeholder="~/.ssh/htb_key — blank = default key" />
+                  <p className="text-xs text-faint">
+                    Needs key login (uses your Pwnbox password once) — see <button type="button" onClick={openSetup} className="text-signal hover:underline">Setup</button>.
                   </p>
-                  <Field label="Pwnbox SSH" value={target} onChange={onTarget} placeholder="username@hostname (from Pwnbox → Instance details)" />
-                  <Field label="SSH key (optional)" value={cfg.identity ?? ""} onChange={(v) => set({ identity: v })} placeholder="~/.ssh/htb_key — blank uses your default key" />
-                  <button type="button" onClick={() => setAdvanced((v) => !v)} className="label flex items-center gap-1.5 text-faint transition-colors hover:text-muted">
-                    <span className={`transition-transform ${advanced ? "rotate-90" : ""}`}>▸</span> Advanced
-                  </button>
-                  {advanced && <Field label="Remote export dir" value={cfg.remoteDir ?? ""} onChange={(v) => set({ remoteDir: v })} placeholder="~/.watcher-exports" />}
-                  <KeyGuide conn={conn} />
                 </div>
               )}
             </div>

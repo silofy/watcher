@@ -14,8 +14,8 @@ function Req({ tone, children }: { tone: "none" | "desktop" | "advanced"; childr
   );
 }
 
-function Step({ children }: { children: ReactNode }) {
-  return <li className="text-sm leading-relaxed text-muted [&_code]:mono [&_code]:rounded [&_code]:bg-panel-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-fg">{children}</li>;
+function Step({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <li className={`text-sm leading-relaxed text-muted [&_code]:mono [&_code]:rounded [&_code]:bg-panel-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-fg ${className}`}>{children}</li>;
 }
 
 function Tier({ n, title, req, unlocks, children }: { n: number; title: string; req: ReactNode; unlocks: string; children: ReactNode }) {
@@ -50,11 +50,14 @@ export function Install() {
           <Step>Pick the shell with <code>--shell bash</code> (or <code>pwsh</code>, <code>zsh</code>, …) — handy for git-bash / WSL on Windows; defaults to your login shell.</Step>
         </Tier>
 
-        <Tier n={2} title="Capture in Pwnbox" req={<Req tone="desktop">desktop app + SSH</Req>} unlocks="Pwnbox is a pixel stream — run the agent inside it, pull results over your own key (PC ↔ Pwnbox, no third party).">
-          <Code>./watcher-capture --export ~/.watcher-exports/box.json --machine &lt;name&gt;</Code>
-          <Step>The agent is <code>crates/capture/dist/watcher-capture-linux-x86_64</code>. <code>scp</code> it up, <code>chmod +x</code>, run it in Pwnbox.</Step>
-          <Step>Pwnbox gives you a <span className="text-fg">password</span>, but the pull is key-based — so enable key login once with <code>ssh-copy-id &lt;user&gt;@&lt;host&gt;</code> (uses that password one time).</Step>
-          <Step>Then top bar → <span className="text-fg">Pwnbox sync</span> — paste <code>user@host</code>, flip <span className="text-fg">Auto-pull on</span>. It scp-pulls every 15s into History. The panel has copy-paste commands for all of this.</Step>
+        <Tier n={2} title="Capture in Pwnbox" req={<Req tone="desktop">desktop app</Req>} unlocks="Pwnbox is a pixel stream — run the agent inside it, then bring the export back. The basic flow needs no SSH keys.">
+          <Step><span className="text-fg">1. Put the agent in Pwnbox.</span> It's in your checkout — upload it with Pwnbox's file-transfer button, or <code>scp</code> it up:</Step>
+          <Code>scp crates/capture/dist/watcher-capture-linux-x86_64 &lt;user&gt;@&lt;host&gt;:~/</Code>
+          <Step><span className="text-fg">2. Run it</span> in the Pwnbox terminal — hack, then <code>exit</code>:</Step>
+          <Code>chmod +x watcher-capture-linux-x86_64 &amp;&amp; ./watcher-capture-linux-x86_64 --export ~/box.json --machine &lt;box&gt;</Code>
+          <Step><span className="text-fg">3. Bring it back.</span> Download <code>box.json</code> from Pwnbox, then drag it onto the <span className="text-fg">History</span> tab — it opens as a debrief. No keys, no config.</Step>
+          <Step className="pt-1.5"><span className="text-fg">Optional — live auto-pull.</span> Skip the download: Watcher <code>scp</code>-pulls every 15s straight into History. Top bar → <span className="text-fg">Pwnbox</span> → enable <span className="text-fg">Auto-pull</span>, paste <code>user@host</code>. The pull is key-based, so enable key login once (Pwnbox gives a password — this uses it one time):</Step>
+          <Code>ssh-copy-id &lt;user&gt;@&lt;host&gt;</Code>
         </Tier>
 
         <Tier n={3} title="Reference path — the comparison" req={<Req tone="none">1-click / paste</Req>} unlocks="Powers coverage, “What you'd do differently”, and the golden-path graph. Without it: your own deviations, time, stealth and techniques — no comparison.">

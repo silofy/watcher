@@ -373,10 +373,11 @@ export function LiveDashboard() {
           <div className="flex h-full flex-col">
             <RunRibbon items={timeline.items} totalMs={timeline.totalMs} focus={focus} onPick={(seq) => s.select(s.selectedSeq === seq ? null : seq)} />
             <div className="mt-2 flex-1">
-              {focus != null ? (
-                <RunDetail timeline={timeline} focus={focus} onOpen={() => openDetail("unfolded")} />
+              {/* default to the first command so the card is exposed on open; hover/click swaps it */}
+              {(focus ?? cmds[0]?.seq) != null ? (
+                <RunDetail timeline={timeline} focus={(focus ?? cmds[0]!.seq) as number} onOpen={() => openDetail("unfolded")} />
               ) : (
-                <p className="text-xs text-faint">each block = a command · width = time on it · <span className="text-muted">click one to inspect it here</span></p>
+                <p className="text-xs text-faint">No commands captured yet.</p>
               )}
             </div>
           </div>
