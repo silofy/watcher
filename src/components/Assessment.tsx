@@ -2,6 +2,7 @@ import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
 import { computeGrade, gradeColor, RUBRIC, type RubricKey } from "../lib/bridge/grade";
 import { minimizedBundle } from "../lib/bridge/bundle";
+import { isLiveRecording } from "../lib/live";
 
 /** The radar axes ARE the grade's weighted dimensions — chart, math, and letter tell one story. */
 const RUBRIC_AXES: { key: RubricKey; short: string }[] = [
@@ -39,6 +40,21 @@ const RUBRIC_COLS = "11rem minmax(0,1fr) 2.5rem 3rem 3.25rem";
 export function Assessment() {
   const s = useReport();
   const { report } = s;
+
+  // the grade is a verdict — premature while the capture is live; settle it only when the run ends
+  if (isLiveRecording(report)) {
+    return (
+      <Section collapsible name="debrief-details" title="Grade" subtitle="the explainable rubric — settles when the run ends">
+        <p className="text-sm text-faint">
+          <span className="animate-pulse" style={{ color: "var(--color-loud)" }}>
+            ●
+          </span>{" "}
+          Recording — the grade is provisional while the run is live. It resolves into a final, explainable score when the capture ends.
+        </p>
+      </Section>
+    );
+  }
+
   const grade = computeGrade(report);
   const bundle = minimizedBundle(report, grade);
   const flagged = grade.independence_gate.flagged;

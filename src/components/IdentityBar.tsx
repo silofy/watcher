@@ -4,6 +4,8 @@ import { tierColor } from "./ui";
 import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
 import { detectFlags } from "../lib/flags";
+import { isLiveRecording } from "../lib/live";
+import { fmtDuration } from "../lib/format";
 import { WriteupControl } from "./WriteupControl";
 
 /**
@@ -90,6 +92,11 @@ export function IdentityBar() {
   const { golden_dag } = report;
   const machine = machineOf(report);
 
+  // live capture: the debrief is UNDERWAY, not a verdict — surface where you are, not a premature grade
+  const recording = isLiveRecording(report);
+  const cmdCount = report.episodes.filter((e) => e.binary).length;
+  const currentPhase = report.phases.at(-1)?.label ?? "Recon";
+
   // verdict numbers folded in from the old KPI bar — grade + the quality metrics
   const grade = computeGrade(report);
   const tw = metrics.time_waster;
@@ -130,19 +137,40 @@ export function IdentityBar() {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          {/* the two headline scores, each tinted by its quality tier */}
-          <ScoreReadout
-            label="Stealth"
-            value={String(Math.round(metrics.stealth_score))}
-            sub={`/100 · ${tierWord(metrics.stealth_score)}`}
-            color={tierColor(metrics.stealth_score)}
-          />
-          <ScoreReadout
-            label="Grade"
-            value={grade.letter}
-            sub={`${Math.round(grade.score)} / 100`}
-            color={gradeColor(grade.letter)}
-          />
+          {recording ? (
+            /* live: a status block instead of a premature verdict — where you are, right now */
+            <div
+              className="rounded-lg border px-4 py-2 text-right"
+              style={{
+                borderColor: "color-mix(in oklch, var(--color-loud) 32%, var(--color-edge))",
+                backgroundColor: "color-mix(in oklch, var(--color-loud) 12%, transparent)",
+              }}
+            >
+              <div className="label flex items-center justify-end gap-1.5" style={{ color: "var(--color-loud)" }}>
+                <span className="animate-pulse">●</span> Recording
+              </div>
+              <div className="font-display text-3xl font-bold leading-none text-fg">{currentPhase}</div>
+              <div className="label mt-1 tabular-nums text-faint">
+                {cmdCount} cmd{cmdCount === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)}
+              </div>
+            </div>
+          ) : (
+            /* finished: the two headline scores, each tinted by its quality tier */
+            <>
+              <ScoreReadout
+                label="Stealth"
+                value={String(Math.round(metrics.stealth_score))}
+                sub={`/100 · ${tierWord(metrics.stealth_score)}`}
+                color={tierColor(metrics.stealth_score)}
+              />
+              <ScoreReadout
+                label="Grade"
+                value={grade.letter}
+                sub={`${Math.round(grade.score)} / 100`}
+                color={gradeColor(grade.letter)}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -154,7 +182,12 @@ export function IdentityBar() {
           <FlagStat label="System flag" state={systemState} at={flagAt(flags.system)} />
         </div>
         <div className="flex flex-wrap items-end justify-end gap-x-7 gap-y-3">
-          <Stat label="Objectives" value={hasRef ? `${tasksDone}/${golden_dag.length}` : "—"} color={hasRef ? tierColor(tasksPct) : undefined} />
+          {/* while recording the headline shows live status, so stealth-so-far moves into the band —
+              it's the one "are you getting loud right now" signal that's meaningful mid-run */}
+          {recording && (
+            <Stat label="Stealth" value={`${Math.round(metrics.stealth_score)}/100`} rating={tierWord(metrics.stealth_score)} color={tierColor(metrics.stealth_score)} />
+          )}
+          {!recording && <Stat label="Objectives" value={hasRef ? `${tasksDone}/${golden_dag.length}` : "—"} color={hasRef ? tierColor(tasksPct) : undefined} />}
           <Stat label="Time lost" value={`${lost}%`} color={lostColor} />
           <Stat label="Techniques" value={String(metrics.technique_breadth)} />
         </div>

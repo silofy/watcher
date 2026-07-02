@@ -2,6 +2,7 @@ import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
 import { PathGraph } from "./PathGraph";
 import { humanizeObjective } from "../lib/audits";
+import { isLiveRecording } from "../lib/live";
 import type { Episode, GoldenObjective } from "../types/report";
 
 const LEGEND: [string, string][] = [
@@ -29,6 +30,7 @@ function Count({ n, label, color }: { n: number; label: string; color: string })
 
 export function PathComparison() {
   const { report } = useReport();
+  const recording = isLiveRecording(report);
   const coverage = Math.round(report.metrics.objective_coverage_pct);
   const golden = report.golden_dag;
   const epBySeq = new Map(report.episodes.map((e) => [e.seq, e]));
@@ -45,12 +47,22 @@ export function PathComparison() {
       title="What you'd do differently"
       subtitle="the intended write-up path vs your route"
       right={
-        <span className="mono tabular-nums" style={{ color: tierColor(coverage) }}>
-          {coverage}% coverage
-        </span>
+        recording ? (
+          <span className="label" style={{ color: "var(--color-loud)" }}>
+            <span className="animate-pulse">●</span> recording
+          </span>
+        ) : (
+          <span className="mono tabular-nums" style={{ color: tierColor(coverage) }}>
+            {coverage}% coverage
+          </span>
+        )
       }
     >
-      {golden.length === 0 ? (
+      {recording ? (
+        <p className="text-sm text-faint">
+          The intended-path comparison unlocks when the run finishes — grading your route against the writeup needs the whole session.
+        </p>
+      ) : golden.length === 0 ? (
         <p className="text-sm text-faint">
           Add a <span className="text-fg">writeup reference</span> at the top of the debrief to unlock the intended-path comparison.
         </p>
