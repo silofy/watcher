@@ -172,7 +172,7 @@ function DeviationGlance({ episodes, lostPct }: { episodes: Episode[]; lostPct: 
 }
 
 /** The resolved-mode recap for the tall tile — the run's headline moments, each linking to its detail. */
-function KeyMoments({ report, timeline, loudestBinary, onReveal }: { report: WatcherReport; timeline: Timeline; loudestBinary: string | null; onReveal: (seq: number) => void }) {
+function KeyMoments({ report, timeline, loudestBinary, loudestSeq, onReveal }: { report: WatcherReport; timeline: Timeline; loudestBinary: string | null; loudestSeq: number | null; onReveal: (seq: number) => void }) {
   const flags = detectFlags(report.episodes);
   const userSeq = flags.user ?? flags.system; // rooting implies user-level access
   const at = (seq: number | null) => {
@@ -184,8 +184,9 @@ function KeyMoments({ report, timeline, loudestBinary, onReveal }: { report: Wat
   const golden = report.golden_dag;
   const done = golden.filter((o) => o.user_satisfied_by_seq != null).length;
 
-  // each moment deep-links to where you'd inspect it: flags → the command in the log; loudest → the
-  // stealth report; stall → the deviation timeline; objectives → the intended-path comparison.
+  // each moment deep-links to where you'd inspect it: flags → the deviation timeline (its capture
+  // pennants); loudest → the exact command in the log; stall → the deviation timeline; objectives →
+  // the intended-path comparison.
   const Row = ({ icon, label, value, color, onClick, hint }: { icon: string; label: string; value: string; color: string; onClick?: () => void; hint?: string }) => (
     <li>
       <button
@@ -209,9 +210,9 @@ function KeyMoments({ report, timeline, loudestBinary, onReveal }: { report: Wat
 
   return (
     <ul className="fade-in space-y-0.5 text-sm">
-      <Row icon="⚑" label="User flag" value={userSeq != null ? at(userSeq)! : "not captured"} color={userSeq != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={userSeq != null ? () => onReveal(userSeq) : undefined} hint="Show the command in the log" />
-      <Row icon="⚑" label="Root flag" value={flags.system != null ? at(flags.system)! : "not captured"} color={flags.system != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={flags.system != null ? () => onReveal(flags.system!) : undefined} hint="Show the command in the log" />
-      {loudestBinary && <Row icon="🔊" label="Loudest" value={loudestBinary} color="var(--color-loud)" onClick={() => openDetail("stealth")} hint="Open Stealth & noise" />}
+      <Row icon="⚑" label="User flag" value={userSeq != null ? at(userSeq)! : "not captured"} color={userSeq != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={userSeq != null ? () => openDetail("deviated") : undefined} hint="Open Where you lost time" />
+      <Row icon="⚑" label="Root flag" value={flags.system != null ? at(flags.system)! : "not captured"} color={flags.system != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={flags.system != null ? () => openDetail("deviated") : undefined} hint="Open Where you lost time" />
+      {loudestBinary && <Row icon="🔊" label="Loudest" value={loudestBinary} color="var(--color-loud)" onClick={loudestSeq != null ? () => onReveal(loudestSeq) : undefined} hint="Show the command in the log" />}
       {longestStall > 60_000 && <Row icon="⏱" label="Longest stall" value={fmtDuration(longestStall)} color="var(--color-stuck)" onClick={() => openDetail("deviated")} hint="Open Where you lost time" />}
       {golden.length > 0 && <Row icon="◎" label="Objectives" value={`${done}/${golden.length}`} color={tierColor((done / golden.length) * 100)} onClick={() => openDetail("path")} hint="Open What you'd do differently" />}
     </ul>
@@ -230,7 +231,8 @@ export function LiveDashboard() {
   const stealth = Math.round(metrics.stealth_score);
   const tw = metrics.time_waster;
   const lostPct = Math.round(((tw.detour_ms + tw.stuck_ms + tw.loop_ms) / Math.max(1, tw.t_active_ms)) * 100);
-  const loudestBinary = loudSeq.size ? report.episodes.find((e) => e.seq === metrics.loud_moments![0].seq)?.binary ?? null : null;
+  const loudestSeq = metrics.loud_moments?.[0]?.seq ?? null;
+  const loudestBinary = loudestSeq != null ? report.episodes.find((e) => e.seq === loudestSeq)?.binary ?? null : null;
 
   return (
     <div
@@ -317,7 +319,7 @@ export function LiveDashboard() {
           right={<span className="text-xs text-faint">{recording ? "newest first" : "recap"}</span>}
         >
           {!recording ? (
-            <KeyMoments report={report} timeline={timeline} loudestBinary={loudestBinary} onReveal={(seq) => s.reveal(seq)} />
+            <KeyMoments report={report} timeline={timeline} loudestBinary={loudestBinary} loudestSeq={loudestSeq} onReveal={(seq) => s.reveal(seq)} />
           ) : feed.length === 0 ? (
             <p className="text-sm text-faint">No commands captured yet.</p>
           ) : (
