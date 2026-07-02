@@ -7,8 +7,7 @@
  */
 import type { WatcherReport } from "../types/report";
 import { derivePhases } from "./pipeline";
-import { objectiveCoverage } from "./pipeline/align";
-import { round } from "./metrics";
+import { computeMetrics, round } from "./metrics";
 
 /** Return the report scoped to the inclusive seq window, or the full report when range is null. */
 export function applyTrim(full: WatcherReport, range: [number, number] | null): WatcherReport {
@@ -28,12 +27,25 @@ export function applyTrim(full: WatcherReport, range: [number, number] | null): 
   const startMs = Date.parse(full.session.started_at);
   const phases = derivePhases(episodes, Number.isNaN(startMs) ? 0 : startMs);
 
+  // Every metric computeGrade reads (efficiency, stealth, breadth, progression, coverage) must be
+  // re-derived for the trimmed window — spreading the full-session numbers made the scorecard describe
+  // the whole run while the charts showed only the slice.
+  const scoped: WatcherReport = { ...full, episodes, golden_dag, phases };
+  const cm = computeMetrics(scoped);
   return {
-    ...full,
-    episodes,
-    golden_dag,
-    phases,
-    metrics: { ...full.metrics, objective_coverage_pct: round(objectiveCoverage(golden_dag)) },
+    ...scoped,
+    metrics: {
+      ...full.metrics,
+      efficiency_pct: round(cm.efficiency_pct),
+      objective_coverage_pct: round(cm.objective_coverage_pct),
+      stealth_score: round(cm.stealth_score),
+      technique_breadth: cm.technique_breadth,
+      time_waster: cm.time_waster,
+      loud_moments: cm.loud_moments.map((l) => ({ seq: l.seq, noise: round(l.noise, 1) })),
+      ukc_coverage_pct: round(cm.ukc_coverage_pct),
+      ukc_progression: round(cm.ukc_progression),
+      weakness_breadth: cm.weakness_breadth,
+    },
   };
 }
 

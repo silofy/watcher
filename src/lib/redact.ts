@@ -9,6 +9,9 @@ import type { RedactionProfile, WatcherReport } from "../types/report";
 
 const IPV4 = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
 const FLAG = /\b[0-9a-f]{32}\b/gi; // HTB/THM flag hashes
+// key=value / key: value credential tokens — mirrors watcher_core::redact so the TS and Rust paths
+// scrub the same shapes (a credential must never survive on either side of the seam).
+const SECRET = /\b(password|passwd|pass|secret|token|api[_-]?key)\b\s*[:=]\s*\S+/gi;
 
 /** Mask only IPv4 addresses — safe to run over arbitrary source (e.g. a JS bundle). */
 export function maskIps(text: string): string {
@@ -16,7 +19,9 @@ export function maskIps(text: string): string {
 }
 
 export function redactText(text: string): string {
-  return maskIps(text).replace(FLAG, "[redacted-flag]");
+  return maskIps(text)
+    .replace(FLAG, "[redacted-flag]")
+    .replace(SECRET, (_m, key: string) => `${key}=[redacted]`);
 }
 
 /** Deep-clone the report and apply the given redaction profile to free-text fields. */

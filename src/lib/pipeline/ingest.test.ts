@@ -38,9 +38,11 @@ describe("envelope → RawCommand join (§3.3)", () => {
   const events = parseEnvelopes(ndjson);
   const raw = envelopesToRawCommands(events);
 
-  it("pairs command + output by seq", () => {
+  it("pairs command + output by seq, re-redacting on the way in", () => {
     expect(raw).toHaveLength(2);
-    expect(raw[0].cmd).toBe("nmap -sV 10.0.0.1");
+    // re-redaction is mandatory on this capture→report→disk path: the live IP is masked, never
+    // persisted verbatim (see redactText / watcher_core::redact).
+    expect(raw[0].cmd).toBe("nmap -sV x.x.x.x");
     expect(raw[0].output_digest).toBe("22,80 open");
   });
   it("derives duration from command/output timestamps (µs → ms)", () => {

@@ -12,6 +12,11 @@ describe("redactText", () => {
   it("masks flag hashes", () => {
     expect(redactText("flag: 0123456789abcdef0123456789abcdef")).toBe("flag: [redacted-flag]");
   });
+  it("masks key=value credentials (mirrors watcher_core::redact)", () => {
+    expect(redactText("mysql config: password=Winter2023!")).toBe("mysql config: password=[redacted]");
+    expect(redactText("api_key: sk-live-abc123")).toBe("api_key=[redacted]");
+    expect(redactText("token=eyJhbGciOi")).toBe("token=[redacted]");
+  });
 });
 
 describe("redactReport public_safe", () => {

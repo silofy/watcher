@@ -5,11 +5,17 @@
  */
 import type { GenOptions, LlmProvider } from "./provider";
 
+// `process` is undefined in the Vite browser build, so reading process.env.* directly at construction
+// throws ReferenceError. `typeof` never throws, so this degrades to the default instead.
+function envVar(name: string): string | undefined {
+  return typeof process !== "undefined" ? process.env?.[name] : undefined;
+}
+
 export class OllamaProvider implements LlmProvider {
   readonly name = "ollama";
   constructor(
-    private url: string = process.env.OLLAMA_URL ?? "http://127.0.0.1:11434",
-    private model: string = process.env.OLLAMA_MODEL ?? "llama3.1:8b",
+    private url: string = envVar("OLLAMA_URL") ?? "http://127.0.0.1:11434",
+    private model: string = envVar("OLLAMA_MODEL") ?? "llama3.1:8b",
   ) {}
 
   async available(): Promise<boolean> {

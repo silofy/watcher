@@ -46,6 +46,23 @@ describe("grading rubric (§6.4)", () => {
     expect(g.routed_to).toBe("grade");
   });
 
+  it("excludes independence from the rubric when it was never measured — no false integrity flag", () => {
+    const cloned = structuredClone(report);
+    delete cloned.metrics.independence;
+    const g = computeGrade(cloned);
+    expect(g.independence_gate.measured).toBe(false);
+    expect(g.independence_gate.flagged).toBe(false);
+    expect(g.routed_to).toBe("grade");
+    // the missing dimension carries zero weight; the remaining five re-normalize to 1.0 so the run
+    // isn't silently docked 15 points
+    expect(g.components.independence.weight).toBe(0);
+    const activeWeight = (["coverage", "breadth", "efficiency", "progression", "discipline"] as const).reduce(
+      (a, k) => a + g.components[k].weight,
+      0,
+    );
+    expect(activeWeight).toBeCloseTo(1, 9);
+  });
+
   it("routes low independence to the integrity queue (a gate, not an average)", () => {
     const cloned = structuredClone(report);
     cloned.metrics.independence!.score = 20; // below the gate

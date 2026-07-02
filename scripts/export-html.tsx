@@ -33,9 +33,13 @@ const reportArgIdx = process.argv.indexOf("--report");
 const reportPath =
   (reportArgIdx >= 0 && reportArgIdx + 1 < process.argv.length ? process.argv[reportArgIdx + 1] : undefined) ??
   process.env.WATCHER_REPORT_JSON;
-const report: WatcherReport = reportPath
+// Redact BOTH sources under public_safe — the whole promise of the portable export is a file safe to
+// post on Discord/GitHub, so an externally-supplied capture (which lands here with profile "full" and
+// unredacted episodes) must be scrubbed exactly like the bundled fixture, never embedded verbatim.
+const rawReport: WatcherReport = reportPath
   ? (JSON.parse(readFileSync(resolve(reportPath), "utf8")) as WatcherReport)
-  : redactReport(rawFixture as unknown as WatcherReport, "public_safe");
+  : (rawFixture as unknown as WatcherReport);
+const report: WatcherReport = redactReport(rawReport, "public_safe");
 (globalThis as { __WATCHER_REPORT__?: WatcherReport }).__WATCHER_REPORT__ = report;
 const { App } = await import("../src/App");
 
