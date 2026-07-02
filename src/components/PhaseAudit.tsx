@@ -4,6 +4,7 @@ import { Section, Chip, tierColor } from "./ui";
 import { CAT_COLOR } from "../lib/coaching";
 import { buildPhaseAudits, type AuditItem, type PhaseAudit as PhaseAuditT } from "../lib/audits";
 import { cweLabel } from "../lib/pipeline/frameworks";
+import { techniqueName } from "../lib/attack";
 import { fmtDuration, fmtMinutes } from "../lib/format";
 
 const MD = "[&_code]:mono [&_code]:rounded [&_code]:bg-panel-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-fg [&_p]:m-0 [&_strong]:text-fg";
@@ -238,35 +239,35 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
       <div className="border-t border-edge">
         {/* summary band — the phase's quick facts, set apart from the deeper breakdown below.
             The phase name is the card title already, so it isn't repeated here. */}
-        <div className="flex flex-col gap-2 bg-panel-2/30 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted">
-            <span className="flex items-center gap-1.5">
-              <Icon name="efficiency" />
-              <span className="font-semibold tabular-nums" style={{ color: tierColor(p.efficiency) }}>
-                {p.efficiency}%
-              </span>
-              time spent productively
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 bg-panel-2/30 px-4 py-3 text-sm text-muted">
+          <span className="flex items-center gap-1.5">
+            <Icon name="efficiency" />
+            <span className="font-semibold tabular-nums" style={{ color: tierColor(p.efficiency) }}>
+              {p.efficiency}%
             </span>
-            <span className="flex items-center gap-1.5">
-              <Icon name="commands" />
-              {p.commands} command{p.commands === 1 ? "" : "s"} over {fmtDuration(p.active_ms)}
+            time spent productively
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Icon name="commands" />
+            {p.commands} command{p.commands === 1 ? "" : "s"} over {fmtDuration(p.active_ms)}
+          </span>
+          {p.techniqueIds.length > 0 && (
+            <span className="flex flex-wrap items-center gap-1.5" title={p.techniqueIds.map((t) => `${t} — ${techniqueName(t)}`).join("\n")}>
+              <Icon name="techniques" />
+              <span className="text-faint">ATT&amp;CK</span>
+              <span className="mono text-xs text-muted">{p.techniqueIds.join(" · ")}</span>
             </span>
-            {p.techniques > 0 && (
-              <span className="flex items-center gap-1.5">
-                <Icon name="techniques" />
-                {p.techniques} ATT&CK technique{p.techniques === 1 ? "" : "s"}
-              </span>
-            )}
-          </div>
+          )}
+          {/* the phase-local weakness, right-aligned on the same summary row */}
           {p.cwe.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
+            <span className="ml-auto flex flex-wrap items-center gap-1.5">
               <span className="label shrink-0 text-faint">Exploited</span>
               {p.cwe.map((id) => (
                 <span key={id} className="mono rounded border border-tool/40 bg-tool/10 px-1.5 py-0.5 text-xs text-fg">
                   {cweLabel(id)}
                 </span>
               ))}
-            </div>
+            </span>
           )}
         </div>
 

@@ -59,6 +59,8 @@ export interface PhaseAudit {
   wasted_ms: number;
   commands: number;
   techniques: number;
+  /** the distinct ATT&CK technique ids in this phase (first-seen order), so the count is inspectable. */
+  techniqueIds: string[];
   /** distinct CWE weakness classes exploited in this phase (phase-scoped, unlike the run-level axes). */
   cwe: string[];
   coverage: { satisfied: number; total: number; pct: number };
@@ -253,7 +255,8 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       });
     }
 
-    const techniques = new Set(eps.map((e) => e.technique).filter(Boolean)).size;
+    const techniqueIds = [...new Set(eps.map((e) => e.technique).filter((t): t is string => !!t))];
+    const techniques = techniqueIds.length;
     const cwe = runWeaknesses(eps);
     const total = objectives.length;
 
@@ -266,6 +269,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       wasted_ms,
       commands: eps.length,
       techniques,
+      techniqueIds,
       cwe,
       coverage: { satisfied: satisfied.length, total, pct: total === 0 ? 0 : (satisfied.length / total) * 100 },
       objectives: objectiveStatus,
