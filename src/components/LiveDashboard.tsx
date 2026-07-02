@@ -6,7 +6,8 @@ import { tierColor } from "./ui";
 import { episodeNoise } from "../lib/metrics";
 import { episodeColor } from "../lib/scale";
 import { SHORT_TACTIC } from "../lib/audits";
-import { reachedUkcPhases, UKC_ORDER, ukcRank, ukcOf, ukcLabel, type UkcPhase } from "../lib/pipeline/frameworks";
+import { ukcOf, ukcLabel } from "../lib/pipeline/frameworks";
+import { KillChainTrajectory } from "./KillChainTrajectory";
 import type { Episode } from "../types/report";
 import type { TimedEpisode } from "../lib/scale";
 
@@ -34,40 +35,6 @@ function Tile({ label, right, className = "", children }: { label: string; right
         {right}
       </div>
       <div className="min-h-0 flex-1">{children}</div>
-    </div>
-  );
-}
-
-/** The kill-chain breadcrumb: UKC phases reached so far, in attack order, + the next expected one. */
-function KillChain({ episodes }: { episodes: Episode[] }) {
-  const reached = reachedUkcPhases(episodes);
-  const ordered = [...reached].sort((a, b) => ukcRank(a) - ukcRank(b));
-  const furthest = ordered.length ? ukcRank(ordered[ordered.length - 1]) : -1;
-  const next = UKC_ORDER.find((p) => ukcRank(p) > furthest);
-  const current = ordered[ordered.length - 1];
-
-  if (ordered.length === 0) return <p className="text-sm text-faint">Waiting for the first classified command…</p>;
-  return (
-    <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5">
-      {ordered.map((p, i) => {
-        const isCurrent = p === current;
-        const color = isCurrent ? "var(--color-loud)" : "var(--color-match)";
-        return (
-          <span key={p} className="flex items-center gap-1">
-            {i > 0 && <span className="text-faint">›</span>}
-            <span className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs font-medium" style={{ color, backgroundColor: `color-mix(in oklch, ${color} 15%, transparent)` }}>
-              {isCurrent && <span className="animate-pulse">●</span>}
-              {ukcLabel(p as UkcPhase)}
-            </span>
-          </span>
-        );
-      })}
-      {next && (
-        <span className="flex items-center gap-1">
-          <span className="text-faint">›</span>
-          <span className="rounded border border-dashed border-edge px-1.5 py-0.5 text-xs text-faint">{ukcLabel(next)}</span>
-        </span>
-      )}
     </div>
   );
 }
@@ -201,7 +168,7 @@ export function LiveDashboard() {
             </span>
           }
         >
-          <KillChain episodes={report.episodes} />
+          <KillChainTrajectory progression={metrics.ukc_progression ?? 100} compact />
         </Tile>
 
         {/* am I getting loud */}
