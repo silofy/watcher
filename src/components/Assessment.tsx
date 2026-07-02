@@ -66,6 +66,7 @@ export function Assessment() {
   const n = axes.length;
 
   const valuePoly = axes.map((a, i) => point(i, grade.components[a.key].raw / 100, n).join(",")).join(" ");
+  const gc = gradeColor(grade.letter);
 
   return (
     <Section
@@ -112,11 +113,14 @@ export function Assessment() {
               </text>
             );
           })}
+          {/* center medallion — masks the converging axis lines + polygon fill so the grade reads as a
+              clean verdict instead of getting lost in the mesh. Drawn over the radar, under the text. */}
+          <circle cx={CX} cy={CY} r={29} fill={`color-mix(in oklch, ${gc} 12%, var(--color-ink))`} stroke={gc} strokeOpacity={0.55} strokeWidth={1.5} />
           {/* the grade itself, at the center of its own breakdown */}
-          <text x={CX} y={CY - 3} fontSize="30" fontWeight={700} fill={gradeColor(grade.letter)} textAnchor="middle" dominantBaseline="middle" className="font-display">
+          <text x={CX} y={CY - 3} fontSize="34" fontWeight={700} fill={gc} textAnchor="middle" dominantBaseline="middle" className="font-display">
             {grade.letter}
           </text>
-          <text x={CX} y={CY + 17} fontSize="10.5" fill="var(--color-faint)" textAnchor="middle">
+          <text x={CX} y={CY + 18} fontSize="10" fill="var(--color-faint)" textAnchor="middle">
             {grade.score}/100
           </text>
         </svg>
