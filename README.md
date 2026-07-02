@@ -2,7 +2,12 @@
 
 A local-first **flight-data-recorder for offensive-security practice**. It records the commands you
 run against a box (HTB, labs, CTFs) and turns them into a graded debrief — a Lighthouse-style audit
-per MITRE phase: what you achieved, where you wasted time, and what to do better next time.
+per phase: what you achieved, where you wasted time, and what to do better next time.
+
+Your run is read through three frameworks at once: **MITRE ATT&CK** for *what* you did, the **Unified
+Kill Chain** for the *order* it should happen in (so backtracking and clean progression are
+measurable), and **CWE** for the *weakness class* you exploited (so SQLi and XXE count as two skills,
+not one technique).
 
 Everything runs on your machine. No account, no telemetry, no cloud.
 
