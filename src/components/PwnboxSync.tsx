@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { loadPwnboxConfig, savePwnboxConfig, pullPwnbox, type PwnboxConfig } from "../lib/pwnbox";
+import { loadPwnboxConfig, savePwnboxConfig, pullPwnbox, parseSshTarget, formatSshTarget, type PwnboxConfig } from "../lib/pwnbox";
 
 type Sync = { kind: "idle" | "ok" | "error"; msg?: string; at?: number };
 
-function Field({ label, value, onChange, placeholder, type = "text", width = "" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; width?: string }) {
+function Field({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
   return (
-    <label className={`flex flex-col gap-1 ${width}`}>
+    <label className="flex flex-col gap-1">
       <span className="label">{label}</span>
       <input
         type={type}
@@ -26,6 +26,8 @@ function Field({ label, value, onChange, placeholder, type = "text", width = "" 
 export function PwnboxSync() {
   const [cfg, setCfg] = useState<PwnboxConfig>(loadPwnboxConfig);
   const [open, setOpen] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
+  const [target, setTarget] = useState(() => formatSshTarget(loadPwnboxConfig()));
   const [sync, setSync] = useState<Sync>({ kind: "idle" });
   const busy = useRef(false);
 
@@ -33,6 +35,13 @@ export function PwnboxSync() {
     const next = { ...cfg, ...patch };
     setCfg(next);
     savePwnboxConfig(next);
+  };
+
+  // the single connection field parses "user@host:port" into the three stored parts
+  const onTarget = (v: string) => {
+    setTarget(v);
+    const { user, host, port } = parseSshTarget(v);
+    set({ user, host, port });
   };
 
   useEffect(() => {
@@ -97,18 +106,19 @@ export function PwnboxSync() {
             </div>
 
             <div className="space-y-3">
-              <div className="flex flex-wrap gap-3">
-                <Field label="host" value={cfg.host} onChange={(v) => set({ host: v })} placeholder="pwnbox ip / host" width="grow" />
-                <Field label="user" value={cfg.user} onChange={(v) => set({ user: v })} placeholder="htb-user" />
-                <Field label="port" type="number" value={cfg.port ? String(cfg.port) : ""} onChange={(v) => set({ port: v ? Number(v) : undefined })} placeholder="22" width="w-20" />
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Field label="key path (optional)" value={cfg.identity ?? ""} onChange={(v) => set({ identity: v })} placeholder="C:\\Users\\you\\.ssh\\htb_key" width="grow" />
-                <Field label="remote export dir" value={cfg.remoteDir ?? ""} onChange={(v) => set({ remoteDir: v })} placeholder="~/.watcher-exports" width="grow" />
-              </div>
-              <p className="text-xs text-faint">
-                In Pwnbox, run the agent with <span className="mono">--export ~/.watcher-exports/&lt;box&gt;.json</span>. The Watcher scp-pulls those here every 15s using your SSH
-                key — directly, nothing through a third party.
+              <Field label="Pwnbox SSH" value={target} onChange={onTarget} placeholder="htb-user@10.10.14.5" />
+              <Field label="SSH key (optional)" value={cfg.identity ?? ""} onChange={(v) => set({ identity: v })} placeholder="~/.ssh/htb_key — blank uses your default key" />
+
+              <button type="button" onClick={() => setAdvanced((v) => !v)} className="label flex items-center gap-1.5 text-faint transition-colors hover:text-muted">
+                <span className={`transition-transform ${advanced ? "rotate-90" : ""}`}>▸</span> Advanced
+              </button>
+              {advanced && (
+                <Field label="Remote export dir" value={cfg.remoteDir ?? ""} onChange={(v) => set({ remoteDir: v })} placeholder="~/.watcher-exports" />
+              )}
+
+              <p className="text-xs leading-relaxed text-faint">
+                In Pwnbox, add <span className="mono text-muted">--export {cfg.remoteDir || "~/.watcher-exports"}/&lt;box&gt;.json</span> to the agent. Watcher pulls new exports over
+                your own SSH connection every 15s — nothing goes through a third party.
               </p>
             </div>
           </div>

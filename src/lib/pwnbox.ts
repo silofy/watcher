@@ -32,6 +32,32 @@ export function savePwnboxConfig(c: PwnboxConfig): void {
   }
 }
 
+/** Parse a "[user@]host[:port]" target (tolerating a leading "ssh ") into config parts, so a user can
+ *  paste the one connection string HTB gives them instead of filling three fields. */
+export function parseSshTarget(s: string): { user: string; host: string; port?: number } {
+  let t = s.trim().replace(/^ssh\s+/i, "");
+  let user = "";
+  const at = t.lastIndexOf("@");
+  if (at >= 0) {
+    user = t.slice(0, at);
+    t = t.slice(at + 1);
+  }
+  let port: number | undefined;
+  const colon = t.lastIndexOf(":");
+  if (colon >= 0 && /^\d+$/.test(t.slice(colon + 1))) {
+    port = Number(t.slice(colon + 1));
+    t = t.slice(0, colon);
+  }
+  return { user, host: t, port };
+}
+
+/** Render config parts back into a "user@host[:port]" target for the single-field editor. */
+export function formatSshTarget(c: Pick<PwnboxConfig, "host" | "user" | "port">): string {
+  if (!c.host && !c.user) return "";
+  const hostPort = c.port ? `${c.host}:${c.port}` : c.host;
+  return c.user ? `${c.user}@${hostPort}` : hostPort;
+}
+
 function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
