@@ -7,24 +7,22 @@ import { episodeNoise, NOISE_BASELINE } from "../lib/metrics";
 import { episodeColor } from "../lib/scale";
 import { SHORT_TACTIC } from "../lib/audits";
 import { ukcOf, ukcLabel } from "../lib/pipeline/frameworks";
+import { detectFlags } from "../lib/flags";
 import { KillChainTrajectory } from "./KillChainTrajectory";
 import { AnimatedNumber } from "./AnimatedNumber";
-import type { Episode } from "../types/report";
-import type { TimedEpisode } from "../lib/scale";
+import type { Episode, WatcherReport } from "../types/report";
+import type { TimedEpisode, Timeline } from "../lib/scale";
 
 /**
- * Live Ops — the mid-run companion, laid out as a bento of small, glanceable instruments. While a
- * session is recording the verdict views (grade, writeup comparison, phase audit) are premature; this
- * shows what a player references WHILE playing, all from telemetry alone (no write-up needed):
+ * The Ops bento — a grid of small, glanceable instruments that lives above the accordion detail in two
+ * modes, staying MOUNTED across the transition so the live→results hand-off is fluid, not a swap:
  *
- *   Kill chain      — how far up the chain am I, is my progression clean?
- *   Stealth burn    — am I getting loud right now?
- *   Run unfolding   — the session as a live time ribbon, each block a command
- *   Where you deviated — dead-ends, loops, stalls, time lost, live
- *   Latest commands — what my last few moves mapped to (the tall tile)
+ *   • Recording ("Live ops") — the mid-run companion: where am I, am I loud, what did my last moves do.
+ *   • Resolved ("Run summary") — the same tiles as a settled results card (the summarized counterpart to
+ *     the accordion Details below); the live command feed becomes a "key moments" recap.
  *
- * Every tile streams — it grows as commands land, so the report is a live instrument, not a
- * post-mortem. Renders nothing once the run ends; the resolved debrief takes over.
+ * Every tile derives from telemetry alone (no write-up), so it renders for a live box and an archived
+ * one alike. The container tint eases from live-coral to neutral when the run resolves.
  */
 
 /** A bento tile — a bordered card with a stenciled label header and an optional right-aligned readout.
@@ -144,10 +142,46 @@ function DeviationGlance({ episodes, lostPct }: { episodes: Episode[]; lostPct: 
   );
 }
 
+/** The resolved-mode recap for the tall tile — the run's headline moments, once it's over. */
+function KeyMoments({ report, timeline, loudestBinary }: { report: WatcherReport; timeline: Timeline; loudestBinary: string | null }) {
+  const flags = detectFlags(report.episodes);
+  const userSeq = flags.user ?? flags.system; // rooting implies user-level access
+  const at = (seq: number | null) => {
+    if (seq == null) return null;
+    const m = Math.round((timeline.bySeq.get(seq)?.t0 ?? 0) / 60_000);
+    return m < 1 ? "early" : `${m}m in`;
+  };
+  const longestStall = report.episodes.filter((e) => e.actor === "think_pause").reduce((m, e) => Math.max(m, e.duration_ms + e.gap_before_ms), 0);
+  const golden = report.golden_dag;
+  const done = golden.filter((o) => o.user_satisfied_by_seq != null).length;
+
+  const Row = ({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) => (
+    <li className="flex items-center gap-2">
+      <span className="w-4 shrink-0 text-center" style={{ color }}>
+        {icon}
+      </span>
+      <span className="text-muted">{label}</span>
+      <span className="mono ml-auto tabular-nums" style={{ color }}>
+        {value}
+      </span>
+    </li>
+  );
+
+  return (
+    <ul className="fade-in space-y-1.5 text-sm">
+      <Row icon="⚑" label="User flag" value={userSeq != null ? at(userSeq)! : "not captured"} color={userSeq != null ? "var(--color-flag)" : "var(--color-faint)"} />
+      <Row icon="⚑" label="Root flag" value={flags.system != null ? at(flags.system)! : "not captured"} color={flags.system != null ? "var(--color-flag)" : "var(--color-faint)"} />
+      {loudestBinary && <Row icon="🔊" label="Loudest" value={loudestBinary} color="var(--color-loud)" />}
+      {longestStall > 60_000 && <Row icon="⏱" label="Longest stall" value={fmtDuration(longestStall)} color="var(--color-stuck)" />}
+      {golden.length > 0 && <Row icon="◎" label="Objectives" value={`${done}/${golden.length}`} color={tierColor((done / golden.length) * 100)} />}
+    </ul>
+  );
+}
+
 export function LiveDashboard() {
   const s = useReport();
   const { report, timeline, metrics } = s;
-  if (!isLiveRecording(report)) return null;
+  const recording = isLiveRecording(report);
 
   const focus = activeSeq(s);
   const cmds = report.episodes.filter((e) => e.binary);
@@ -156,21 +190,28 @@ export function LiveDashboard() {
   const stealth = Math.round(metrics.stealth_score);
   const tw = metrics.time_waster;
   const lostPct = Math.round(((tw.detour_ms + tw.stuck_ms + tw.loop_ms) / Math.max(1, tw.t_active_ms)) * 100);
-  const loudestBinary = loudSeq.size ? report.episodes.find((e) => e.seq === metrics.loud_moments![0].seq)?.binary : null;
+  const loudestBinary = loudSeq.size ? report.episodes.find((e) => e.seq === metrics.loud_moments![0].seq)?.binary ?? null : null;
 
   return (
     <div
-      className="rounded-xl border p-4"
+      className="rounded-xl border p-4 transition-colors duration-700"
       style={{
-        borderColor: "color-mix(in oklch, var(--color-loud) 28%, var(--color-edge))",
-        backgroundColor: "color-mix(in oklch, var(--color-loud) 5%, transparent)",
+        borderColor: recording ? "color-mix(in oklch, var(--color-loud) 28%, var(--color-edge))" : "var(--color-edge)",
+        backgroundColor: recording ? "color-mix(in oklch, var(--color-loud) 5%, transparent)" : "color-mix(in oklch, var(--color-panel) 40%, transparent)",
       }}
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="label flex items-center gap-2" style={{ color: "var(--color-loud)" }}>
-          <span className="animate-pulse">●</span> Live ops
-          <span className="text-faint">· reference while you play</span>
-        </span>
+        {recording ? (
+          <span className="label flex items-center gap-2" style={{ color: "var(--color-loud)" }}>
+            <span className="animate-pulse">●</span> Live ops
+            <span className="text-faint">· reference while you play</span>
+          </span>
+        ) : (
+          <span className="label flex items-center gap-2 text-muted">
+            Run summary
+            <span className="text-faint">· the run at a glance · details below</span>
+          </span>
+        )}
         <span className="mono text-xs tabular-nums text-faint">
           {cmds.length} cmd{cmds.length === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)} · {metrics.technique_breadth} technique{metrics.technique_breadth === 1 ? "" : "s"}
         </span>
@@ -222,9 +263,16 @@ export function LiveDashboard() {
           </div>
         </Tile>
 
-        {/* what my last moves mapped to — the tall tile on the right */}
-        <Tile label="Latest commands" i={2} className="lg:row-span-2" right={<span className="text-xs text-faint">newest first</span>}>
-          {feed.length === 0 ? (
+        {/* what my last moves mapped to (live) → the run's headline moments (resolved) */}
+        <Tile
+          label={recording ? "Latest commands" : "Key moments"}
+          i={2}
+          className="lg:row-span-2"
+          right={<span className="text-xs text-faint">{recording ? "newest first" : "recap"}</span>}
+        >
+          {!recording ? (
+            <KeyMoments report={report} timeline={timeline} loudestBinary={loudestBinary} />
+          ) : feed.length === 0 ? (
             <p className="text-sm text-faint">No commands captured yet.</p>
           ) : (
             <ul className="space-y-0.5">
