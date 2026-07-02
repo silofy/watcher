@@ -3,7 +3,7 @@ import { useReport, activeSeq } from "../store/report";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
 import { tierColor } from "./ui";
-import { episodeNoise } from "../lib/metrics";
+import { episodeNoise, NOISE_BASELINE } from "../lib/metrics";
 import { episodeColor } from "../lib/scale";
 import { SHORT_TACTIC } from "../lib/audits";
 import { ukcOf, ukcLabel } from "../lib/pipeline/frameworks";
@@ -41,23 +41,37 @@ function Tile({ label, right, className = "", i = 0, children }: { label: string
   );
 }
 
-/** A cumulative-noise sparkline — the run's stealth burn, monotonic and streaming-friendly. */
-function NoiseSparkline({ items, totalMs }: { items: TimedEpisode[]; totalMs: number }) {
-  let cum = 0;
-  const pts = items.map((it) => {
-    cum += episodeNoise(it.ep);
-    return { x: it.t0 / Math.max(1, totalMs), y: cum };
-  });
-  const maxY = Math.max(1, cum);
-  if (pts.length < 2) return <div className="h-10" />;
-  const W = 100;
-  const H = 40;
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${(p.x * W).toFixed(1)} ${(H - (p.y / maxY) * H).toFixed(1)}`).join(" ");
+/**
+ * A vertical stealth-burn column — noise stacks up from the bottom, one segment per noisy command
+ * (silent commands add nothing), so you watch the run "burn" toward the lab-baseline ceiling. Vertical
+ * so it fills the tile's height as the kill-chain chart beside it grows. Loud moments glow brighter.
+ */
+function VerticalBurn({ items, baseline, loudSeq }: { items: TimedEpisode[]; baseline: number; loudSeq: Set<number> }) {
+  const noises = items.map((it) => ({ seq: it.ep.seq, noise: episodeNoise(it.ep) }));
+  const totalCum = noises.reduce((a, b) => a + b.noise, 0);
+  const scaleMax = Math.max(baseline, totalCum, 1);
+  const ceilingPct = Math.min(100, (baseline / scaleMax) * 100); // where the lab-baseline sits on the column
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-10 w-full">
-      <path d={`${line} L ${W} ${H} L 0 ${H} Z`} fill="var(--color-loud)" fillOpacity={0.12} />
-      <path d={line} fill="none" stroke="var(--color-loud)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div className="relative flex w-12 shrink-0 flex-col-reverse overflow-hidden rounded-md border border-edge bg-ink/40">
+      {noises.map((n, i) => {
+        if (n.noise <= 0) return null;
+        const loud = loudSeq.has(n.seq);
+        return (
+          <div
+            key={n.seq}
+            className="fade-in w-full shrink-0"
+            style={{
+              height: `${(n.noise / scaleMax) * 100}%`,
+              background: loud ? "var(--color-loud)" : "color-mix(in oklch, var(--color-loud) 42%, transparent)",
+              borderTop: i > 0 ? "1px solid color-mix(in oklch, var(--color-ink) 45%, transparent)" : undefined,
+            }}
+          />
+        );
+      })}
+      {/* the lab-baseline ceiling — cross it and stealth hits zero */}
+      <div className="pointer-events-none absolute inset-x-0 border-t border-dashed border-edge-bright/70" style={{ bottom: `${ceilingPct}%` }} />
+    </div>
   );
 }
 
@@ -185,16 +199,24 @@ export function LiveDashboard() {
             </span>
           }
         >
-          <NoiseSparkline items={timeline.items} totalMs={timeline.totalMs} />
-          <p className="mt-1 truncate text-xs text-faint">
-            {loudestBinary ? (
-              <>
-                Loudest: <span className="mono text-muted">{loudestBinary}</span>
-              </>
-            ) : (
-              "Quiet so far."
-            )}
-          </p>
+          <div className="flex h-full min-h-[128px] gap-3">
+            <VerticalBurn items={timeline.items} baseline={report.noise_baseline?.total ?? NOISE_BASELINE} loudSeq={loudSeq} />
+            <div className="flex flex-1 flex-col justify-between text-xs text-faint">
+              <span className="label text-faint">louder ▲</span>
+              <div>
+                <p className="truncate">
+                  {loudestBinary ? (
+                    <>
+                      Loudest: <span className="mono text-muted">{loudestBinary}</span>
+                    </>
+                  ) : (
+                    "Quiet so far."
+                  )}
+                </p>
+                <p className="mt-1 leading-snug">Each bar is a tool's noise, stacking toward the <span className="text-muted">lab baseline</span> (dashed).</p>
+              </div>
+            </div>
+          </div>
         </Tile>
 
         {/* what my last moves mapped to — the tall tile on the right */}
