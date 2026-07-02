@@ -5,15 +5,30 @@
  */
 import { NullProvider, type LlmProvider } from "./provider";
 import { OllamaProvider } from "./ollama";
+import { CloudProvider } from "./cloud";
+import { getCoachMode, type CoachMode } from "./mode";
 
 export * from "./hardware";
 export * from "./grammar";
 export * from "./provider";
 export * from "./ollama";
+export * from "./cloud";
+export * from "./mode";
+export * from "./runtime";
 export * from "./refine";
 
-/** Use a reachable local Ollama if present, else the rules-only NullProvider. */
-export async function resolveProvider(opts?: { url?: string; model?: string }): Promise<LlmProvider> {
+/**
+ * Resolve the coaching provider for the selected mode. `rules` → deterministic only; a cloud mode →
+ * that CloudProvider when its key is set (else rules); `local` (default) → a reachable Ollama, else
+ * rules. Any provider that can't run degrades to rules-only, so coaching never hard-fails.
+ */
+export async function resolveProvider(opts?: { url?: string; model?: string; mode?: CoachMode }): Promise<LlmProvider> {
+  const mode = opts?.mode ?? getCoachMode();
+  if (mode === "rules") return new NullProvider();
+  if (mode === "anthropic" || mode === "openai" || mode === "gemini") {
+    const cloud = new CloudProvider(mode);
+    return (await cloud.available()) ? cloud : new NullProvider();
+  }
   const ollama = new OllamaProvider(opts?.url, opts?.model);
   if (await ollama.available()) return ollama;
   return new NullProvider();
