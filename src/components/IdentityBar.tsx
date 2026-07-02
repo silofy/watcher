@@ -3,7 +3,6 @@ import { MachineAvatar } from "./MachineAvatar";
 import { tierColor } from "./ui";
 import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
-import { detectFlags } from "../lib/flags";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
 import { WriteupControl } from "./WriteupControl";
@@ -33,18 +32,6 @@ function Pill({ text, color, filled }: { text: string; color?: string; filled?: 
   return <span className="label rounded border border-edge px-1.5 py-0.5 text-xs text-faint">{text}</span>;
 }
 
-function Stat({ label, value, rating, color }: { label: string; value: string; rating?: string; color?: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="label text-xs">{label}</span>
-      <span className="mono text-sm tabular-nums" style={color ? { color } : undefined}>
-        {value}
-        {rating && <span className="ml-1.5 text-xs font-medium">{rating}</span>}
-      </span>
-    </div>
-  );
-}
-
 /** A 0–100 score's quality word, tiered to match tierColor (Good ≥ 65, Average ≥ 40, else Poor). */
 const tierWord = (v: number) => (v >= 65 ? "Good" : v >= 40 ? "Average" : "Poor");
 
@@ -70,57 +57,16 @@ function ScoreReadout({ label, value, sub, color }: { label: string; value: Reac
   );
 }
 
-function FlagStat({ label, state, at }: { label: string; state: "yes" | "no" | "unknown"; at?: string }) {
-  const v =
-    state === "yes"
-      ? { t: "✓ Captured", c: "var(--color-match)" }
-      : state === "no"
-        ? { t: "○ Not captured", c: "var(--color-faint)" }
-        : { t: "—", c: "var(--color-faint)" };
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="label text-xs">{label}</span>
-      <span className="mono text-sm" style={{ color: v.c }}>
-        {v.t}
-        {state === "yes" && at && <span className="text-faint"> · {at}</span>}
-      </span>
-    </div>
-  );
-}
-
-/** The machine "about" header — identity, flags/tasks, session context, and the key takeaway. */
+/** The machine "about" header — identity + the headline scores, over the writeup-reference accordion. */
 export function IdentityBar() {
   const { report, timeline, metrics } = useReport();
-  const { golden_dag } = report;
   const machine = machineOf(report);
 
   // live capture: the debrief is UNDERWAY, not a verdict — surface where you are, not a premature grade
   const recording = isLiveRecording(report);
   const cmdCount = report.episodes.filter((e) => e.binary).length;
   const currentPhase = report.phases.at(-1)?.label ?? "Recon";
-
-  // verdict numbers folded in from the old KPI bar — grade + the quality metrics
   const grade = computeGrade(report);
-  const tw = metrics.time_waster;
-  const lost = Math.round(((tw.detour_ms + tw.stuck_ms + tw.loop_ms) / Math.max(1, tw.t_active_ms)) * 100);
-  const lostColor = lost >= 30 ? "var(--color-detour)" : lost >= 15 ? "var(--color-tool)" : "var(--color-match)";
-
-  // Flags — telemetry-derived milestones (reading a flag file), independent of any write-up.
-  const flags = detectFlags(report.episodes);
-  const hasSteps = report.episodes.length > 0;
-  const userStep = flags.user ?? flags.system; // rooting implies user-level access
-  const userState: "yes" | "no" | "unknown" = userStep != null ? "yes" : hasSteps ? "no" : "unknown";
-  const systemState: "yes" | "no" | "unknown" = flags.system != null ? "yes" : hasSteps ? "no" : "unknown";
-  // when (how far into the session) a flag was captured — far more meaningful than a step index
-  const flagAt = (seq: number | null) => {
-    if (seq == null) return undefined;
-    const m = Math.round((timeline.bySeq.get(seq)?.t1 ?? 0) / 60_000);
-    return m < 1 ? "early" : `${m}m in`;
-  };
-  // Tasks come from the intended-path objectives (needs a write-up reference).
-  const hasRef = golden_dag.length > 0;
-  const tasksDone = golden_dag.filter((o) => o.user_satisfied_by_seq != null).length;
-  const tasksPct = golden_dag.length ? (tasksDone / golden_dag.length) * 100 : 0;
 
   return (
     <div className="py-1">
@@ -176,27 +122,11 @@ export function IdentityBar() {
         </div>
       </div>
 
-      {/* flags on the left, the quality metrics right-aligned — one verdict band. mt only, so the
-          reference-path accordion below sits flush under the divider with symmetric padding. */}
-      <div className="mt-3.5 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-y border-edge py-3">
-        <div className="flex flex-wrap items-end gap-x-7 gap-y-3">
-          <FlagStat label="User flag" state={userState} at={flagAt(userStep)} />
-          <FlagStat label="System flag" state={systemState} at={flagAt(flags.system)} />
-        </div>
-        <div className="flex flex-wrap items-end justify-end gap-x-7 gap-y-3">
-          {/* while recording the headline shows live status, so stealth-so-far moves into the band —
-              it's the one "are you getting loud right now" signal that's meaningful mid-run */}
-          {recording && (
-            <Stat label="Stealth" value={`${Math.round(metrics.stealth_score)}/100`} rating={tierWord(metrics.stealth_score)} color={tierColor(metrics.stealth_score)} />
-          )}
-          {!recording && <Stat label="Objectives" value={hasRef ? `${tasksDone}/${golden_dag.length}` : "—"} color={hasRef ? tierColor(tasksPct) : undefined} />}
-          <Stat label="Time lost" value={`${lost}%`} color={lostColor} />
-          <Stat label="Techniques" value={String(metrics.technique_breadth)} />
-        </div>
+      {/* writeup reference — a minimal accordion under a divider (flags/metrics now live in the run
+          summary bento below, so the old verdict band was pure duplication) */}
+      <div className="mt-4 border-t border-edge">
+        <WriteupControl />
       </div>
-
-      {/* reference path — a minimal accordion tucked right under the band */}
-      <WriteupControl />
     </div>
   );
 }
