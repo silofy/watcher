@@ -146,8 +146,9 @@ export function IdentityBar() {
         </div>
       </div>
 
-      {/* flags on the left, the quality metrics right-aligned — one verdict band */}
-      <div className="my-3.5 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-y border-edge py-3">
+      {/* flags on the left, the quality metrics right-aligned — one verdict band. mt only, so the
+          reference-path accordion below sits flush under the divider with symmetric padding. */}
+      <div className="mt-3.5 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-y border-edge py-3">
         <div className="flex flex-wrap items-end gap-x-7 gap-y-3">
           <FlagStat label="User flag" state={userState} at={flagAt(userStep)} />
           <FlagStat label="System flag" state={systemState} at={flagAt(flags.system)} />

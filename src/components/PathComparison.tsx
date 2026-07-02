@@ -52,7 +52,7 @@ export function PathComparison() {
     >
       {golden.length === 0 ? (
         <p className="text-sm text-faint">
-          Add a <span className="text-fg">reference path</span> at the top of the debrief to unlock the intended-path comparison.
+          Add a <span className="text-fg">writeup reference</span> at the top of the debrief to unlock the intended-path comparison.
         </p>
       ) : (
         <>
