@@ -2,12 +2,13 @@ import type { CSSProperties, ReactNode } from "react";
 import { useReport, activeSeq } from "../store/report";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
-import { tierColor } from "./ui";
+import { tierColor, Chip } from "./ui";
 import { episodeNoise, NOISE_BASELINE } from "../lib/metrics";
-import { episodeColor } from "../lib/scale";
+import { episodeColor, ALIGNMENT_COLORS } from "../lib/scale";
 import { SHORT_TACTIC } from "../lib/audits";
 import { ukcOf, ukcLabel } from "../lib/pipeline/frameworks";
 import { detectFlags } from "../lib/flags";
+import { openDetail } from "../lib/nav";
 import { KillChainTrajectory } from "./KillChainTrajectory";
 import { AnimatedNumber } from "./AnimatedNumber";
 import type { Episode, WatcherReport } from "../types/report";
@@ -44,8 +45,8 @@ function Tile({ label, right, className = "", i = 0, children }: { label: string
  * (silent commands add nothing), so you watch the run "burn" toward the lab-baseline ceiling. Vertical
  * so it fills the tile's height as the kill-chain chart beside it grows. Loud moments glow brighter.
  */
-function VerticalBurn({ items, baseline, loudSeq }: { items: TimedEpisode[]; baseline: number; loudSeq: Set<number> }) {
-  const noises = items.map((it) => ({ seq: it.ep.seq, noise: episodeNoise(it.ep) }));
+function VerticalBurn({ items, baseline, loudSeq, focus, onSelect }: { items: TimedEpisode[]; baseline: number; loudSeq: Set<number>; focus: number | null; onSelect: (seq: number) => void }) {
+  const noises = items.map((it) => ({ seq: it.ep.seq, noise: episodeNoise(it.ep), binary: it.ep.binary }));
   const totalCum = noises.reduce((a, b) => a + b.noise, 0);
   // keep headroom above the baseline so the ceiling line is always visible (not pinned to the clipped
   // top edge) when the run is still quiet; once noise passes the baseline the column scales to it and the
@@ -58,20 +59,48 @@ function VerticalBurn({ items, baseline, loudSeq }: { items: TimedEpisode[]; bas
       {noises.map((n, i) => {
         if (n.noise <= 0) return null;
         const loud = loudSeq.has(n.seq);
+        const isFocus = focus === n.seq;
         return (
-          <div
+          <button
             key={n.seq}
-            className="fade-in w-full shrink-0"
+            type="button"
+            title={`${n.binary} — click for detail`}
+            onClick={() => onSelect(n.seq)}
+            className="fade-in w-full shrink-0 cursor-pointer"
             style={{
               height: `${(n.noise / scaleMax) * 100}%`,
               background: loud ? "var(--color-loud)" : "color-mix(in oklch, var(--color-loud) 42%, transparent)",
               borderTop: i > 0 ? "1px solid color-mix(in oklch, var(--color-ink) 45%, transparent)" : undefined,
+              outline: isFocus ? "2px solid var(--color-signal)" : undefined,
+              outlineOffset: "-2px",
             }}
           />
         );
       })}
       {/* the lab-baseline ceiling — cross it and stealth hits zero */}
       <div className="pointer-events-none absolute inset-x-0 border-t border-dashed border-edge-bright/70" style={{ bottom: `${ceilingPct}%` }} />
+    </div>
+  );
+}
+
+/** A compact inline detail — appears in the summary when you click a kill-chain dot or a stealth bar. */
+function FocusReadout({ timeline, focus, onReveal }: { timeline: Timeline; focus: number | null; onReveal: (seq: number) => void }) {
+  if (focus == null) return null;
+  const it = timeline.bySeq.get(focus);
+  if (!it) return null;
+  const ep = it.ep;
+  const phase = ukcOf(ep);
+  return (
+    <div className="fade-in mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-edge bg-ink/40 px-3 py-2 text-xs">
+      <span className="mono text-sm font-semibold text-fg">{ep.binary || "pause"}</span>
+      {phase && <Chip color="var(--color-alt)">{ukcLabel(phase)}</Chip>}
+      {ep.alignment && <Chip color={ALIGNMENT_COLORS[ep.alignment]}>{ep.alignment.replace(/_/g, " ")}</Chip>}
+      <span className="text-faint">t+{fmtDuration(it.t0)}</span>
+      <span className="text-faint">noise {Math.round(episodeNoise(ep))}</span>
+      {ep.output_digest && <span className="min-w-0 flex-1 truncate text-muted">{ep.output_digest}</span>}
+      <button type="button" onClick={() => onReveal(ep.seq)} className="label ml-auto shrink-0 rounded border border-edge px-1.5 py-0.5 text-faint transition-colors hover:text-fg">
+        view in log ↗
+      </button>
     </div>
   );
 }
@@ -142,8 +171,8 @@ function DeviationGlance({ episodes, lostPct }: { episodes: Episode[]; lostPct: 
   );
 }
 
-/** The resolved-mode recap for the tall tile — the run's headline moments, once it's over. */
-function KeyMoments({ report, timeline, loudestBinary }: { report: WatcherReport; timeline: Timeline; loudestBinary: string | null }) {
+/** The resolved-mode recap for the tall tile — the run's headline moments, each linking to its detail. */
+function KeyMoments({ report, timeline, loudestBinary, onReveal }: { report: WatcherReport; timeline: Timeline; loudestBinary: string | null; onReveal: (seq: number) => void }) {
   const flags = detectFlags(report.episodes);
   const userSeq = flags.user ?? flags.system; // rooting implies user-level access
   const at = (seq: number | null) => {
@@ -155,25 +184,36 @@ function KeyMoments({ report, timeline, loudestBinary }: { report: WatcherReport
   const golden = report.golden_dag;
   const done = golden.filter((o) => o.user_satisfied_by_seq != null).length;
 
-  const Row = ({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) => (
-    <li className="flex items-center gap-2">
-      <span className="w-4 shrink-0 text-center" style={{ color }}>
-        {icon}
-      </span>
-      <span className="text-muted">{label}</span>
-      <span className="mono ml-auto tabular-nums" style={{ color }}>
-        {value}
-      </span>
+  // each moment deep-links to where you'd inspect it: flags → the command in the log; loudest → the
+  // stealth report; stall → the deviation timeline; objectives → the intended-path comparison.
+  const Row = ({ icon, label, value, color, onClick, hint }: { icon: string; label: string; value: string; color: string; onClick?: () => void; hint?: string }) => (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={!onClick}
+        title={onClick ? hint : undefined}
+        className={`group flex w-full items-center gap-2 rounded px-1 py-1 text-left ${onClick ? "cursor-pointer hover:bg-panel-2/50" : "cursor-default"}`}
+      >
+        <span className="w-4 shrink-0 text-center" style={{ color }}>
+          {icon}
+        </span>
+        <span className="text-muted">{label}</span>
+        <span className="mono ml-auto tabular-nums" style={{ color }}>
+          {value}
+        </span>
+        {onClick && <span className="shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100">↗</span>}
+      </button>
     </li>
   );
 
   return (
-    <ul className="fade-in space-y-1.5 text-sm">
-      <Row icon="⚑" label="User flag" value={userSeq != null ? at(userSeq)! : "not captured"} color={userSeq != null ? "var(--color-flag)" : "var(--color-faint)"} />
-      <Row icon="⚑" label="Root flag" value={flags.system != null ? at(flags.system)! : "not captured"} color={flags.system != null ? "var(--color-flag)" : "var(--color-faint)"} />
-      {loudestBinary && <Row icon="🔊" label="Loudest" value={loudestBinary} color="var(--color-loud)" />}
-      {longestStall > 60_000 && <Row icon="⏱" label="Longest stall" value={fmtDuration(longestStall)} color="var(--color-stuck)" />}
-      {golden.length > 0 && <Row icon="◎" label="Objectives" value={`${done}/${golden.length}`} color={tierColor((done / golden.length) * 100)} />}
+    <ul className="fade-in space-y-0.5 text-sm">
+      <Row icon="⚑" label="User flag" value={userSeq != null ? at(userSeq)! : "not captured"} color={userSeq != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={userSeq != null ? () => onReveal(userSeq) : undefined} hint="Show the command in the log" />
+      <Row icon="⚑" label="Root flag" value={flags.system != null ? at(flags.system)! : "not captured"} color={flags.system != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={flags.system != null ? () => onReveal(flags.system!) : undefined} hint="Show the command in the log" />
+      {loudestBinary && <Row icon="🔊" label="Loudest" value={loudestBinary} color="var(--color-loud)" onClick={() => openDetail("stealth")} hint="Open Stealth & noise" />}
+      {longestStall > 60_000 && <Row icon="⏱" label="Longest stall" value={fmtDuration(longestStall)} color="var(--color-stuck)" onClick={() => openDetail("deviated")} hint="Open Where you lost time" />}
+      {golden.length > 0 && <Row icon="◎" label="Objectives" value={`${done}/${golden.length}`} color={tierColor((done / golden.length) * 100)} onClick={() => openDetail("path")} hint="Open What you'd do differently" />}
     </ul>
   );
 }
@@ -244,7 +284,13 @@ export function LiveDashboard() {
           }
         >
           <div className="flex h-full min-h-[128px] gap-3">
-            <VerticalBurn items={timeline.items} baseline={report.noise_baseline?.total ?? NOISE_BASELINE} loudSeq={loudSeq} />
+            <VerticalBurn
+              items={timeline.items}
+              baseline={report.noise_baseline?.total ?? NOISE_BASELINE}
+              loudSeq={loudSeq}
+              focus={focus}
+              onSelect={(seq) => s.select(s.selectedSeq === seq ? null : seq)}
+            />
             <div className="flex flex-1 flex-col justify-between text-xs text-faint">
               <span className="label text-faint">louder ▲</span>
               <div>
@@ -271,7 +317,7 @@ export function LiveDashboard() {
           right={<span className="text-xs text-faint">{recording ? "newest first" : "recap"}</span>}
         >
           {!recording ? (
-            <KeyMoments report={report} timeline={timeline} loudestBinary={loudestBinary} />
+            <KeyMoments report={report} timeline={timeline} loudestBinary={loudestBinary} onReveal={(seq) => s.reveal(seq)} />
           ) : feed.length === 0 ? (
             <p className="text-sm text-faint">No commands captured yet.</p>
           ) : (
@@ -303,16 +349,29 @@ export function LiveDashboard() {
           )}
         </Tile>
 
-        {/* the run unfolding on a time axis */}
+        {/* the run unfolding on a time axis — clicking a block opens the full "How the run unfolded" */}
         <Tile label="Run unfolding" i={3} className="sm:col-span-2 lg:col-span-2">
-          <RunRibbon items={timeline.items} totalMs={timeline.totalMs} focus={focus} onPick={(seq) => s.reveal(seq)} />
+          <RunRibbon
+            items={timeline.items}
+            totalMs={timeline.totalMs}
+            focus={focus}
+            onPick={(seq) => {
+              s.select(seq);
+              openDetail("unfolded");
+            }}
+          />
         </Tile>
 
-        {/* where you deviated */}
+        {/* where you deviated — opens the full deviation timeline */}
         <Tile label="Where you deviated" i={4}>
-          <DeviationGlance episodes={report.episodes} lostPct={lostPct} />
+          <button type="button" onClick={() => openDetail("deviated")} title="Open Where you lost time" className="h-full w-full cursor-pointer text-left">
+            <DeviationGlance episodes={report.episodes} lostPct={lostPct} />
+          </button>
         </Tile>
       </div>
+
+      {/* clicking a kill-chain dot or a stealth bar surfaces that command's detail right here */}
+      <FocusReadout timeline={timeline} focus={focus} onReveal={(seq) => s.reveal(seq)} />
     </div>
   );
 }
