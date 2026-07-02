@@ -30,6 +30,7 @@ export function DemoDriver() {
 
   return (
     <div
+      data-demo-pill
       className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs backdrop-blur"
       style={{
         color,

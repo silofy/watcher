@@ -91,12 +91,12 @@ export function App() {
         ) : (
           <div className="grid grid-cols-1 gap-x-6 gap-y-6 lg:grid-cols-12 lg:items-start">
             {/* 1 — the verdict band: identity, did you root it, the grade + key numbers, the one lesson */}
-            <Rise i={0} className="lg:col-span-12">
+            <Rise i={0} id="identity" className="lg:col-span-12">
               <IdentityBar />
             </Rise>
             {/* 1b — the Ops bento: live companion while recording, run-summary once resolved. Stays
                 mounted across the flip so the hand-off is fluid; the accordions below hold the detail. */}
-            <Rise i={1} className="lg:col-span-12">
+            <Rise i={1} id="summary" className="lg:col-span-12">
               <LiveDashboard />
             </Rise>
             {/* 2 — the spine: Lighthouse-style phase audit, one card per MITRE phase, actionable text */}
