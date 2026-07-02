@@ -52,7 +52,9 @@ export function Install() {
 
         <Tier n={2} title="Capture in Pwnbox" req={<Req tone="desktop">desktop app + SSH</Req>} unlocks="Pwnbox is a pixel stream — run the agent inside it, pull results over your own key (PC ↔ Pwnbox, no third party).">
           <Code>./watcher-capture --export ~/.watcher-exports/box.json --machine &lt;name&gt;</Code>
-          <Step>Agent: <code>crates/capture/dist/watcher-capture-linux-x86_64</code> (<code>chmod +x</code>). Then top bar → <span className="text-fg">Pwnbox sync</span> → SSH host/user/key. scp-pulls every 15s into History.</Step>
+          <Step>The agent is <code>crates/capture/dist/watcher-capture-linux-x86_64</code>. <code>scp</code> it up, <code>chmod +x</code>, run it in Pwnbox.</Step>
+          <Step>Pwnbox gives you a <span className="text-fg">password</span>, but the pull is key-based — so enable key login once with <code>ssh-copy-id &lt;user&gt;@&lt;host&gt;</code> (uses that password one time).</Step>
+          <Step>Then top bar → <span className="text-fg">Pwnbox sync</span> — paste <code>user@host</code>, flip <span className="text-fg">Auto-pull on</span>. It scp-pulls every 15s into History. The panel has copy-paste commands for all of this.</Step>
         </Tier>
 
         <Tier n={3} title="Reference path — the comparison" req={<Req tone="none">1-click / paste</Req>} unlocks="Powers coverage, “What you'd do differently”, and the golden-path graph. Without it: your own deviations, time, stealth and techniques — no comparison.">
