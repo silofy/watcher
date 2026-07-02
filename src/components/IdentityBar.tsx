@@ -7,6 +7,8 @@ import { detectFlags } from "../lib/flags";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
 import { WriteupControl } from "./WriteupControl";
+import { AnimatedNumber } from "./AnimatedNumber";
+import type { ReactNode } from "react";
 
 /**
  * A machine attribute chip. `filled` tints the whole chip by its color — used for the attributes that
@@ -48,7 +50,7 @@ const tierWord = (v: number) => (v >= 65 ? "Good" : v >= 40 ? "Average" : "Poor"
 
 /** A headline score (grade / stealth) tinted by its quality color — number, sub-line, and a soft
  *  background band all carry the color so "good vs poor" reads at a glance. */
-function ScoreReadout({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
+function ScoreReadout({ label, value, sub, color }: { label: string; value: ReactNode; sub: string; color: string }) {
   return (
     <div
       className="rounded-lg px-4 py-2 text-right"
@@ -151,7 +153,7 @@ export function IdentityBar() {
               </div>
               <div className="font-display text-3xl font-bold leading-none text-fg">{currentPhase}</div>
               <div className="label mt-1 tabular-nums text-faint">
-                {cmdCount} cmd{cmdCount === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)}
+                <AnimatedNumber value={cmdCount} /> cmd{cmdCount === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)}
               </div>
             </div>
           ) : (
@@ -159,7 +161,7 @@ export function IdentityBar() {
             <>
               <ScoreReadout
                 label="Stealth"
-                value={String(Math.round(metrics.stealth_score))}
+                value={<AnimatedNumber value={Math.round(metrics.stealth_score)} />}
                 sub={`/100 · ${tierWord(metrics.stealth_score)}`}
                 color={tierColor(metrics.stealth_score)}
               />

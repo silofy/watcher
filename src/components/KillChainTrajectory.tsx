@@ -5,6 +5,7 @@ import { fmtClock, fmtDuration } from "../lib/format";
 import { techniqueName } from "../lib/attack";
 import { UKC_ORDER, type UkcPhase, ukcOf, ukcRank, ukcLabel, cweLabel } from "../lib/pipeline/frameworks";
 import { isOnTarget } from "../lib/pipeline/mitre";
+import { isLiveRecording } from "../lib/live";
 
 const UKC_SHORT: Record<UkcPhase, string> = {
   reconnaissance: "Recon",
@@ -55,6 +56,7 @@ export function KillChainTrajectory({ progression, compact = false }: { progress
   const s = useReport();
   const { timeline, phaseWindows, playheadMs } = s;
   const focus = activeSeq(s);
+  const live = isLiveRecording(s.report);
   // full-range shared scale (no zoom on this chart — it always shows the whole run)
   const total = Math.max(1, timeline.totalMs);
   const zx = (ms: number) => (ms / total) * AXIS_W;
@@ -168,7 +170,21 @@ export function KillChainTrajectory({ progression, compact = false }: { progress
             </span>
           ))}
 
-          {/* one dot per command — the marker whose color says advance/hold/backtrack */}
+          {/* live "you are here" ring, pulsing out from the furthest-reached point */}
+          {live &&
+            (() => {
+              const left = leftPct(furthest.it.t1);
+              if (left < -1 || left > 101) return null;
+              return (
+                <span
+                  className="live-ping absolute rounded-full"
+                  style={{ left: `${left}%`, top: `${topPct(furthest.rank)}%`, width: 10, height: 10, background: "var(--color-match)" }}
+                />
+              );
+            })()}
+
+          {/* one dot per command — the marker whose color says advance/hold/backtrack. New dots pop in;
+              dots glide when a newly-reached phase re-lays-out the rows. */}
           {pts.map((p, i) => {
             const left = leftPct(p.it.t1);
             if (left < -1 || left > 101) return null;
@@ -180,7 +196,7 @@ export function KillChainTrajectory({ progression, compact = false }: { progress
             return (
               <span
                 key={p.it.ep.seq}
-                className="absolute rounded-full"
+                className="dot-pop absolute rounded-full"
                 style={{
                   left: `${left}%`,
                   top: `${topPct(p.rank)}%`,
@@ -189,6 +205,7 @@ export function KillChainTrajectory({ progression, compact = false }: { progress
                   background: color,
                   opacity: isFocus || isFurthest ? 1 : 0.7,
                   transform: "translate(-50%, -50%)",
+                  transition: "top 380ms var(--ease-out-expo), left 380ms var(--ease-out-expo), width 200ms var(--ease-out-quart), height 200ms var(--ease-out-quart)",
                   boxShadow: isFocus ? "0 0 0 3px color-mix(in oklch, var(--color-signal) 30%, transparent)" : undefined,
                 }}
               />

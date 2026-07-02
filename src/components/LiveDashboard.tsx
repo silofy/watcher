@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useReport, activeSeq } from "../store/report";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
@@ -8,6 +8,7 @@ import { episodeColor } from "../lib/scale";
 import { SHORT_TACTIC } from "../lib/audits";
 import { ukcOf, ukcLabel } from "../lib/pipeline/frameworks";
 import { KillChainTrajectory } from "./KillChainTrajectory";
+import { AnimatedNumber } from "./AnimatedNumber";
 import type { Episode } from "../types/report";
 import type { TimedEpisode } from "../lib/scale";
 
@@ -26,10 +27,11 @@ import type { TimedEpisode } from "../lib/scale";
  * post-mortem. Renders nothing once the run ends; the resolved debrief takes over.
  */
 
-/** A bento tile — a bordered card with a stenciled label header and an optional right-aligned readout. */
-function Tile({ label, right, className = "", children }: { label: string; right?: ReactNode; className?: string; children: ReactNode }) {
+/** A bento tile — a bordered card with a stenciled label header and an optional right-aligned readout.
+ *  `i` staggers its entrance so the tiles cascade in when the panel appears. */
+function Tile({ label, right, className = "", i = 0, children }: { label: string; right?: ReactNode; className?: string; i?: number; children: ReactNode }) {
   return (
-    <div className={`flex flex-col rounded-lg border border-edge bg-ink/30 p-3 ${className}`}>
+    <div className={`rise flex flex-col rounded-lg border border-edge bg-ink/30 p-3 ${className}`} style={{ "--i": i } as CSSProperties}>
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <span className="label text-faint">{label}</span>
         {right}
@@ -81,7 +83,7 @@ function RunRibbon({ items, totalMs, focus, onPick }: { items: TimedEpisode[]; t
               rx={1.5}
               fill={episodeColor(it.ep)}
               opacity={focus == null || focus === it.ep.seq ? 0.9 : 0.5}
-              className="cursor-pointer"
+              className="fade-in cursor-pointer"
               onClick={() => onPick(it.ep.seq)}
             >
               <title>{it.ep.binary || "pause"}</title>
@@ -112,7 +114,7 @@ function DeviationGlance({ episodes, lostPct }: { episodes: Episode[]; lostPct: 
     <div className="flex h-full flex-col justify-between gap-2">
       <div>
         <span className="mono text-2xl font-semibold tabular-nums leading-none" style={{ color: lostColor }}>
-          {lostPct}%
+          <AnimatedNumber value={lostPct} />%
         </span>
         <span className="label ml-1.5 text-faint">time lost</span>
       </div>
@@ -161,6 +163,7 @@ export function LiveDashboard() {
         {/* where am I in the attack */}
         <Tile
           label="Kill chain"
+          i={0}
           className="sm:col-span-2 lg:col-span-2"
           right={
             <span className="text-xs text-faint">
@@ -174,9 +177,10 @@ export function LiveDashboard() {
         {/* am I getting loud */}
         <Tile
           label="Stealth burn"
+          i={1}
           right={
             <span className="mono text-sm tabular-nums" style={{ color: tierColor(stealth) }}>
-              {stealth}
+              <AnimatedNumber value={stealth} />
               <span className="text-xs text-faint">/100</span>
             </span>
           }
@@ -194,7 +198,7 @@ export function LiveDashboard() {
         </Tile>
 
         {/* what my last moves mapped to — the tall tile on the right */}
-        <Tile label="Latest commands" className="lg:row-span-2" right={<span className="text-xs text-faint">newest first</span>}>
+        <Tile label="Latest commands" i={2} className="lg:row-span-2" right={<span className="text-xs text-faint">newest first</span>}>
           {feed.length === 0 ? (
             <p className="text-sm text-faint">No commands captured yet.</p>
           ) : (
@@ -207,7 +211,7 @@ export function LiveDashboard() {
                     <button
                       type="button"
                       onClick={() => s.reveal(e.seq)}
-                      className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-sm transition-colors ${focus === e.seq ? "bg-panel-2" : "hover:bg-panel-2/50"}`}
+                      className={`feed-in flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-sm transition-colors ${focus === e.seq ? "bg-panel-2" : "hover:bg-panel-2/50"}`}
                     >
                       <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ backgroundColor: episodeColor(e) }} />
                       <span className="mono truncate text-fg">{e.binary}</span>
@@ -227,12 +231,12 @@ export function LiveDashboard() {
         </Tile>
 
         {/* the run unfolding on a time axis */}
-        <Tile label="Run unfolding" className="sm:col-span-2 lg:col-span-2">
+        <Tile label="Run unfolding" i={3} className="sm:col-span-2 lg:col-span-2">
           <RunRibbon items={timeline.items} totalMs={timeline.totalMs} focus={focus} onPick={(seq) => s.reveal(seq)} />
         </Tile>
 
         {/* where you deviated */}
-        <Tile label="Where you deviated">
+        <Tile label="Where you deviated" i={4}>
           <DeviationGlance episodes={report.episodes} lostPct={lostPct} />
         </Tile>
       </div>

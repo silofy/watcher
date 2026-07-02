@@ -22,7 +22,7 @@ function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="group flex w-full items-center gap-4 rounded-lg border border-edge bg-panel px-4 py-3 text-left transition-colors hover:border-edge-bright"
+      className="hover-lift group flex w-full items-center gap-4 rounded-lg border border-edge bg-panel px-4 py-3 text-left hover:border-edge-bright"
     >
       <MachineAvatar machine={m} size={42} />
 

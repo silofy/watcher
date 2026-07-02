@@ -161,6 +161,71 @@ body {
   animation: blink 1.1s step-end infinite;
 }
 
+/* ---- live-data motion — new telemetry animates in instead of snapping ---- */
+
+/* a data point popping onto a chart (keeps the -50%/-50% centering the dots use) */
+@keyframes pop {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+  }
+  62% {
+    transform: translate(-50%, -50%) scale(1.22);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+.dot-pop {
+  animation: pop 420ms var(--ease-out-expo) backwards;
+}
+
+/* a new element easing up to its own base opacity (works with varying rest opacities) */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.fade-in {
+  animation: fade-in 320ms var(--ease-out-quart) backwards;
+}
+
+/* a new feed row sliding in from the top of the list */
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+.feed-in {
+  animation: feed-in 340ms var(--ease-out-expo) backwards;
+}
+
+/* a live "you are here" ring, expanding out from the current position */
+@keyframes live-ping {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  70%,
+  100% {
+    transform: translate(-50%, -50%) scale(2.6);
+    opacity: 0;
+  }
+}
+.live-ping {
+  animation: live-ping 1.7s var(--ease-out-quart) infinite;
+}
+
+/* a gentle lift on interactive cards/rows */
+.hover-lift {
+  transition:
+    transform 220ms var(--ease-out-quart),
+    border-color 220ms var(--ease-out-quart);
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+}
+
 /* thin custom scrollbar */
 * {
   scrollbar-width: thin;
