@@ -18,16 +18,20 @@ function Pill({ text, color }: { text: string; color?: string }) {
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
+function Stat({ label, value, rating, color }: { label: string; value: string; rating?: string; color?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="label text-xs">{label}</span>
       <span className="mono text-sm tabular-nums" style={color ? { color } : undefined}>
         {value}
+        {rating && <span className="ml-1.5 text-xs font-medium">{rating}</span>}
       </span>
     </div>
   );
 }
+
+/** A 0–100 score's quality word, tiered to match tierColor (Good ≥ 65, Average ≥ 40, else Poor). */
+const tierWord = (v: number) => (v >= 65 ? "Good" : v >= 40 ? "Average" : "Poor");
 
 function FlagStat({ label, state, at }: { label: string; state: "yes" | "no" | "unknown"; at?: string }) {
   const v =
@@ -116,7 +120,7 @@ export function IdentityBar() {
         <div className="flex flex-wrap items-end justify-end gap-x-7 gap-y-3">
           <Stat label="Objectives" value={hasRef ? `${tasksDone}/${golden_dag.length}` : "—"} color={hasRef ? tierColor(tasksPct) : undefined} />
           <Stat label="Time lost" value={`${lost}%`} color={lostColor} />
-          <Stat label="Stealth" value={String(Math.round(metrics.stealth_score))} color={tierColor(metrics.stealth_score)} />
+          <Stat label="Stealth" value={`${Math.round(metrics.stealth_score)}/100`} rating={tierWord(metrics.stealth_score)} color={tierColor(metrics.stealth_score)} />
           <Stat label="Techniques" value={String(metrics.technique_breadth)} />
         </div>
       </div>
