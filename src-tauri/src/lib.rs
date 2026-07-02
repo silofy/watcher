@@ -13,6 +13,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             llm::ollama_status,
             llm::start_ollama,
+            llm::pull_model,
             sessions::list_sessions,
             sessions::list_ssh_logs,
             net::fetch_writeup,
