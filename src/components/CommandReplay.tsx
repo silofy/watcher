@@ -33,7 +33,12 @@ export function CommandReplay() {
   // then center the exact row inside it. Keyed on the nonce so repeat reveals re-fire.
   useEffect(() => {
     if (revealSeq == null) return;
-    document.getElementById("log")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const log = document.getElementById("log");
+    // the Command Log is a collapsed accordion — open it first, or we'd just scroll to a closed
+    // header and the row we want to center stays hidden (the deep-link would look like it did nothing).
+    const details = log?.querySelector("details");
+    if (details && !details.open) details.open = true;
+    log?.scrollIntoView({ behavior: "smooth", block: "start" });
     const t = setTimeout(() => {
       const c = scrollRef.current;
       const row = c?.querySelector(`[data-seq="${revealSeq}"]`) as HTMLElement | null;
@@ -42,7 +47,7 @@ export function CommandReplay() {
         const er = row.getBoundingClientRect();
         c.scrollTop += er.top - cr.top - c.clientHeight / 2 + er.height / 2; // scroll only this panel
       }
-    }, 80);
+    }, 120);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealNonce]);
