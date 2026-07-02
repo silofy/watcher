@@ -20,6 +20,8 @@ import { PwnboxSync } from "./components/PwnboxSync";
 import { AiBanner } from "./components/AiBanner";
 import { LiveBridge } from "./components/LiveBridge";
 import { DemoDriver } from "./components/DemoDriver";
+import { LiveDashboard } from "./components/LiveDashboard";
+import { isLiveRecording } from "./lib/live";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
   return (
@@ -49,6 +51,7 @@ export function App() {
   const { report, view, gateDismissed } = useReport();
   const { session } = report;
   const needsWriteup = report.golden_dag.length === 0 && !gateDismissed;
+  const recording = isLiveRecording(report);
 
   return (
     <div className="min-h-full">
@@ -93,6 +96,12 @@ export function App() {
             <Rise i={0} className="lg:col-span-12">
               <IdentityBar />
             </Rise>
+            {/* 1b — while recording, the live companion: kill-chain progress, stealth burn, command feed */}
+            {recording && (
+              <Rise i={1} className="lg:col-span-12">
+                <LiveDashboard />
+              </Rise>
+            )}
             {/* 2 — the spine: Lighthouse-style phase audit, one card per MITRE phase, actionable text */}
             <Rise i={1} id="audit" className="lg:col-span-12">
               <PhaseAudit />
