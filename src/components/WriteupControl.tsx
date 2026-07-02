@@ -83,7 +83,7 @@ export function WriteupControl() {
       const content = await fetchHtbWriteup(box.name);
       await extract(content, "htb-official");
     } catch (e) {
-      setStatus({ kind: "error", msg: `${e instanceof Error ? e.message : "HTB fetch failed"} — or open the search below.` });
+      setStatus({ kind: "error", msg: `${e instanceof Error ? e.message : "HTB fetch failed"} — or use URL / paste.` });
     }
   }
 
