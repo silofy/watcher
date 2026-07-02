@@ -19,7 +19,7 @@ const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1180, height: 760 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 await page.goto(`${BASE}/?demo=live`, { waitUntil: "networkidle" });
-await page.addStyleTag({ content: "[data-demo-pill]{display:none!important}" });
+await page.addStyleTag({ content: "[data-demo-pill]{display:none!important} #summary{padding:22px!important}" });
 await page.waitForTimeout(2500); // let the first couple of commands land so the chart isn't empty
 
 const summary = page.locator("#summary");

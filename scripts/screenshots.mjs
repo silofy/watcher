@@ -28,17 +28,16 @@ const page = await ctx.newPage();
 
 console.log("→ loading demo…");
 await page.goto(`${BASE}/?demo=live`, { waitUntil: "networkidle" });
-// hide the demo pill; de-sticky the header so it doesn't bleed into per-section element shots
-await page.addStyleTag({ content: "[data-demo-pill]{display:none!important} header.sticky{position:static!important}" });
+// hide the demo pill; de-sticky the header so it doesn't bleed into per-section element shots; pad the
+// captured containers so element screenshots have breathing room instead of hugging the content
+await page.addStyleTag({
+  content:
+    "[data-demo-pill]{display:none!important} header.sticky{position:static!important} " +
+    "#identity,#summary,#audit,#path,#bridge,#unfolded,#frameworks,#deviated,#stealth,#log{padding:26px!important}",
+});
 
-// live, mid-run (~8 commands in)
-await page.waitForTimeout(16000);
-await page.locator("#summary").scrollIntoViewIfNeeded().catch(() => {});
-await page.screenshot({ path: `${OUT}/live-ops.png`, clip: await page.locator("#summary").boundingBox() });
-console.log("✓ live-ops (mid-run)");
-
-// let the run finish + the writeup load (~34s run + golden)
-await page.waitForTimeout(26000);
+// let the run stream and finish + the writeup load (~34s run + golden); the live view is the GIF
+await page.waitForTimeout(42000);
 
 await shoot(page, "identity", "identity");
 await shoot(page, "summary", "run-summary");
@@ -50,12 +49,6 @@ await shoot(page, "frameworks", "frameworks");
 await shoot(page, "deviated", "deviation-timeline");
 await shoot(page, "stealth", "stealth");
 await shoot(page, "log", "command-log");
-
-// a full-page overview of the resolved report
-await page.evaluate(() => window.scrollTo(0, 0));
-await page.waitForTimeout(300);
-await page.screenshot({ path: `${OUT}/report-overview.png`, fullPage: true });
-console.log("✓ report-overview (full page)");
 
 await browser.close();
 console.log("done →", OUT);
