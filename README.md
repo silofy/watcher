@@ -85,6 +85,18 @@ estimated time saved.
 Your route diffed against the write-up's intended path: matched steps, alternative methods, out-of-order
 moves, and skips. Here: **90% coverage** — the only miss was the cron-job check (`pspy`).
 
+### The Ghost — you vs. the optimal-from-your-state line
+
+Where a run has an intended path, **The Ghost** derives what the optimal line would have looked like
+from *your* findings at each moment — not a live agent replaying the box, a deterministic diff between
+your actual sequence and that derived line. Most verdicts call out lost time (a **late pivot**, a
+**skip**), but it leads with the two that matter more: **ahead**, where you moved before the finding
+that "should" have unlocked the step had even surfaced, and **off-path win**, where you reached an
+objective by a route the write-up never mentions. Optional model narration can sharpen the wording per
+item — redacted to the objective, verdict, and timings, nothing else — but the deterministic note
+underneath always stands on its own. It's post-run coaching only: absent with no intended path, and it
+never feeds the letter grade.
+
 ### Grade — the explainable scorecard
 
 ![Grade rubric](docs/screenshots/grade.png)

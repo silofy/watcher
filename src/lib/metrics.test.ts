@@ -14,6 +14,7 @@ import {
 import type { Episode } from "../types/report";
 import { fmtMinutes } from "./format";
 import { computeGrade } from "./bridge/grade";
+import { computeGhost } from "./ghost/ghost";
 
 const report = fixture as unknown as WatcherReport;
 
@@ -172,5 +173,31 @@ describe("analysis signals wiring (schema v1.3)", () => {
       },
     };
     expect(computeGrade(withAnalysis)).toEqual(before);
+  });
+});
+
+describe("ghost wiring (schema v1.4)", () => {
+  it("adds ghost fields without changing existing metrics or the grade", () => {
+    const before = computeGrade(report);
+    const m = computeMetrics(report);
+    expect(m.ghost_time_lost_ms === null || typeof m.ghost_time_lost_ms === "number").toBe(true);
+    expect(m.ghost_human_wins === null || typeof m.ghost_human_wins === "number").toBe(true);
+    // existing metric still matches the fixture's stored value (non-tautological: compares
+    // computed output to a value baked into the fixture, not to itself):
+    expect(round(m.objective_coverage_pct)).toBe(report.metrics.objective_coverage_pct);
+    // grade unchanged when the ghost block + the two summary-card metrics are actually present
+    // (grade.ts must keep ignoring them — ghost never feeds the grade). Spreading `report`/`report.metrics`
+    // alone would be vacuous — the fixture never carries these fields — so splice them in explicitly.
+    const withGhost: WatcherReport = {
+      ...report,
+      metrics: {
+        ...report.metrics,
+        ghost_time_lost_ms: m.ghost_time_lost_ms,
+        ghost_human_wins: m.ghost_human_wins,
+      },
+      ghost: computeGhost(report) ?? undefined,
+    };
+    expect(withGhost.ghost).toBeTruthy();
+    expect(computeGrade(withGhost)).toEqual(before);
   });
 });

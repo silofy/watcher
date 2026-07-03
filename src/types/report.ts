@@ -168,6 +168,10 @@ export interface Metrics {
   focus_discipline_pct?: number;
   /** Median time to recover from a stuck/loop episode (schema v1.3). */
   recovery_median_ms?: number | null;
+  /** Headline copy of ghost.time_lost_ms for the summary card (schema v1.4). */
+  ghost_time_lost_ms?: number | null;
+  /** Headline copy of ghost.human_wins for the summary card (schema v1.4). */
+  ghost_human_wins?: number | null;
 }
 
 export interface SkillRadar {
@@ -208,8 +212,34 @@ export interface NoiseBaseline {
   reference: { label: string; noise: number }[];
 }
 
+/** Verdict of a golden objective vs. the deterministic ghost trajectory (schema v1.4). */
+export type GhostVerdict = "on_time" | "late_pivot" | "skipped" | "ahead" | "off_path_win";
+
+/** Per-objective ghost diff entry (schema v1.4). */
+export interface GhostItem {
+  objective: string;
+  verdict: GhostVerdict;
+  /** Earliest episode seq where prerequisite findings existed. */
+  unlock_seq?: number | null;
+  /** Episode seq that satisfied it, or null. */
+  actual_seq?: number | null;
+  /** Time between unlock and your action (0 for on_time/ahead). */
+  lag_ms?: number;
+  /** Optional model narration; deterministic hint when absent. */
+  note?: string;
+}
+
+/** Counterfactual "optimal-from-your-state" analysis (schema v1.4). Deterministic; never feeds the grade. */
+export interface Ghost {
+  /** Σ late-pivot lag (time between a finding-unlock and your action). */
+  time_lost_ms?: number;
+  /** Count of ahead / off-path moments where the human beat the optimal line. */
+  human_wins?: number;
+  items?: GhostItem[];
+}
+
 export interface WatcherReport {
-  schema_version: "1.0" | "1.1" | "1.2" | "1.3";
+  schema_version: "1.0" | "1.1" | "1.2" | "1.3" | "1.4";
   session: Session;
   episodes: Episode[];
   phases: Phase[];
@@ -226,4 +256,6 @@ export interface WatcherReport {
   noise_baseline?: NoiseBaseline;
   /** Platform-agnostic evidence entries cross-referenced by golden_dag objectives (schema v1.2). */
   findings?: Finding[];
+  /** Counterfactual "optimal-from-your-state" analysis (schema v1.4). Deterministic; never feeds the grade. */
+  ghost?: Ghost;
 }

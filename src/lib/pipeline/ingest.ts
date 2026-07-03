@@ -12,6 +12,7 @@ import { ingestSshSession, type SshIngestOptions } from "../ssh/ingest";
 import { runPipeline } from "./index";
 import { annotateObjectiveStatus } from "./align";
 import { extractFindings } from "./findings";
+import { computeGhost } from "../ghost/ghost";
 import { targetOf } from "../platform";
 import type { RawCommand } from "./types";
 
@@ -157,6 +158,7 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
   const profile = opts.redaction_profile ?? "full";
   const findings = extractFindings(episodes, profile);
   const annotatedGolden = annotateObjectiveStatus(episodes, golden, findings);
+  const ghost = computeGhost({ golden_dag: annotatedGolden, episodes, findings } as WatcherReport);
 
   const m: Metrics = {
     efficiency_pct: round(metrics.efficiency_pct),
@@ -171,10 +173,12 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     methodology_coverage_pct: round(metrics.methodology_coverage_pct),
     focus_discipline_pct: round(metrics.focus_discipline_pct),
     recovery_median_ms: metrics.recovery_median_ms,
+    ghost_time_lost_ms: ghost?.time_lost_ms ?? null,
+    ghost_human_wins: ghost?.human_wins ?? null,
   };
 
   const rep: WatcherReport = {
-    schema_version: "1.3",
+    schema_version: "1.4",
     session: opts.session,
     episodes,
     phases,
@@ -184,6 +188,7 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     replay: { cast_ref: null, inline_cast: null },
     redaction_profile: profile,
     findings,
+    ghost: ghost ?? undefined,
   };
   // Neutral target identity for every freshly assembled report — an explicit session.target (set
   // upstream by capture) wins; otherwise it's resolved from the platform adapters.
