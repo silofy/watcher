@@ -28,7 +28,8 @@ describe("v1 rubric (frozen — reports with no methodology signal)", () => {
     const g = computeGrade(report);
     // hand-computed against RUBRIC_V1 from the fixture's stored metrics: coverage 92, breadth 11/12,
     // efficiency 53, progression 100 (unset), discipline 53, independence 78 — this is the pre-existing
-    // v1 baseline and must not move.
+    // v1 baseline and must not move. 78.95 rounds to 79.0 — pin the exact rounded value (not
+    // toBeCloseTo) so drift can't slip through right on the rounding seam.
     const expected =
       92 * RUBRIC_V1.coverage +
       (11 / 12) * 100 * RUBRIC_V1.breadth +
@@ -36,7 +37,8 @@ describe("v1 rubric (frozen — reports with no methodology signal)", () => {
       100 * RUBRIC_V1.progression +
       53 * RUBRIC_V1.discipline +
       78 * RUBRIC_V1.independence;
-    expect(g.score).toBeCloseTo(expected, 1);
+    expect(expected).toBeCloseTo(78.95, 2);
+    expect(g.score).toBe(79);
     expect(g.letter).toBe("C");
     const recombined = Object.values(g.components).reduce((a, c) => a + c!.weighted, 0);
     expect(Math.abs(g.score - recombined)).toBeLessThanOrEqual(0.5);
@@ -143,6 +145,16 @@ describe("v2 rubric (candidate C — reports carrying the methodology signal)", 
     expect(g.score).toBeCloseTo(expected, 1);
     expect(g.score).toBeCloseTo(81.2, 1);
     expect(g.letter).toBe("B");
+  });
+
+  it("a report with methodology_coverage_pct = 0 still grades as version 2 (0 is a legit measured value, not absence)", () => {
+    const zeroMethodology: WatcherReport = {
+      ...report,
+      metrics: { ...report.metrics, methodology_coverage_pct: 0, focus_discipline_pct: 90 },
+    };
+    const g = computeGrade(zeroMethodology);
+    expect(g.version).toBe(2);
+    expect(g.components.methodology).not.toBeUndefined();
   });
 
   it("discriminates on methodology — a higher methodology score scores higher, all else equal", () => {
