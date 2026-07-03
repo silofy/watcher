@@ -10,6 +10,7 @@ import { redactText } from "../redact";
 import { classifyCoaching } from "../coaching";
 import { ingestSshSession, type SshIngestOptions } from "../ssh/ingest";
 import { runPipeline } from "./index";
+import { annotateObjectiveStatus } from "./align";
 import { extractFindings } from "./findings";
 import type { RawCommand } from "./types";
 
@@ -154,6 +155,7 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
 
   const profile = opts.redaction_profile ?? "full";
   const findings = extractFindings(episodes, profile);
+  const annotatedGolden = annotateObjectiveStatus(episodes, golden, findings);
 
   const m: Metrics = {
     efficiency_pct: round(metrics.efficiency_pct),
@@ -172,7 +174,7 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     session: opts.session,
     episodes,
     phases,
-    golden_dag: golden,
+    golden_dag: annotatedGolden,
     metrics: m,
     coaching: deriveCoaching(golden, episodes, metrics),
     replay: { cast_ref: null, inline_cast: null },

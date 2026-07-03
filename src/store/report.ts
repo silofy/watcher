@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { GoldenObjective, Target, WatcherReport } from "../types/report";
-import { alignEpisodes } from "../lib/pipeline";
+import { alignEpisodes, annotateObjectiveStatus } from "../lib/pipeline";
 import {
   buildTimeline,
   phaseWindows as computePhaseWindows,
@@ -251,7 +251,8 @@ export const useReport = create<ReportState>((set, get) => ({
     // Re-alignment reclassifies episodes (detour → match/alternative), which moves efficiency and the
     // other alignment-derived metrics — so re-derive the whole block, not just coverage, or the Grade
     // would keep the stale efficiency while the KPI cards showed the improved one.
-    const scoped: WatcherReport = { ...r, episodes, golden_dag: aligned };
+    const aligned2 = annotateObjectiveStatus(episodes, aligned, r.findings ?? []);
+    const scoped: WatcherReport = { ...r, episodes, golden_dag: aligned2 };
     const cm = computeMetrics(scoped);
     const next: WatcherReport = {
       ...scoped,
