@@ -1,4 +1,5 @@
 import type { PlatformAdapter } from "./types";
+import type { Target, WatcherReport } from "../../types/report";
 import { htbAdapter } from "./htb";
 import { thmAdapter } from "./thm";
 import { offsecAdapter } from "./offsec";
@@ -23,4 +24,17 @@ export function resolveAdapter(ctx: DetectContext): PlatformAdapter {
     if (s > bestScore) { bestScore = s; best = a; }
   }
   return best;
+}
+
+/** Neutral target identity for a report: an explicit session.target wins, otherwise it's resolved
+ *  from the platform adapters (session.machine's presence is itself an HTB signal). */
+export function targetOf(report: WatcherReport): Target {
+  if (report.session.target) return report.session.target;
+  const s = report.session;
+  const ctx: DetectContext = {
+    targetScope: s.target_scope,
+    contextPath: s.context_path,
+    platformHint: s.machine ? "htb" : undefined,
+  };
+  return resolveAdapter(ctx).identify(s.machine, ctx);
 }

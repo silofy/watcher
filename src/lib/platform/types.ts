@@ -22,5 +22,3 @@ export interface PlatformAdapter {
     difficultyColor?: (label: string) => string | undefined;
   };
 }
-
-export type { DetectContext };

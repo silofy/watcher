@@ -1,7 +1,6 @@
 import type { Machine, Target } from "../../types/report";
-import { hueFor } from "../machine";
 import type { PlatformAdapter } from "./types";
-import { cidrConfidence, ipsInScope, type DetectContext } from "./detect";
+import { cidrConfidence, hueFor, ipsInScope, type DetectContext } from "./detect";
 
 const DIFF_LEVEL: Record<string, 1 | 2 | 3 | 4 | 5> = { Easy: 1, Medium: 2, Hard: 4, Insane: 5 };
 

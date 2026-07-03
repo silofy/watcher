@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useReport, type SessionCard } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { DIFFICULTY_COLOR } from "../lib/machine";
+import { targetOf } from "../lib/platform";
 import type { WatcherReport } from "../types/report";
 
 function gradeColor(letter: string): string {
@@ -17,19 +18,19 @@ function fmtDate(iso: string): string {
 
 /** One engagement per row: identity → status → result → metrics → grade → date. */
 function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
-  const m = c.machine;
+  const t = c.target;
   return (
     <button
       type="button"
       onClick={onOpen}
       className="hover-lift group flex w-full items-center gap-4 rounded-lg border border-edge bg-panel px-4 py-3 text-left hover:border-edge-bright"
     >
-      <MachineAvatar machine={m} size={42} />
+      <MachineAvatar target={t} size={42} />
 
       {/* identity + the one status that matters */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-display text-lg font-bold leading-tight text-fg">{m.name}</span>
+          <span className="truncate font-display text-lg font-bold leading-tight text-fg">{t.name}</span>
           {c.demo ? (
             <span
               title="A scripted demo — opens and plays the run live, start to finish."
@@ -51,12 +52,12 @@ function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
           )}
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-          {m.difficulty && (
-            <span className="label" style={{ color: DIFFICULTY_COLOR[m.difficulty] }}>
-              {m.difficulty}
+          {t.difficulty?.label && (
+            <span className="label" style={{ color: DIFFICULTY_COLOR[t.difficulty.label] }}>
+              {t.difficulty.label}
             </span>
           )}
-          {m.os && <span className="text-faint">{m.os}</span>}
+          {t.os && <span className="text-faint">{t.os}</span>}
           {/* result of the run — a static outcome, not a live state */}
           <span style={{ color: c.rooted ? "var(--color-match)" : "var(--color-faint)" }}>
             {c.rooted ? "✓ Rooted" : "Foothold only"}
@@ -101,7 +102,7 @@ export function History() {
       const rep = JSON.parse((await file.text()).replace(/^﻿/, "")) as WatcherReport;
       if (!rep?.session?.uuid || !Array.isArray(rep.episodes)) throw new Error("shape");
       ingestLiveReport(rep);
-      switchSession(`htb:${rep.session.uuid}`);
+      switchSession(`${targetOf(rep).platform}:${rep.session.uuid}`);
     } catch {
       setErr(`"${file.name}" isn't a Watcher session JSON — it should be a report exported by the capture agent.`);
     }

@@ -42,3 +42,10 @@ export function cidrConfidence(ips: string[], id: PlatformId): number {
   if (!ranges.length) return 0;
   return ips.some((ip) => ranges.some((c) => ipInCidr(ip, c))) ? 0.6 : 0;
 }
+
+/** Deterministic hue (0–360) seeded from a string, for the generated emblem. */
+export function hueFor(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(h, 31) + seed.charCodeAt(i)) >>> 0;
+  return h % 360;
+}

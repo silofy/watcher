@@ -1,7 +1,6 @@
 import type { Machine, Target } from "../../types/report";
-import { hueFor } from "../machine";
 import type { PlatformAdapter } from "./types";
-import type { DetectContext } from "./detect";
+import { hueFor, type DetectContext } from "./detect";
 
 export const immersiveAdapter: PlatformAdapter = {
   id: "immersive",

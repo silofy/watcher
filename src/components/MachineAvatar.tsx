@@ -1,25 +1,28 @@
 import { useState } from "react";
-import { hueFor, DIFFICULTY_COLOR, type MachineMeta } from "../lib/machine";
+import { DIFFICULTY_COLOR, hueFor } from "../lib/machine";
+import type { Target } from "../types/report";
 
 /**
- * The machine's emblem. Fetches the real avatar (e.g. HTB CDN) when one is provided, with an
+ * The target's emblem. Fetches the real avatar (e.g. HTB CDN) when one is provided, with an
  * onError fall-through to a generated, deterministic instrument emblem so it always renders —
  * offline, broken URL, or local capture all degrade gracefully.
  */
-export function MachineAvatar({ machine, size = 64 }: { machine: MachineMeta; size?: number }) {
+export function MachineAvatar({ target, size = 64 }: { target: Target; size?: number }) {
   const [failed, setFailed] = useState(false);
-  const initials = (machine.name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 2) || "??").toUpperCase();
-  const hue = hueFor(machine.name);
-  const ring = machine.difficulty ? DIFFICULTY_COLOR[machine.difficulty] ?? "var(--color-edge-bright)" : "var(--color-edge-bright)";
+  const initials = (target.name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 2) || "??").toUpperCase();
+  const hue = target.emblem?.hue ?? hueFor(target.name);
+  const label = target.difficulty?.label;
+  const ring = label ? DIFFICULTY_COLOR[label] ?? "var(--color-edge-bright)" : "var(--color-edge-bright)";
+  const avatar = target.emblem?.avatar;
 
-  if (machine.avatar && !failed) {
+  if (avatar && !failed) {
     return (
       <img
-        src={machine.avatar}
+        src={avatar}
         onError={() => setFailed(true)}
         width={size}
         height={size}
-        alt={machine.name}
+        alt={target.name}
         className="rounded-full object-cover"
         style={{ boxShadow: "inset 0 0 0 1px var(--color-edge)" }}
       />
@@ -27,9 +30,9 @@ export function MachineAvatar({ machine, size = 64 }: { machine: MachineMeta; si
   }
 
   // local / host capture — a terminal-prompt emblem, not box initials
-  if (machine.local) {
+  if (target.platform === "local") {
     return (
-      <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={machine.name}>
+      <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={target.name}>
         <circle cx="32" cy="32" r="31.25" fill="var(--color-panel-2)" stroke="var(--color-edge)" />
         <text x="32" y="40" textAnchor="middle" fontFamily="var(--font-mono)" fontWeight="600" fontSize="24" fill="var(--color-tool)">
           {">_"}
@@ -41,7 +44,7 @@ export function MachineAvatar({ machine, size = 64 }: { machine: MachineMeta; si
 
   const r = size / 64; // viewBox is 64
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={machine.name}>
+    <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={target.name}>
       <circle cx="32" cy="32" r="31.25" fill="var(--color-panel-2)" stroke="var(--color-edge)" />
       {/* seeded geometric backdrop */}
       <g stroke={`oklch(0.58 0.09 ${hue})`} strokeWidth="1" fill="none" opacity="0.45">

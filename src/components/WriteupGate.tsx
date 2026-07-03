@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useReport } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
-import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
+import { DIFFICULTY_COLOR } from "../lib/machine";
+import { targetOf } from "../lib/platform";
 import { resolveProvider } from "../lib/llm";
 import { goldenFromText } from "../lib/writeup";
 import { fetchWriteupUrl, isDesktop } from "../lib/net";
@@ -15,7 +16,7 @@ type Status = { kind: "idle" | "working" | "error"; msg?: string };
  */
 export function WriteupGate() {
   const { report, applyGoldenDag, setGateDismissed } = useReport();
-  const box = machineOf(report);
+  const target = targetOf(report);
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
@@ -40,7 +41,7 @@ export function WriteupGate() {
       }
       setStatus({ kind: "working", msg: "Reading the write-up with the local model…" });
       const provider = await resolveProvider();
-      const res = await goldenFromText(content, { name: box.name, os: report.session.machine?.os ?? null }, provider, "pasted");
+      const res = await goldenFromText(content, { name: target.name, os: report.session.machine?.os ?? null }, provider, "pasted");
       if (res.golden.length === 0) {
         setStatus({ kind: "error", msg: res.note ?? "Couldn't extract an intended path from that — try a fuller write-up." });
         return;
@@ -56,25 +57,25 @@ export function WriteupGate() {
 
   return (
     <div className="mx-auto max-w-2xl py-6">
-      {/* the box you're debriefing */}
+      {/* the target you're debriefing */}
       <div className="mb-5 flex items-center gap-3">
-        <MachineAvatar machine={box} size={44} />
+        <MachineAvatar target={target} size={44} />
         <div>
-          <div className="font-display text-xl font-semibold text-fg">{box.name}</div>
+          <div className="font-display text-xl font-semibold text-fg">{target.name}</div>
           <div className="flex items-center gap-1.5">
-            {box.difficulty && (
-              <span className="label rounded border border-edge px-1.5 py-0.5 text-xs" style={{ color: DIFFICULTY_COLOR[box.difficulty] }}>
-                {box.difficulty}
+            {target.difficulty?.label && (
+              <span className="label rounded border border-edge px-1.5 py-0.5 text-xs" style={{ color: DIFFICULTY_COLOR[target.difficulty.label] }}>
+                {target.difficulty.label}
               </span>
             )}
-            {box.os && <span className="label rounded border border-edge px-1.5 py-0.5 text-xs">{box.os}</span>}
+            {target.os && <span className="label rounded border border-edge px-1.5 py-0.5 text-xs">{target.os}</span>}
           </div>
         </div>
       </div>
 
       <h2 className="font-display text-2xl font-semibold text-fg">One step before your debrief</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        The Watcher grades your run against the box's <span className="text-fg">intended path</span> — coverage, where you went off-route, what you'd do differently. That path is
+        The Watcher grades your run against the {target.kind}'s <span className="text-fg">intended path</span> — coverage, where you went off-route, what you'd do differently. That path is
         extracted from a <span className="text-fg">write-up</span>. Give it one to unlock the full report.
       </p>
 
@@ -84,7 +85,7 @@ export function WriteupGate() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={8}
-          placeholder={`Paste a write-up for ${box.name} (HTB official, 0xdf, IppSec notes…), or a link to one. It's read locally to extract the intended path — nothing is uploaded.`}
+          placeholder={`Paste a write-up for ${target.name} (HTB official, 0xdf, IppSec notes…), or a link to one. It's read locally to extract the intended path — nothing is uploaded.`}
           className="mono w-full resize-y rounded border border-edge bg-ink/60 p-2.5 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
         />
         <div className="mt-3 flex flex-wrap items-center gap-3">
