@@ -17,7 +17,9 @@ Everything runs on your machine. No account, no telemetry, no cloud.
 ## See it live
 
 While you're on the box, the **Live Ops** panel is a companion you glance at — where you are in the
-kill chain, whether you're getting loud, and what your last moves mapped to. It streams as you work:
+kill chain, whether you're getting loud, and what your last moves mapped to — and, while you're
+recording, a **next-move nudge** pointing at the single highest-value methodology check you haven't hit
+yet, alongside a running findings count. It streams as you work:
 
 ![Live Ops — the run building in real time](docs/screenshots/live-ops.gif)
 
@@ -40,10 +42,17 @@ command lands in the feed and the run ribbon.*
   npm run dev           # report UI in a browser → http://localhost:5173  (append ?demo=live to auto-play)
   ```
 
+## Progress — across runs
+
+Once you've logged a couple of runs, the **Progress** tab (alongside History) plots grade, coverage,
+and methodology across your run history on one chart, with a click-through card per run. Sessions
+recorded before the methodology engine existed just show a gap in that line instead of a guess.
+
 ## The debrief, section by section
 
 When the run ends, the live panel settles into a graded report. Every view below is from that same
-Forge playthrough — nothing is a mock-up.
+Forge playthrough — nothing is a mock-up. A fuller visual redesign of this debrief is a deliberate
+next pass, not this one.
 
 ### Headline — box, stealth, and grade
 
