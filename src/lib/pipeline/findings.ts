@@ -22,6 +22,11 @@ const DETECTORS: Detector[] = [
 ];
 
 const FLAG_RE = /\b[a-f0-9]{32}\b|(?:HTB|THM|flag)\{[^}]*\}/gi;
+// Mirrors the sentinel `redactText` (../redact.ts) substitutes for a bare 32-hex flag. The ingest
+// path always redacts output_digest before findings run, so a real captured flag reaches here
+// already scrubbed to this literal — treat its presence as a proven flag observation (the value
+// stays the sentinel; nothing is un-redacted).
+const REDACTED_FLAG_SENTINEL = "[redacted-flag]";
 const SECRET_KINDS = new Set<FindingKind>(["cred", "hash", "flag"]);
 
 function mask(value: string): string {
@@ -50,13 +55,19 @@ export function extractFindings(episodes: Episode[], profile: RedactionProfile):
       }
     }
     // flags: a flag-shaped token in output is "proven" (observed). A bare `cat *.txt` with no token isn't.
+    // The redaction sentinel counts too — it's what a real 32-hex flag looks like by the time it
+    // reaches here (see REDACTED_FLAG_SENTINEL above), so it's an observation, not a miss.
     FLAG_RE.lastIndex = 0;
     const flagName = /(?:user|root|proof)\.txt/i.test(ep.cmd) ? (/root|proof/i.test(ep.cmd) ? "root" : "user") : null;
     const flagMatch = text.match(FLAG_RE);
-    if (flagName || flagMatch) {
-      const id = `flag:${flagName ?? hash8(flagMatch![0])}`;
+    const sentinelObserved = text.includes(REDACTED_FLAG_SENTINEL);
+    if (flagName || flagMatch || sentinelObserved) {
+      const token = flagMatch ? flagMatch[0] : REDACTED_FLAG_SENTINEL;
+      const id = `flag:${flagName ?? hash8(token)}`;
+      const value = flagMatch ? flagMatch[0] : sentinelObserved ? REDACTED_FLAG_SENTINEL : `${flagName}.txt`;
+      const proven = Boolean(flagMatch) || sentinelObserved;
       if (!byId.has(id)) {
-        byId.set(id, { id, kind: "flag", value: flagMatch ? flagMatch[0] : `${flagName}.txt`, source_seq: ep.seq, proven: Boolean(flagMatch), used_by_seq: [] });
+        byId.set(id, { id, kind: "flag", value, source_seq: ep.seq, proven, used_by_seq: [] });
       }
     }
   }

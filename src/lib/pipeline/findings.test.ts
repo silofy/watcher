@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { extractFindings } from "./findings";
+import { redactText } from "../redact";
 import type { Episode } from "../../types/report";
 
 const ep = (over: Partial<Episode> & { seq: number }): Episode => ({ cmd: "", binary: "", duration_ms: 0, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0007", ...over });
@@ -30,5 +31,20 @@ describe("extractFindings", () => {
   });
   it("is deterministic", () => {
     expect(extractFindings(eps, "full")).toEqual(extractFindings(eps, "full"));
+  });
+
+  it("recognizes the [redacted-flag] sentinel as a proven flag observation (real ingest path)", () => {
+    // Mirrors envelopesToRawCommands: redactText runs on output_digest before extractFindings ever
+    // sees it, so a genuinely captured 32-hex flag arrives here already scrubbed to the sentinel.
+    const rawFlag = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
+    const digest = redactText(rawFlag);
+    expect(digest).toBe("[redacted-flag]"); // sanity: confirms the sentinel this test exercises
+
+    const redactedEps: Episode[] = [ep({ seq: 0, cmd: "cat root.txt", binary: "cat", tactic: "TA0004", output_digest: digest })];
+    const flag = extractFindings(redactedEps, "full").find((x) => x.kind === "flag");
+    expect(flag?.proven).toBe(true);
+    expect(flag?.id).toBe("flag:root");
+    expect(flag?.value).not.toContain(rawFlag);
+    expect(flag?.value).toBe("[redacted-flag]");
   });
 });
