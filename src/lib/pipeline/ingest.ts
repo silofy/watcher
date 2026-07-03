@@ -10,6 +10,7 @@ import { redactText } from "../redact";
 import { classifyCoaching } from "../coaching";
 import { ingestSshSession, type SshIngestOptions } from "../ssh/ingest";
 import { runPipeline } from "./index";
+import { extractFindings } from "./findings";
 import type { RawCommand } from "./types";
 
 export interface TelemetryEvent {
@@ -151,6 +152,9 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     sessionStartMs: Number.isNaN(sessionStartMs) ? undefined : sessionStartMs,
   });
 
+  const profile = opts.redaction_profile ?? "full";
+  const findings = extractFindings(episodes, profile);
+
   const m: Metrics = {
     efficiency_pct: round(metrics.efficiency_pct),
     time_waster: metrics.time_waster,
@@ -164,7 +168,7 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
   };
 
   return {
-    schema_version: "1.1",
+    schema_version: "1.2",
     session: opts.session,
     episodes,
     phases,
@@ -172,7 +176,8 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     metrics: m,
     coaching: deriveCoaching(golden, episodes, metrics),
     replay: { cast_ref: null, inline_cast: null },
-    redaction_profile: opts.redaction_profile ?? "full",
+    redaction_profile: profile,
+    findings,
   };
 }
 
