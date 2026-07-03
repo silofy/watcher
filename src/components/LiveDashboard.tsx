@@ -279,22 +279,25 @@ export function LiveDashboard() {
       </div>
 
       {/* live "next move" nudge — the single highest-value un-done applicable check, methodology-derived
-          (label/hint only, never raw cmd/output); disappears once every applicable check is resolved */}
-      {recording && nudge && (
+          (label/hint only, never raw cmd/output); disappears once every applicable check is resolved.
+          the findings count is independent of the nudge and stays visible for the whole recording. */}
+      {recording && (
         <div className="fade-in mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-signal/30 bg-signal/10 px-3 py-1.5 text-xs">
-          {nudge.evidence_seq != null ? (
-            <button
-              type="button"
-              onClick={() => s.reveal(nudge.evidence_seq!)}
-              title="Jump to the evidence in the log"
-              className="label flex items-center gap-1.5 text-signal transition-colors hover:underline"
-            >
-              <span aria-hidden>→</span> Next move: {nudge.label} — {nudge.hint}
-            </button>
-          ) : (
-            <span className="label flex items-center gap-1.5 text-signal">
-              <span aria-hidden>→</span> Next move: {nudge.label} — {nudge.hint}
-            </span>
+          {nudge && (
+            nudge.evidence_seq != null ? (
+              <button
+                type="button"
+                onClick={() => s.reveal(nudge.evidence_seq!)}
+                title="Jump to the evidence in the log"
+                className="label flex items-center gap-1.5 text-signal transition-colors hover:underline"
+              >
+                <span aria-hidden>→</span> Next move: {nudge.label} — {nudge.hint}
+              </button>
+            ) : (
+              <span className="label flex items-center gap-1.5 text-signal">
+                <span aria-hidden>→</span> Next move: {nudge.label} — {nudge.hint}
+              </span>
+            )
           )}
           <span className="ml-auto text-faint">
             {findingsCount} finding{findingsCount === 1 ? "" : "s"}
