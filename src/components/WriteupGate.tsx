@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useReport } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { DIFFICULTY_COLOR } from "../lib/machine";
-import { targetOf } from "../lib/platform";
+import { targetOf, thmAdapter } from "../lib/platform";
 import { resolveProvider } from "../lib/llm";
 import { goldenFromText } from "../lib/writeup";
 import { fetchWriteupUrl, isDesktop } from "../lib/net";
@@ -17,6 +17,7 @@ type Status = { kind: "idle" | "working" | "error"; msg?: string };
 export function WriteupGate() {
   const { report, applyGoldenDag, setGateDismissed } = useReport();
   const target = targetOf(report);
+  const isThm = target.platform === "thm";
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
@@ -39,6 +40,15 @@ export function WriteupGate() {
           return;
         }
       }
+      if (isThm) {
+        const tree = await thmAdapter.intendedPath!({ target, raw: content });
+        if (tree) {
+          applyGoldenDag(tree, { source: "thm-tasks", confidence: 0.7 });
+          // golden_dag is now populated → the gate condition clears and the full debrief renders
+          return;
+        }
+      }
+
       setStatus({ kind: "working", msg: "Reading the write-up with the local model…" });
       const provider = await resolveProvider();
       const res = await goldenFromText(content, { name: target.name, os: report.session.machine?.os ?? null }, provider, "pasted");
@@ -80,12 +90,16 @@ export function WriteupGate() {
       </p>
 
       <div className="mt-4 rounded-lg border border-edge bg-panel p-4">
-        <div className="label mb-2 text-faint">Paste a write-up — text or a URL</div>
+        <div className="label mb-2 text-faint">{isThm ? "Paste the room's tasks" : "Paste a write-up — text or a URL"}</div>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={8}
-          placeholder={`Paste a write-up for ${target.name} (HTB official, 0xdf, IppSec notes…), or a link to one. It's read locally to extract the intended path — nothing is uploaded.`}
+          placeholder={
+            isThm
+              ? `Paste the room's task list for ${target.name} (Task 1 — Title, Task 2 — Title, …), or a write-up / link. Read locally — nothing is uploaded.`
+              : `Paste a write-up for ${target.name} (HTB official, 0xdf, IppSec notes…), or a link to one. It's read locally to extract the intended path — nothing is uploaded.`
+          }
           className="mono w-full resize-y rounded border border-edge bg-ink/60 p-2.5 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
         />
         <div className="mt-3 flex flex-wrap items-center gap-3">

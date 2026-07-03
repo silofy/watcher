@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useReport } from "../store/report";
 import { machineOf } from "../lib/machine";
+import { targetOf, thmAdapter } from "../lib/platform";
 import { resolveProvider } from "../lib/llm";
 import { goldenFromText } from "../lib/writeup";
 import { fetchWriteupUrl, fetchWriteupFrom0xdf, writeupSearchUrl, isDesktop, hasHtbToken, setHtbToken, fetchHtbWriteup, openExternal } from "../lib/net";
@@ -24,6 +25,8 @@ function errMsg(e: unknown, fallback: string): string {
 export function WriteupControl() {
   const { report, applyGoldenDag, writeup } = useReport();
   const box = machineOf(report);
+  const target = targetOf(report);
+  const isThm = target.platform === "thm";
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -38,6 +41,16 @@ export function WriteupControl() {
 
   async function extract(content: string, sourceLabel: string) {
     if (!content.trim()) return;
+    if (isThm && sourceLabel === "pasted") {
+      const tree = await thmAdapter.intendedPath!({ target, raw: content });
+      if (tree) {
+        applyGoldenDag(tree, { source: "thm-tasks", confidence: 0.7 });
+        setStatus({ kind: "idle" });
+        setText("");
+        setUrl("");
+        return;
+      }
+    }
     setStatus({ kind: "working", msg: "Reading the write-up with the local model…" });
     try {
       const provider = await resolveProvider();
@@ -202,7 +215,11 @@ export function WriteupControl() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}
-          placeholder="…or paste the write-up text here. Read locally to extract the intended path — nothing is uploaded."
+          placeholder={
+            isThm
+              ? "…or paste the room's tasks here (Task 1 — Title, Task 2 — Title, …). Read locally — nothing is uploaded."
+              : "…or paste the write-up text here. Read locally to extract the intended path — nothing is uploaded."
+          }
           className="mono w-full resize-y rounded-md border border-edge bg-ink/60 px-2 py-1.5 text-xs text-fg placeholder:text-faint focus:border-signal focus:outline-none"
         />
         <div className="flex items-center gap-3">
