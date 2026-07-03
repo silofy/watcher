@@ -168,10 +168,13 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     ukc_coverage_pct: round(metrics.ukc_coverage_pct),
     ukc_progression: round(metrics.ukc_progression),
     weakness_breadth: metrics.weakness_breadth,
+    methodology_coverage_pct: round(metrics.methodology_coverage_pct),
+    focus_discipline_pct: round(metrics.focus_discipline_pct),
+    recovery_median_ms: metrics.recovery_median_ms,
   };
 
   const rep: WatcherReport = {
-    schema_version: "1.2",
+    schema_version: "1.3",
     session: opts.session,
     episodes,
     phases,

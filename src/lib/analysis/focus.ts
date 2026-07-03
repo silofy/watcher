@@ -6,6 +6,13 @@ export interface FocusResult { discipline_pct: number; rabbit_holes: RabbitHole[
 
 const RUN_MIN = 3; // sustained low-yield episodes on one binary before it's a rabbit hole
 
+// Mirrors metrics.ts's activeMs: active wall-clock a non-idle episode occupies. Computed
+// straight from episodes (not report.metrics) so this runs standalone or from inside the
+// metrics pipeline itself, before report.metrics exists.
+function activeMs(e: Episode): number {
+  return e.actor === "idle" ? 0 : e.duration_ms + e.gap_before_ms;
+}
+
 function lowYield(e: Episode): boolean {
   return e.alignment === "detour" || e.loop_of_seq != null || (e.exit_code != null && e.exit_code !== 0) || (e.output_digest != null && LOW_YIELD.test(e.output_digest));
 }
@@ -30,7 +37,7 @@ export function computeFocus(report: WatcherReport): FocusResult {
     }
     i = j + 1;
   }
-  const tActive = report.metrics.time_waster.t_active_ms || 1;
+  const tActive = report.episodes.reduce((a, e) => a + activeMs(e), 0) || 1;
   const wastedTotal = holes.reduce((a, h) => a + h.wasted_ms, 0);
   const discipline_pct = clamp(100 - (wastedTotal / tActive) * 100);
   return { discipline_pct, rabbit_holes: holes };

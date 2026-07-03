@@ -13,6 +13,7 @@ import {
 } from "./metrics";
 import type { Episode } from "../types/report";
 import { fmtMinutes } from "./format";
+import { computeGrade } from "./bridge/grade";
 
 const report = fixture as unknown as WatcherReport;
 
@@ -145,5 +146,19 @@ describe("conformance: the engine reproduces the fixture's stored metrics", () =
 describe("determinism", () => {
   it("two runs over the same episodes are byte-identical", () => {
     expect(computeMetrics(report)).toEqual(computeMetrics(report));
+  });
+});
+
+describe("analysis signals wiring (schema v1.3)", () => {
+  it("adds analysis fields without changing existing metrics or the grade", () => {
+    const before = computeGrade(report);
+    const m = computeMetrics(report);
+    expect(typeof m.methodology_coverage_pct).toBe("number");
+    expect(typeof m.focus_discipline_pct).toBe("number");
+    expect(m.recovery_median_ms === null || typeof m.recovery_median_ms === "number").toBe(true);
+    // existing fields untouched:
+    expect(m.objective_coverage_pct).toBe(computeMetrics(report).objective_coverage_pct);
+    // grade unchanged (analysis fields must not feed the grade):
+    expect(computeGrade({ ...report, metrics: { ...report.metrics } })).toEqual(before);
   });
 });
