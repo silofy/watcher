@@ -162,6 +162,12 @@ export interface Metrics {
   ukc_progression?: number;
   /** Distinct CWE weakness classes exploited — a sharper breadth than techniques (schema v1.1). */
   weakness_breadth?: number;
+  /** Share of the expected methodology checklist actually touched (schema v1.3). */
+  methodology_coverage_pct?: number;
+  /** Share of active time spent on-path vs. detours (schema v1.3). */
+  focus_discipline_pct?: number;
+  /** Median time to recover from a stuck/loop episode (schema v1.3). */
+  recovery_median_ms?: number | null;
 }
 
 export interface SkillRadar {
@@ -203,7 +209,7 @@ export interface NoiseBaseline {
 }
 
 export interface WatcherReport {
-  schema_version: "1.0" | "1.1" | "1.2";
+  schema_version: "1.0" | "1.1" | "1.2" | "1.3";
   session: Session;
   episodes: Episode[];
   phases: Phase[];
