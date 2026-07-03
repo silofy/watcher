@@ -32,7 +32,12 @@ const RUBRIC_LABELS: Record<RubricKey, string> = {
   methodology: "Methodology",
   focus: "Focus discipline",
 };
-const RUBRIC_COLS = "11rem minmax(0,1fr) 2.5rem 3rem 3.25rem";
+// The metric-label and bar columns are both `minmax(0, …)` — an explicit 0 minimum, so the track
+// (and the `truncate`d label inside it) can shrink to fit the rail rather than forcing a ~11rem
+// floor that used to be wider than the rail itself and force a horizontal scrollbar (see
+// DebriefRail's `overflow-x-hidden`). The three numeric columns stay fixed — they're already
+// narrow, tabular-nums content that never needs to shrink.
+const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
 
 /**
  * Grade — one coherent picture: the radar plots the active rubric's weighted dimensions (6 for v1, 8
@@ -83,6 +88,8 @@ export function Assessment() {
           <span className="text-faint" title={`Scored against rubric v${grade.version}`}>
             v{grade.version}
           </span>
+          {/* a status chip, not a link — this panel IS the grade, so it never points anywhere; the
+              flagged case still names where the gate sends it (a human review queue) */}
           <span
             className="rounded-full border px-2 py-0.5"
             style={{
@@ -90,7 +97,7 @@ export function Assessment() {
               borderColor: flagged ? "color-mix(in oklch, var(--color-loud) 35%, transparent)" : "color-mix(in oklch, var(--color-match) 35%, transparent)",
             }}
           >
-            {flagged ? "→ integrity queue" : "→ grade"}
+            {flagged ? "Integrity queue" : "Graded"}
           </span>
         </div>
       }
@@ -100,7 +107,7 @@ export function Assessment() {
           width) would squeeze the table into a sliver at typical desktop widths. */}
       <div className="grid gap-6">
         {/* the grade radar — the active rubric's weighted dimensions, letter in the center */}
-        <svg viewBox="0 0 240 230" className="mx-auto w-full max-w-[300px]">
+        <svg viewBox="0 0 240 230" className="mx-auto h-auto w-full max-w-full">
           {[0.25, 0.5, 0.75, 1].map((ring) => (
             <polygon key={ring} points={axes.map((_, i) => point(i, ring, n).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
           ))}
@@ -153,8 +160,8 @@ export function Assessment() {
               const barColor = gate ? "var(--color-loud)" : tierColor(c.raw);
               return (
                 <div key={k} className="grid items-center gap-2 px-1.5 py-1.5 text-sm" style={{ gridTemplateColumns: RUBRIC_COLS }}>
-                  <span className="truncate text-muted">{RUBRIC_LABELS[k]}</span>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-edge">
+                  <span className="min-w-0 truncate text-muted">{RUBRIC_LABELS[k]}</span>
+                  <div className="min-w-0 h-1.5 overflow-hidden rounded-full bg-edge">
                     <div className="h-full rounded-full" style={{ width: `${c.raw}%`, backgroundColor: barColor }} />
                   </div>
                   <span className="mono text-right tabular-nums" style={{ color: barColor }}>

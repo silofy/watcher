@@ -53,13 +53,16 @@ function GhostMini() {
  * whatever falls past the fold. `lg:max-h-[calc(100vh-5rem)]` (5rem == `top-20`) caps it to what's
  * actually visible below the sticky offset, and `lg:overflow-y-auto` lets the rail itself scroll
  * internally rather than clipping content — only at `lg:`, where it's sticky in the first place.
+ * `overflow-x-hidden` guards against anything inside (radar/rubric) ever forcing a horizontal
+ * scrollbar, and `no-scrollbar` (see index.css) hides the vertical scrollbar's chrome without
+ * removing the scroll itself — a rail-sized scrollbar track reads as a bug, not a feature.
  */
 export function DebriefRail() {
   const { metrics } = useReport();
   return (
     <aside
       aria-label="Target identity and verdict"
-      className="flex flex-col gap-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1"
+      className="no-scrollbar flex flex-col gap-4 overflow-x-hidden lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1"
     >
       <IdentityBar variant="rail" />
       <Assessment />
