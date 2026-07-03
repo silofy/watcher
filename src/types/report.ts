@@ -231,7 +231,7 @@ export interface GhostItem {
 
 /** Counterfactual "optimal-from-your-state" analysis (schema v1.4). Deterministic; never feeds the grade. */
 export interface Ghost {
-  /** Total lag: Σ (late-pivot delay) + skipped-objective cost. */
+  /** Σ late-pivot lag (time between a finding-unlock and your action). */
   time_lost_ms?: number;
   /** Count of ahead / off-path moments where the human beat the optimal line. */
   human_wins?: number;

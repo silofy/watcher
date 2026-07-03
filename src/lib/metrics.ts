@@ -18,6 +18,7 @@ import { isOnTarget } from "./pipeline/mitre";
 import { computeMethodology } from "./analysis/methodology";
 import { computeFocus } from "./analysis/focus";
 import { computeRecovery } from "./analysis/recovery";
+import { computeGhost } from "./ghost/ghost";
 
 /**
  * Per-lab loudness baseline the summed noise is normalized against (brief §6.1):
@@ -191,6 +192,8 @@ export interface ComputedMetrics {
   methodology_coverage_pct: number;
   focus_discipline_pct: number;
   recovery_median_ms: number | null;
+  ghost_time_lost_ms: number | null;
+  ghost_human_wins: number | null;
 }
 
 /** The single deterministic computation the UI and the conformance test both call. */
@@ -218,6 +221,7 @@ export function computeMetrics(report: WatcherReport): ComputedMetrics {
   // Second/third axes (schema v1.1): UKC ordering + CWE weakness classes. Derived straight
   // from each episode's tactic/binary, so these hold whether or not `frameworks` was stamped.
   const goldenTactics = golden_dag.map((o) => o.tactic);
+  const ghost = computeGhost(report);
 
   return {
     efficiency_pct: waste.efficiency_pct,
@@ -241,6 +245,8 @@ export function computeMetrics(report: WatcherReport): ComputedMetrics {
     methodology_coverage_pct: computeMethodology(report).coverage_pct,
     focus_discipline_pct: computeFocus(report).discipline_pct,
     recovery_median_ms: computeRecovery(report).median_ms,
+    ghost_time_lost_ms: ghost?.time_lost_ms ?? null,
+    ghost_human_wins: ghost?.human_wins ?? null,
   };
 }
 

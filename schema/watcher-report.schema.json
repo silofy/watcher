@@ -319,7 +319,7 @@
       "description": "Counterfactual 'optimal-from-your-state' analysis (schema v1.4). Deterministic; never feeds the grade.",
       "additionalProperties": false,
       "properties": {
-        "time_lost_ms": { "type": "integer", "minimum": 0, "description": "Total lag: Σ (late-pivot delay) + skipped-objective cost." },
+        "time_lost_ms": { "type": "integer", "minimum": 0, "description": "Σ late-pivot lag (time between a finding-unlock and your action)." },
         "human_wins": { "type": "integer", "minimum": 0, "description": "Count of ahead / off-path moments where the human beat the optimal line." },
         "items": {
           "type": "array",
