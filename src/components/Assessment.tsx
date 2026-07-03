@@ -43,8 +43,8 @@ const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
  * Grade — one coherent picture: the radar plots the active rubric's weighted dimensions (6 for v1, 8
  * for v2) with the letter in its center, and the table shows the score × weight → points math behind
  * it. The actionable moves live in the Phase Audit; this is the explainable scorecard. Independence is
- * a gate routed to a human. Lives inside the debrief's "Evidence & detail" drawer (see App.tsx) —
- * the raw grade breakdown, one click away from the hero takeaway.
+ * a gate routed to a human. Rendered as its own visible section in the main narrative (see App.tsx) —
+ * above the collapsed "Evidence & detail" drawer, since the grade is a verdict, not raw detail.
  */
 export function Assessment() {
   const s = useReport();
@@ -112,10 +112,10 @@ export function Assessment() {
           not column width) would squeeze the table into a sliver at typical desktop widths. */}
       <div className="grid gap-6">
         {/* the grade radar — the active rubric's weighted dimensions, letter in the center. Capped at
-            a fixed max width (not `w-full`) so it renders as a normal ~240px radar even at the full
-            width of the Evidence drawer — only the rendered size is capped, the viewBox geometry
-            (cx/cy/r in radar.ts) is untouched. */}
-        <svg viewBox="0 0 240 230" className="mx-auto h-auto w-64 max-w-full">
+            a fixed max width (not `w-full`) so it renders as a normal ~294px radar even at the full
+            width of its section — only the rendered size is capped, the viewBox geometry (cx/cy/r in
+            radar.ts) is untouched. */}
+        <svg viewBox="0 0 240 230" className="mx-auto h-auto w-[294px] max-w-full">
           {[0.25, 0.5, 0.75, 1].map((ring) => (
             <polygon key={ring} points={axes.map((_, i) => point(i, ring, n).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
           ))}

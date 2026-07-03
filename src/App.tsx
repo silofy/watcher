@@ -20,7 +20,7 @@ import { LiveBridge } from "./components/LiveBridge";
 import { DemoDriver } from "./components/DemoDriver";
 import { LiveDashboard } from "./components/LiveDashboard";
 import { isLiveRecording } from "./lib/live";
-import { normalizeCoaching, stepText } from "./lib/coaching";
+import { pickOneLesson } from "./lib/one-lesson";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
   return (
@@ -46,19 +46,35 @@ function Tab({ id, label }: { id: "debrief" | "history" | "install" | "progress"
   );
 }
 
-/** The hero card — the single highest-value coaching takeaway, led big and unmissable at the top of
- *  the narrative. Same source `PhaseAudit` used for its own (now-suppressed) "Key takeaway" banner —
- *  see `hideTakeaway` there. Renders nothing when there's no coaching lead (e.g. an old report, or a
- *  live capture still in progress). */
+/** The hero card — the single most impactful, evidence-backed takeaway, led big and unmissable at
+ *  the top of the narrative. Sourced from `pickOneLesson`, which prioritizes a Ghost late-pivot, a
+ *  methodology miss, a rabbit hole, or the first actionable coaching step over a generic recap stat
+ *  (see one-lesson.ts for the priority order). Renders nothing when none of those apply — e.g. a
+ *  clean run, an old report, or a live capture still in progress — rather than show an empty or
+ *  recap-only hero. `PhaseAudit`'s own "Key takeaway" banner stays suppressed via `hideTakeaway`. */
 function HeroLesson() {
-  const { report } = useReport();
-  const lead = normalizeCoaching(report.coaching?.next_steps)[0];
-  if (!lead) return null;
-  return (
-    <div className="rounded-xl border border-signal/40 bg-signal/10 px-6 py-5">
+  const { report, reveal } = useReport();
+  const lesson = pickOneLesson(report);
+  if (!lesson) return null;
+  const body = (
+    <>
       <span className="label text-signal">The one lesson</span>
-      <p className="mt-2 text-xl font-semibold leading-snug text-fg sm:text-2xl">{stepText(lead)}</p>
-    </div>
+      <p className="mt-2 text-xl font-semibold leading-snug text-fg sm:text-2xl">{lesson.text}</p>
+      {lesson.evidence_seq != null && <span className="label mt-2 inline-block text-signal/70">jump to step {lesson.evidence_seq} ↗</span>}
+    </>
+  );
+  if (lesson.evidence_seq == null) {
+    return <div className="rounded-xl border border-signal/40 bg-signal/10 px-6 py-5">{body}</div>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => reveal(lesson.evidence_seq!)}
+      className="w-full rounded-xl border border-signal/40 bg-signal/10 px-6 py-5 text-left transition-colors hover:bg-signal/15"
+      title={`jump to step #${lesson.evidence_seq}`}
+    >
+      {body}
+    </button>
   );
 }
 
@@ -150,14 +166,17 @@ export function App() {
               </Rise>
             ) : null}
 
+            {/* 4c. the grade — visible in the main narrative (not buried in the collapsed drawer
+                below), since a verdict this load-bearing shouldn't need a click to see. */}
+            <Rise i={6} id="grade">
+              <Assessment />
+            </Rise>
+
             {/* 5. evidence & detail — the raw record, collapsed by default. `Collapse` is a native
                 <details>: its children stay in the DOM (just visually hidden) even when closed, so the
                 static export still carries every section's markup. */}
             <Collapse title="Evidence & detail" subtitle="the raw record — timeline, stealth, frameworks, log, findings">
-              <div className="flex flex-col gap-6">
-                <DeepDive />
-                <Assessment />
-              </div>
+              <DeepDive />
             </Collapse>
 
             {/* 6. session window */}
