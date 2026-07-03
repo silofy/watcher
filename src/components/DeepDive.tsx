@@ -32,6 +32,7 @@ export function DeepDive() {
   const revealNonce = useReport((s) => s.revealNonce);
   const [active, setActive] = useState<DeepDiveTabId>("timeline");
   const tabRefs = useRef<Map<DeepDiveTabId, HTMLButtonElement>>(new Map());
+  const logPanelRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -40,6 +41,14 @@ export function DeepDive() {
       return;
     }
     setActive("log");
+    // The log tabpanel is still `hidden` in this same tick (this effect runs before the DOM
+    // reflects the `active` state change on the next render). Wait a frame so the panel has
+    // lost `display:none` before scrolling — otherwise scrollIntoView on a hidden element is a
+    // no-op, which is the bug this effect exists to fix.
+    const raf = requestAnimationFrame(() => {
+      logPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => cancelAnimationFrame(raf);
   }, [revealNonce]);
 
   function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, i: number) {
@@ -86,10 +95,12 @@ export function DeepDive() {
       {DEEP_DIVE_TABS.map((t) => (
         <div
           key={t.id}
+          ref={t.id === "log" ? logPanelRef : undefined}
           id={`deep-dive-panel-${t.id}`}
           role="tabpanel"
           aria-labelledby={`deep-dive-tab-${t.id}`}
           hidden={active !== t.id}
+          tabIndex={0}
           className="overflow-x-auto pt-3"
         >
           {PANELS[t.id]}
