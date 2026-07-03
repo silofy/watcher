@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import Ajv from "ajv/dist/2020";
 import addFormats from "ajv-formats";
@@ -7,6 +9,22 @@ import fixture from "../fixtures/session-htb-easy.json";
 const ajv = new Ajv({ allErrors: true, strict: false });
 addFormats(ajv);
 const validate = ajv.compile(schema);
+
+describe("watcher-report schema", () => {
+  const dir = join(import.meta.dirname, "..", "fixtures");
+  const files = readdirSync(dir).filter((f) => /^session-.*\.json$/.test(f));
+
+  it("has fixtures to validate", () => expect(files.length).toBeGreaterThan(0));
+
+  for (const f of files) {
+    it(`validates ${f}`, () => {
+      const doc = JSON.parse(readFileSync(join(dir, f), "utf8"));
+      const ok = validate(doc);
+      if (!ok) console.error(f, validate.errors);
+      expect(ok).toBe(true);
+    });
+  }
+});
 
 describe("fixture conforms to watcher-report.schema.json v1.0", () => {
   it("validates the bundled HTB-easy fixture", () => {
