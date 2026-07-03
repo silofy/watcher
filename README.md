@@ -83,6 +83,14 @@ moves, and skips. Here: **90% coverage** — the only miss was the cron-job chec
 The radar plots the six weighted dimensions with the letter in its center; the table shows the
 score × weight → points math behind it. Independence is a gate routed to a human, not an auto-verdict.
 
+**Methodology signals.** Three more deterministic checks run alongside the rubric: **methodology
+coverage** (did you run the standard check for each phase you touched — SUID sweep, cron check, and
+so on), **focus discipline** (did you get pulled into a low-yield rabbit hole instead of stepping back
+to re-enumerate), and **recovery** (how long it took to get back on track after a dead end). They show
+up as coaching in the Phase Audit and as `metrics.methodology_coverage_pct`, `focus_discipline_pct`,
+and `recovery_median_ms` in the report JSON — informing the write-up, not the letter grade. Folding
+them into the weighted score is a future decision, not this one.
+
 ### Kill chain & frameworks — ATT&CK · UKC · CWE
 
 ![Frameworks](docs/screenshots/frameworks.png)

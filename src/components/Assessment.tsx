@@ -166,6 +166,10 @@ export function Assessment() {
         </div>
       </div>
 
+      <p className="mt-3 text-xs text-faint">
+        Methodology, focus, and recovery are surfaced as coaching — not yet weighted into the grade.
+      </p>
+
       {/* what actually leaves the machine on sync — plain-language consent, not a jargon dump */}
       <div className="mt-5 rounded-lg border border-edge bg-ink/50 p-4 text-xs">
         <div className="mb-2.5">
