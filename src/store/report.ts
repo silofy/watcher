@@ -107,6 +107,8 @@ export interface SessionCard {
   isLatest: boolean;
   /** The scripted demo session — opening it replays the run live rather than opening a static debrief. */
   demo: boolean;
+  breadth: number;
+  methodology: number | null;
 }
 
 function toCard(id: string, r: WatcherReport): SessionCard {
@@ -129,6 +131,8 @@ function toCard(id: string, r: WatcherReport): SessionCard {
     recording: isLiveRecording(r), // flag + heartbeat — a dead capture isn't "live"
     isLatest: false,
     demo: id === DEMO_ID,
+    breadth: r.metrics.technique_breadth ?? 0,
+    methodology: r.metrics.methodology_coverage_pct ?? null,
   };
 }
 
@@ -146,7 +150,7 @@ const DEFAULT_ID =
 // live replay) without ever being the session the app lands on.
 REPORTS[DEMO_ID] = DEMO_REPORT;
 
-type View = "debrief" | "history" | "install";
+type View = "debrief" | "history" | "install" | "progress";
 
 interface ReportState extends Derived {
   sessions: { id: string; label: string }[];
