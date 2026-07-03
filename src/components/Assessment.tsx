@@ -111,8 +111,11 @@ export function Assessment() {
       {/* Always stacked (radar over the rubric table) — a side-by-side split (keyed on viewport width,
           not column width) would squeeze the table into a sliver at typical desktop widths. */}
       <div className="grid gap-6">
-        {/* the grade radar — the active rubric's weighted dimensions, letter in the center */}
-        <svg viewBox="0 0 240 230" className="mx-auto h-auto w-full max-w-full">
+        {/* the grade radar — the active rubric's weighted dimensions, letter in the center. Capped at
+            a fixed max width (not `w-full`) so it renders as a normal ~240px radar even at the full
+            width of the Evidence drawer — only the rendered size is capped, the viewBox geometry
+            (cx/cy/r in radar.ts) is untouched. */}
+        <svg viewBox="0 0 240 230" className="mx-auto h-auto w-64 max-w-full">
           {[0.25, 0.5, 0.75, 1].map((ring) => (
             <polygon key={ring} points={axes.map((_, i) => point(i, ring, n).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
           ))}

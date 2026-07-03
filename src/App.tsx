@@ -139,16 +139,22 @@ export function App() {
               <PhaseAudit hideTakeaway />
             </Rise>
 
+            {/* 4b. you vs. the ghost — the optimal line from where you stood, visible in the main
+                narrative (not buried in the collapsed drawer below). Guarded so old reports with no
+                ghost data render nothing here. */}
+            {report.ghost?.items?.length ? (
+              <Rise i={5} id="ghost">
+                <Section title="You vs. the Ghost" subtitle="the optimal line from where you stood — wins first">
+                  <GhostCard />
+                </Section>
+              </Rise>
+            ) : null}
+
             {/* 5. evidence & detail — the raw record, collapsed by default. `Collapse` is a native
                 <details>: its children stay in the DOM (just visually hidden) even when closed, so the
                 static export still carries every section's markup. */}
-            <Collapse title="Evidence & detail" subtitle="the raw record — timeline, stealth, frameworks, log, findings, ghost">
+            <Collapse title="Evidence & detail" subtitle="the raw record — timeline, stealth, frameworks, log, findings">
               <div className="flex flex-col gap-6">
-                {report.ghost?.items?.length ? (
-                  <Section title="You vs. the Ghost" subtitle="the optimal line from where you stood — wins first">
-                    <GhostCard />
-                  </Section>
-                ) : null}
                 <DeepDive />
                 <Assessment />
               </div>
