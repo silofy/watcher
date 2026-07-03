@@ -72,13 +72,28 @@ export function extractFindings(episodes: Episode[], profile: RedactionProfile):
     }
   }
 
-  // Link used_by_seq: a later episode whose cmd contains the finding's value token consumed it.
+  // Link used_by_seq: a later episode whose cmd references the finding's value consumed it.
+  // Port values are short numeric tokens ("80") that would false-match as a bare substring
+  // inside ":8080", "1080", "10.10.10.80", or a PID — so ports require a colon-anchored,
+  // non-digit-bounded match (":80" in "...:80/admin" or "...:80", but not ":8080"). Other
+  // kinds (url, hash, cred, host, path, vuln, flag) carry long/distinctive values where a
+  // plain substring match has no such false-positive risk.
   const findings = [...byId.values()];
   for (const f of findings) {
-    const needle = f.kind === "port" ? f.value.split("/")[0] : f.value;
-    for (const ep of episodes) {
-      if (ep.seq <= f.source_seq) continue;
-      if (ep.cmd.includes(needle)) f.used_by_seq!.push(ep.seq);
+    if (f.kind === "port") {
+      const port = f.value.split("/")[0];
+      const escaped = port.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const portRe = new RegExp(":" + escaped + "(?!\\d)");
+      for (const ep of episodes) {
+        if (ep.seq <= f.source_seq) continue;
+        if (portRe.test(ep.cmd)) f.used_by_seq!.push(ep.seq);
+      }
+    } else {
+      const needle = f.value;
+      for (const ep of episodes) {
+        if (ep.seq <= f.source_seq) continue;
+        if (ep.cmd.includes(needle)) f.used_by_seq!.push(ep.seq);
+      }
     }
   }
 

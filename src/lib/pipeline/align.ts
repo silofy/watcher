@@ -145,7 +145,13 @@ export function annotateObjectiveStatus(episodes: Episode[], golden: GoldenObjec
     const flagRef = findings.find((f) => f.kind === "flag" && f.proven && (f.source_seq === seq || refs.includes(f.id)));
     if (flagRef) proven_by_seq = flagRef.source_seq;
     else if (o.tactic === "TA0004" && ROOT_OBJ.test(o.objective)) {
-      const proof = episodes.find((e) => e.seq >= seq && /uid=0|euid=0|\broot\b/.test(e.output_digest ?? ""));
+      // Strong proof only: an actual uid/euid=0 marker, or "root" standing alone as a whoami-style
+      // output line. A bare `\broot\b` over-marks — it matches "root" inside a path (/root/notes.txt),
+      // an `ls -l` owner column (drwxr-xr-x root root), or /etc/passwd's `root:x:0:0`, which would
+      // flip a merely-reached objective to "proven" without real evidence of privilege escalation.
+      const proof = episodes.find(
+        (e) => e.seq >= seq && /\buid=0\b|\beuid=0\b|(^|\n)\s*root\s*(\r?$|\n)/.test(e.output_digest ?? "")
+      );
       if (proof) proven_by_seq = proof.seq;
     }
 

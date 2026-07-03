@@ -126,3 +126,40 @@ describe("annotateObjectiveStatus", () => {
     expect(out[0].status).toBe("untouched");
   });
 });
+
+describe("annotateObjectiveStatus — strong-only root proof", () => {
+  const golden: GoldenObjective[] = [
+    { objective: "capture_root", tactic: "TA0004", satisfied_by: ["cat root.txt"], user_satisfied_by_seq: 0 },
+  ];
+  const satisfier: Episode = { seq: 0, cmd: "cat root.txt", binary: "cat", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004" };
+
+  it("does not mark proven from 'root' merely appearing inside a path (weak match, stays reached)", () => {
+    const eps: Episode[] = [
+      satisfier,
+      { seq: 1, cmd: "cat /root/notes.txt", binary: "cat", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004", output_digest: "see /root/notes.txt for details" },
+    ];
+    const out = annotateObjectiveStatus(eps, golden, []);
+    expect(out[0].status).toBe("reached");
+    expect(out[0].proven_by_seq).toBeNull();
+  });
+
+  it("marks proven from a uid=0(root) marker in output", () => {
+    const eps: Episode[] = [
+      satisfier,
+      { seq: 1, cmd: "id", binary: "id", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004", output_digest: "uid=0(root) gid=0(root) groups=0(root)" },
+    ];
+    const out = annotateObjectiveStatus(eps, golden, []);
+    expect(out[0].status).toBe("proven");
+    expect(out[0].proven_by_seq).toBe(1);
+  });
+
+  it("marks proven from a standalone 'root' whoami output line", () => {
+    const eps: Episode[] = [
+      satisfier,
+      { seq: 1, cmd: "whoami", binary: "whoami", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004", output_digest: "root" },
+    ];
+    const out = annotateObjectiveStatus(eps, golden, []);
+    expect(out[0].status).toBe("proven");
+    expect(out[0].proven_by_seq).toBe(1);
+  });
+});

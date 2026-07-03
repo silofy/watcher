@@ -33,6 +33,28 @@ describe("extractFindings", () => {
     expect(extractFindings(eps, "full")).toEqual(extractFindings(eps, "full"));
   });
 
+  it("does not link port:80 to :8080, a decimal-octet host, or a bare numeric arg (precise port match)", () => {
+    const negEps: Episode[] = [
+      ep({ seq: 0, cmd: "nmap -sV 10.129.1.1", binary: "nmap", tactic: "TA0007", output_digest: "80/tcp open http Apache 2.4" }),
+      ep({ seq: 1, cmd: "curl http://10.129.1.1:8080/", binary: "curl", tactic: "TA0007" }),
+      ep({ seq: 2, cmd: "ping 10.10.10.80", binary: "ping", tactic: "TA0007" }),
+      ep({ seq: 3, cmd: "sleep 80", binary: "sleep", tactic: "TA0007" }),
+    ];
+    const f = extractFindings(negEps, "full");
+    const port80 = f.find((x) => x.id === "port:80-tcp")!;
+    expect(port80.used_by_seq).toEqual([]);
+  });
+
+  it("still links port:80 to a later command that references it as a real port (:80 non-digit boundary)", () => {
+    const posEps: Episode[] = [
+      ep({ seq: 0, cmd: "nmap -sV 10.129.1.1", binary: "nmap", tactic: "TA0007", output_digest: "80/tcp open http Apache 2.4" }),
+      ep({ seq: 1, cmd: "curl http://10.129.1.1:80/admin", binary: "curl", tactic: "TA0007" }),
+    ];
+    const f = extractFindings(posEps, "full");
+    const port80 = f.find((x) => x.id === "port:80-tcp")!;
+    expect(port80.used_by_seq).toContain(1);
+  });
+
   it("recognizes the [redacted-flag] sentinel as a proven flag observation (real ingest path)", () => {
     // Mirrors envelopesToRawCommands: redactText runs on output_digest before extractFindings ever
     // sees it, so a genuinely captured 32-hex flag arrives here already scrubbed to the sentinel.
