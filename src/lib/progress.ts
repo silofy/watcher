@@ -53,3 +53,22 @@ export function progressPath(values: (number | null)[], width: number, height: n
   });
   return drawn >= 2 ? pts.join(" ") : "";
 }
+
+export interface ProgressDot { i: number; x: number; y: number; value: number }
+
+/** Per-point (x,y) coordinates for the non-null values, in the same [0,width]×[0,height] scale
+ *  `progressPath` draws its line in — for placing one clickable dot per run on the trend chart.
+ *  Pure/deterministic; returns [] below 2 total points (nothing to plot against). */
+export function progressDots(values: (number | null)[], width: number, height: number, min = 0, max = 100): ProgressDot[] {
+  const n = values.length;
+  if (n < 2) return [];
+  const span = max - min || 1;
+  const dots: ProgressDot[] = [];
+  values.forEach((v, i) => {
+    if (v == null) return;
+    const x = (i / (n - 1)) * width;
+    const y = height - ((v - min) / span) * height;
+    dots.push({ i, x, y, value: v });
+  });
+  return dots;
+}

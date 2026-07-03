@@ -14,6 +14,7 @@ import { CommandReplay } from "./components/CommandReplay";
 import { PathComparison } from "./components/PathComparison";
 import { Assessment } from "./components/Assessment";
 import { History } from "./components/History";
+import { Progress } from "./components/Progress";
 import { Install } from "./components/Install";
 import { WriteupGate } from "./components/WriteupGate";
 import { LlmStatusChip } from "./components/LlmStatusChip";
@@ -31,7 +32,7 @@ function Rise({ i, className, id, children }: { i: number; className?: string; i
   );
 }
 
-function Tab({ id, label }: { id: "debrief" | "history" | "install"; label: string }) {
+function Tab({ id, label }: { id: "debrief" | "history" | "install" | "progress"; label: string }) {
   const { view, setView } = useReport();
   const active = view === id;
   return (
@@ -67,6 +68,7 @@ export function App() {
               <nav className="flex items-center gap-5">
                 <Tab id="debrief" label="Debrief" />
                 <Tab id="history" label="History" />
+                <Tab id="progress" label="Progress" />
                 <Tab id="install" label="Install" />
               </nav>
             </div>
@@ -87,6 +89,8 @@ export function App() {
           <Install />
         ) : view === "history" ? (
           <History />
+        ) : view === "progress" ? (
+          <Progress />
         ) : needsWriteup ? (
           <WriteupGate />
         ) : (

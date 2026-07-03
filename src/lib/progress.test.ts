@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { progressSeries, progressSummary, progressPath, type ProgressCard } from "./progress";
+import { progressSeries, progressSummary, progressPath, progressDots, type ProgressCard } from "./progress";
 
 const card = (o: Partial<ProgressCard> & { id: string }): ProgressCard => ({
   ended_at: "2026-01-01T00:00:00Z", target: { platform: "htb", kind: "box", name: "X" },
@@ -65,5 +65,24 @@ describe("progressPath", () => {
     const d = progressPath([0, 50, 100], 100, 20, 0, 100);
     expect((d.match(/M/g) || []).length).toBe(1);
     expect(d).toContain("L");
+  });
+});
+
+describe("progressDots", () => {
+  it("places one dot per value at the same x/y scale progressPath draws its line in", () => {
+    const dots = progressDots([0, 50, 100], 100, 20, 0, 100);
+    expect(dots).toEqual([
+      { i: 0, x: 0, y: 20, value: 0 },
+      { i: 1, x: 50, y: 10, value: 50 },
+      { i: 2, x: 100, y: 0, value: 100 },
+    ]);
+  });
+  it("skips null values but keeps the original index", () => {
+    const dots = progressDots([10, null, 30], 100, 20, 0, 100);
+    expect(dots.map((d) => d.i)).toEqual([0, 2]);
+  });
+  it("returns [] for < 2 total values", () => {
+    expect(progressDots([5], 100, 20)).toEqual([]);
+    expect(progressDots([], 100, 20)).toEqual([]);
   });
 });
