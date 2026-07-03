@@ -86,6 +86,11 @@ export function PathComparison() {
                       <li key={o.objective} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                         <span className="shrink-0" style={{ color: "var(--color-skipped)" }}>○</span>
                         <span className="text-fg">{humanizeObjective(o.objective)}</span>
+                        {o.status === "proven" ? (
+                          <span className="text-match" title="Proven — backed by observable proof">✓ proven</span>
+                        ) : o.user_satisfied_by_seq != null ? (
+                          <span className="text-muted" title="Reached — satisfied, not proof-verified">• reached</span>
+                        ) : null}
                         <span className="ml-auto shrink-0 text-xs text-faint">
                           try <span className="mono text-muted">{o.satisfied_by[0]}</span>
                         </span>
