@@ -26,6 +26,26 @@ export function verdictMeta(verdict: GhostVerdict): VerdictMeta {
   return VERDICT_META[verdict];
 }
 
+/** verdict → connector `<title>` text, or null when no connector should be drawn at all.
+ *  The connector line runs between the unlock dot and the actual dot, so its wording must respect
+ *  which dot comes first: `late_pivot` unlocks-then-acts (time lost), while the two win verdicts
+ *  (`ahead`, `off_path_win`) have the human acting before/around the optimal line — the opposite
+ *  direction. `on_time`/`skipped` never draw a connector (see AttackTimeline's guard: both seqs must
+ *  resolve AND differ, on top of this returning non-null). */
+export function connectorLabel(verdict: GhostVerdict): string | null {
+  switch (verdict) {
+    case "late_pivot":
+      return "Unlocked earlier — you acted on it later.";
+    case "ahead":
+      return "You acted before the optimal line unlocked it — ahead.";
+    case "off_path_win":
+      return "Reached via your own route — off the intended path.";
+    case "on_time":
+    case "skipped":
+      return null;
+  }
+}
+
 export interface GhostMarker {
   objective: string;
   verdict: GhostVerdict;

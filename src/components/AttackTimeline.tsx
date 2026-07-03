@@ -5,7 +5,7 @@ import { useAxisZoom } from "./useAxisZoom";
 import { ZoomControls } from "./ZoomControls";
 import { techniqueName } from "../lib/attack";
 import { fmtDuration, fmtClock } from "../lib/format";
-import { ghostMarkers, verdictMeta } from "../lib/ghost/ghost-view";
+import { ghostMarkers, verdictMeta, connectorLabel } from "../lib/ghost/ghost-view";
 
 const GHOST_H = 14; // ghost-overlay lane height in viewBox units — thin, secondary to the ribbon
 
@@ -195,9 +195,10 @@ export function AttackTimeline() {
               const ux = m.unlockMs != null ? zx(m.unlockMs) : null;
               const ax = m.actualMs != null ? zx(m.actualMs) : null;
               const mid = GHOST_H / 2;
+              const label = connectorLabel(m.verdict);
               return (
                 <g key={m.objective} opacity={0.85}>
-                  {ux != null && ax != null && ux !== ax && (
+                  {ux != null && ax != null && ux !== ax && label != null && (
                     <line
                       x1={ux}
                       y1={mid}
@@ -208,7 +209,7 @@ export function AttackTimeline() {
                       strokeDasharray="2,2"
                       vectorEffect="non-scaling-stroke"
                     >
-                      <title>{`${m.objective.replace(/_/g, " ")} — unlocked, then acted on later`}</title>
+                      <title>{`${m.objective.replace(/_/g, " ")} — ${label}`}</title>
                     </line>
                   )}
                   {ux != null && (

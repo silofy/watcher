@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { verdictMeta, ghostMarkers, type GhostMarker } from "./ghost-view";
+import { verdictMeta, ghostMarkers, connectorLabel, type GhostMarker } from "./ghost-view";
 import type { GhostItem } from "../../types/report";
 import type { Timeline, TimedEpisode } from "../scale";
 
@@ -28,6 +28,31 @@ describe("verdictMeta", () => {
       expect(m.label.length).toBeGreaterThan(0);
       expect(m.tone).toMatch(/^var\(--color-/);
     }
+  });
+});
+
+describe("connectorLabel", () => {
+  it("frames ahead as a win — the human acted before the optimal line unlocked it", () => {
+    const label = connectorLabel("ahead");
+    expect(label).not.toBeNull();
+    expect(label).not.toMatch(/later/);
+    expect(label).not.toMatch(/then acted on later/);
+  });
+
+  it("frames off_path_win as a win — reached via the human's own route", () => {
+    const label = connectorLabel("off_path_win");
+    expect(label).not.toBeNull();
+    expect(label).not.toMatch(/later/);
+    expect(label).not.toMatch(/then acted on later/);
+  });
+
+  it("frames late_pivot as time lost — unlocked earlier, acted on later", () => {
+    expect(connectorLabel("late_pivot")).toMatch(/later/);
+  });
+
+  it("draws no connector for on_time or skipped", () => {
+    expect(connectorLabel("on_time")).toBeNull();
+    expect(connectorLabel("skipped")).toBeNull();
   });
 });
 
