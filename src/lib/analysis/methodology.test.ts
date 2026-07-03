@@ -34,4 +34,50 @@ describe("computeMethodology", () => {
     const r = rep([ep({ seq: 0, binary: "nmap" })], [{ id: "port:80-tcp", kind: "port", value: "80/tcp", source_seq: 0 }]);
     expect(computeMethodology(r)).toEqual(computeMethodology(r));
   });
+
+  it("priv_enum reports the real foothold seq, not a fabricated one, and is done once linpeas runs", () => {
+    const golden: WatcherReport["golden_dag"] = [
+      { objective: "Get a foothold", tactic: "TA0002", satisfied_by: [], user_satisfied_by_seq: 5 },
+    ];
+    const r = rep([ep({ seq: 5, cmd: "id", binary: "id", tactic: "TA0002" })], [], golden);
+    const noTooling = computeMethodology(r).checks.find((c) => c.id === "priv_enum")!;
+    expect(noTooling.applicable).toBe(true);
+    expect(noTooling.done).toBe(false);
+    expect(noTooling.evidence_seq).toBe(5);
+
+    const rWithLinpeas = rep(
+      [ep({ seq: 5, cmd: "id", binary: "id", tactic: "TA0002" }), ep({ seq: 6, cmd: "./linpeas.sh", binary: "linpeas.sh", tactic: "TA0004" })],
+      [],
+      golden,
+    );
+    const withTooling = computeMethodology(rWithLinpeas).checks.find((c) => c.id === "priv_enum")!;
+    expect(withTooling.done).toBe(true);
+    expect(withTooling.evidence_seq).toBe(5);
+  });
+
+  it("reports zero coverage and zero applicable checks for a genuinely empty report", () => {
+    const res = computeMethodology(rep([], []));
+    expect(res.coverage_pct).toBe(0);
+    expect(res.checks.filter((c) => c.applicable)).toHaveLength(0);
+  });
+
+  it("is order-independent: same findings in different array order yield equal coverage and applicable/done per check", () => {
+    const findingsA: Finding[] = [
+      { id: "port:445-tcp", kind: "port", value: "445/tcp", source_seq: 0 },
+      { id: "port:80-tcp", kind: "port", value: "80/tcp", source_seq: 1 },
+    ];
+    const findingsB: Finding[] = [findingsA[1], findingsA[0]];
+    const episodes = [
+      ep({ seq: 0, cmd: "nmap 10.10.1.5", binary: "nmap", tactic: "TA0007" }),
+      ep({ seq: 1, cmd: "gobuster dir -u http://10.10.1.5", binary: "gobuster", tactic: "TA0007" }),
+    ];
+    const resA = computeMethodology(rep(episodes, findingsA));
+    const resB = computeMethodology(rep(episodes, findingsB));
+    expect(resA.coverage_pct).toBe(resB.coverage_pct);
+    expect(resA.checks.map((c) => ({ id: c.id, applicable: c.applicable, done: c.done }))).toEqual(
+      resB.checks.map((c) => ({ id: c.id, applicable: c.applicable, done: c.done })),
+    );
+    // evidence_seq depends on first-occurrence-in-array for port-derived checks, so it may legitimately
+    // differ between orderings; only applicable/done/coverage are asserted equal above.
+  });
 });
