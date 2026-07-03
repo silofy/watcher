@@ -197,6 +197,7 @@ describe("ghost wiring (schema v1.4)", () => {
       },
       ghost: computeGhost(report) ?? undefined,
     };
+    expect(withGhost.ghost).toBeTruthy();
     expect(computeGrade(withGhost)).toEqual(before);
   });
 });

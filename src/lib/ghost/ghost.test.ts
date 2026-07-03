@@ -55,6 +55,32 @@ describe("computeGhost", () => {
     expect(g.human_wins).toBeGreaterThanOrEqual(1);
   });
 
+  it("flags a real ahead win: satisfied at or before its finding-based unlock", () => {
+    // The web objective's unlock comes from a port finding surfacing at seq 2, but the human
+    // already satisfied it at seq 1 — ahead of when the finding-based unlock appeared.
+    const g = computeGhost(rep(
+      [ep({ seq: 0, binary: "recon" }), ep({ seq: 1, binary: "curl", tactic: "TA0001" }), ep({ seq: 2, binary: "nmap" })],
+      [{ id: "port:80-tcp", kind: "port", value: "80/tcp", source_seq: 2 }],
+      [{ objective: "exploit_web", tactic: "TA0001", satisfied_by: ["curl"], user_satisfied_by_seq: 1 }],
+    ))!;
+    const item = g.items.find((i) => i.objective === "exploit_web")!;
+    expect(item.unlock_seq).toBe(2);
+    expect(item.verdict).toBe("ahead");
+    expect(g.human_wins).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not fabricate a win for a satisfied objective with no finding-based unlock (unmapped tactic, e.g. privesc)", () => {
+    const g = computeGhost(rep(
+      [ep({ seq: 0, binary: "sudo", tactic: "TA0004" })],
+      [],
+      [{ objective: "find_sudo_misconfig", tactic: "TA0004", depends_on: [], satisfied_by: ["sudo -l"], user_satisfied_by_seq: 0 }],
+    ))!;
+    const item = g.items.find((i) => i.objective === "find_sudo_misconfig")!;
+    expect(item.unlock_seq).toBeNull();
+    expect(item.verdict).toBe("on_time");
+    expect(g.human_wins).toBe(0);
+  });
+
   it("is deterministic (model-free)", () => {
     const r = rep([ep({ seq: 0, binary: "nmap" })], [{ id: "port:445-tcp", kind: "port", value: "445/tcp", source_seq: 0 }], [{ objective: "enumerate_smb", tactic: "TA0007", satisfied_by: ["enum4linux"], user_satisfied_by_seq: null }]);
     expect(computeGhost(r)).toEqual(computeGhost(r));

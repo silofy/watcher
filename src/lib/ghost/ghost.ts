@@ -64,7 +64,10 @@ export function computeGhost(report: WatcherReport): GhostResult | null {
     let verdict: GhostVerdict;
     let lag = 0;
     if (actual != null && satAlign === "alternative") { verdict = "off_path_win"; wins++; }
-    else if (actual != null && (u == null || actual <= u)) { verdict = "ahead"; wins++; }
+    // "ahead" requires a real unlock: u==null means no finding-based unlock exists for this
+    // objective's tactic (e.g. TA0004/privesc, which isn't in ENABLING yet) — without an unlock
+    // to beat, satisfying the objective is not a human win, just on_time.
+    else if (actual != null && u != null && actual <= u) { verdict = "ahead"; wins++; }
     else if (actual == null && u != null) { verdict = "skipped"; }
     else if (actual != null && u != null && runningBetween(u, actual) > LATE_PIVOT_INTERVENING) { verdict = "late_pivot"; lag = Math.max(0, elapsedAt(actual) - elapsedAt(u)); timeLost += lag; }
     else { verdict = "on_time"; }
