@@ -101,16 +101,20 @@ never feeds the letter grade.
 
 ![Grade rubric](docs/screenshots/grade.png)
 
-The radar plots the six weighted dimensions with the letter in its center; the table shows the
-score × weight → points math behind it. Independence is a gate routed to a human, not an auto-verdict.
+The radar plots the active rubric's weighted dimensions — six for older reports (**v1**), eight for
+reports that carry methodology/focus signals (**v2**) — with the letter in its center; the table shows
+the score × weight → points math behind it. Independence is a gate routed to a human, not an
+auto-verdict.
 
-**Methodology signals.** Three more deterministic checks run alongside the rubric: **methodology
-coverage** (did you run the standard check for each phase you touched — SUID sweep, cron check, and
-so on), **focus discipline** (did you get pulled into a low-yield rabbit hole instead of stepping back
-to re-enumerate), and **recovery** (how long it took to get back on track after a dead end). They show
-up as coaching in the Phase Audit and as `metrics.methodology_coverage_pct`, `focus_discipline_pct`,
-and `recovery_median_ms` in the report JSON — informing the write-up, not the letter grade. Folding
-them into the weighted score is a future decision, not this one.
+**Methodology signals.** Three deterministic checks run alongside the rubric: **methodology coverage**
+(did you run the standard check for each phase you touched — SUID sweep, cron check, and so on),
+**focus discipline** (did you get pulled into a low-yield rabbit hole instead of stepping back to
+re-enumerate), and **recovery** (how long it took to get back on track after a dead end). Methodology
+and focus now feed the letter grade directly (rubric **v2**) for reports whose JSON carries those
+signals; older reports keep their original **v1** grade — nothing is retroactively rescored. Recovery
+remains coaching-only: it surfaces in the Phase Audit, informing the write-up rather than the score.
+All three are exposed in the report JSON as `metrics.methodology_coverage_pct`, `focus_discipline_pct`,
+and `recovery_median_ms`.
 
 ### Kill chain & frameworks — ATT&CK · UKC · CWE
 
