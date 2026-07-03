@@ -29,6 +29,8 @@ const RUBRIC_LABELS: Record<RubricKey, string> = {
   progression: "UKC progression",
   discipline: "Operational discipline",
   independence: "Independence",
+  methodology: "Methodology",
+  focus: "Focus discipline",
 };
 const RUBRIC_COLS = "11rem minmax(0,1fr) 2.5rem 3rem 3.25rem";
 
@@ -65,7 +67,7 @@ export function Assessment() {
   const axes = RUBRIC_AXES.filter((a) => a.key !== "independence" || grade.independence_gate.measured);
   const n = axes.length;
 
-  const valuePoly = axes.map((a, i) => point(i, grade.components[a.key].raw / 100, n).join(",")).join(" ");
+  const valuePoly = axes.map((a, i) => point(i, grade.components[a.key]!.raw / 100, n).join(",")).join(" ");
   const gc = gradeColor(grade.letter);
 
   return (
@@ -99,7 +101,7 @@ export function Assessment() {
           <polygon points={valuePoly} fill="var(--color-alt)" fillOpacity={0.18} stroke="var(--color-alt)" strokeWidth={2} />
           {/* vertices colored by tier — independence turns red when it trips the gate */}
           {axes.map((a, i) => {
-            const raw = grade.components[a.key].raw;
+            const raw = grade.components[a.key]!.raw;
             const [x, y] = point(i, raw / 100, n);
             const col = a.key === "independence" && flagged ? "var(--color-loud)" : tierColor(raw);
             return <circle key={a.key} cx={x} cy={y} r={3.2} fill={col} />;
@@ -136,7 +138,7 @@ export function Assessment() {
           </div>
           <div className="divide-y divide-edge/50">
             {axes.map(({ key: k }) => {
-              const c = grade.components[k];
+              const c = grade.components[k]!;
               const gate = k === "independence" && flagged;
               const barColor = gate ? "var(--color-loud)" : tierColor(c.raw);
               return (

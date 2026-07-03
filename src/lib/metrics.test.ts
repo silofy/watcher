@@ -13,7 +13,7 @@ import {
 } from "./metrics";
 import type { Episode } from "../types/report";
 import { fmtMinutes } from "./format";
-import { computeGrade } from "./bridge/grade";
+import { computeGrade, RUBRIC_V2 } from "./bridge/grade";
 import { computeGhost } from "./ghost/ghost";
 
 const report = fixture as unknown as WatcherReport;
@@ -151,7 +151,7 @@ describe("determinism", () => {
 });
 
 describe("analysis signals wiring (schema v1.3)", () => {
-  it("adds analysis fields without changing existing metrics or the grade", () => {
+  it("adds analysis fields without changing existing metrics; a report without methodology still grades as v1, unchanged", () => {
     const before = computeGrade(report);
     const m = computeMetrics(report);
     expect(typeof m.methodology_coverage_pct).toBe("number");
@@ -160,9 +160,17 @@ describe("analysis signals wiring (schema v1.3)", () => {
     // existing fields still match the fixture's stored metrics (non-tautological: compares
     // computed output to a value baked into the fixture, not to itself):
     expect(round(m.objective_coverage_pct)).toBe(report.metrics.objective_coverage_pct);
-    // grade unchanged when the three new v1.3 analysis fields are actually present on metrics
-    // (grade.ts must keep ignoring them). Spreading `report.metrics` alone would be vacuous —
-    // the fixture's metrics never carry these fields — so splice in `m`'s values explicitly.
+    // the stored fixture report itself carries no methodology_coverage_pct, so it stays on the
+    // frozen v1 rubric — grade must be byte-identical to before.
+    expect(report.metrics.methodology_coverage_pct).toBeUndefined();
+    expect(computeGrade(report)).toEqual(before);
+    expect(before.version).toBe(1);
+  });
+
+  it("a report that carries methodology_coverage_pct + focus_discipline_pct grades as v2 (candidate C), not the frozen v1 total", () => {
+    const m = computeMetrics(report);
+    // splice in the computed v1.3 analysis fields explicitly — the fixture's own metrics never carry
+    // them, so this is the "a live/newer report reaches grade.ts with these fields set" case.
     const withAnalysis: WatcherReport = {
       ...report,
       metrics: {
@@ -172,7 +180,22 @@ describe("analysis signals wiring (schema v1.3)", () => {
         recovery_median_ms: m.recovery_median_ms,
       },
     };
-    expect(computeGrade(withAnalysis)).toEqual(before);
+    const after = computeGrade(withAnalysis);
+    expect(after.version).toBe(2);
+    expect(after.components.methodology).toBeDefined();
+    expect(after.components.focus).toBeDefined();
+    // candidate C intentionally folds methodology + focus into the score, so this is NOT expected to
+    // equal the frozen v1 total unless methodology/focus happen to match the v1 blend exactly.
+    const expected =
+      m.objective_coverage_pct * RUBRIC_V2.coverage +
+      (m.technique_breadth / 12) * 100 * RUBRIC_V2.breadth +
+      m.efficiency_pct * RUBRIC_V2.efficiency +
+      (report.metrics.ukc_progression ?? 100) * RUBRIC_V2.progression +
+      m.stealth_score * RUBRIC_V2.discipline +
+      (report.metrics.independence?.score ?? 0) * RUBRIC_V2.independence +
+      (m.methodology_coverage_pct ?? 0) * RUBRIC_V2.methodology +
+      (m.focus_discipline_pct ?? 100) * RUBRIC_V2.focus;
+    expect(after.score).toBeCloseTo(Math.round(expected * 10) / 10, 1);
   });
 });
 
