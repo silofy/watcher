@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useReport, activeSeq } from "../store/report";
 import { isLiveRecording } from "../lib/live";
+import { topUnmetCheck } from "../lib/analysis/methodology";
 import { fmtDuration } from "../lib/format";
 import { tierColor, Chip } from "./ui";
 import { episodeNoise, NOISE_BASELINE } from "../lib/metrics";
@@ -239,6 +240,8 @@ export function LiveDashboard() {
   const s = useReport();
   const { report, timeline, metrics } = s;
   const recording = isLiveRecording(report);
+  const nudge = recording ? topUnmetCheck(report) : null;
+  const findingsCount = report.findings?.length ?? 0;
 
   const focus = activeSeq(s);
   const cmds = report.episodes.filter((e) => e.binary);
@@ -274,6 +277,30 @@ export function LiveDashboard() {
           {cmds.length} cmd{cmds.length === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)} · {metrics.technique_breadth} technique{metrics.technique_breadth === 1 ? "" : "s"}
         </span>
       </div>
+
+      {/* live "next move" nudge — the single highest-value un-done applicable check, methodology-derived
+          (label/hint only, never raw cmd/output); disappears once every applicable check is resolved */}
+      {recording && nudge && (
+        <div className="fade-in mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-signal/30 bg-signal/10 px-3 py-1.5 text-xs">
+          {nudge.evidence_seq != null ? (
+            <button
+              type="button"
+              onClick={() => s.reveal(nudge.evidence_seq!)}
+              title="Jump to the evidence in the log"
+              className="label flex items-center gap-1.5 text-signal transition-colors hover:underline"
+            >
+              <span aria-hidden>→</span> Next move: {nudge.label} — {nudge.hint}
+            </button>
+          ) : (
+            <span className="label flex items-center gap-1.5 text-signal">
+              <span aria-hidden>→</span> Next move: {nudge.label} — {nudge.hint}
+            </span>
+          )}
+          <span className="ml-auto text-faint">
+            {findingsCount} finding{findingsCount === 1 ? "" : "s"}
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* where am I in the attack */}

@@ -69,3 +69,8 @@ export function computeMethodology(report: WatcherReport): MethodologyResult {
   const coverage_pct = applicable.length === 0 ? 0 : (doneN / applicable.length) * 100;
   return { coverage_pct, checks };
 }
+
+/** The single highest-value un-done applicable check (RULES are ordered recon→privesc), or null. */
+export function topUnmetCheck(report: WatcherReport): MethodologyCheck | null {
+  return computeMethodology(report).checks.find((c) => c.applicable && !c.done) ?? null;
+}
