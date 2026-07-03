@@ -42,6 +42,8 @@ export interface ObjectiveStatus {
   /** what a write-up says satisfies this objective — the hint for an unreached one. */
   satisfied_by: string[];
   reached: boolean;
+  /** reached AND backed by observable proof (the golden objective's status is "proven"). */
+  proven: boolean;
   /** the step that satisfied it, when reached. */
   seq: number | null;
 }
@@ -239,6 +241,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       label: humanizeObjective(o.objective),
       satisfied_by: o.satisfied_by,
       reached: o.user_satisfied_by_seq != null,
+      proven: o.status === "proven",
       seq: o.user_satisfied_by_seq ?? null,
     }));
 
