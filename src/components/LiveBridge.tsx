@@ -83,7 +83,7 @@ export function LiveBridge() {
 
   if (!liveBanner) return null;
   const card = sessionCards.find((c) => c.id === liveBanner.id);
-  const m = card?.machine;
+  const t = card?.target;
   const startedMs = card ? Date.parse(card.started_at) : NaN;
   const elapsed = Number.isNaN(startedMs) || now === 0 ? null : now - startedMs;
 
@@ -104,15 +104,15 @@ export function LiveBridge() {
             </span>
           )}
         </div>
-        {m && <MachineAvatar machine={m} size={26} />}
-        <span className="font-display text-base font-semibold leading-none text-fg">{m?.name ?? liveBanner.name}</span>
+        {t && <MachineAvatar target={t} size={26} />}
+        <span className="font-display text-base font-semibold leading-none text-fg">{t?.name ?? liveBanner.name}</span>
         <div className="flex items-center gap-1.5">
-          {m?.difficulty && (
-            <span className="label rounded border border-edge px-1.5 py-0.5 text-xs" style={{ color: DIFFICULTY_COLOR[m.difficulty] }}>
-              {m.difficulty}
+          {t?.difficulty?.label && (
+            <span className="label rounded border border-edge px-1.5 py-0.5 text-xs" style={{ color: DIFFICULTY_COLOR[t.difficulty.label] }}>
+              {t.difficulty.label}
             </span>
           )}
-          {m?.os && <span className="label rounded border border-edge px-1.5 py-0.5 text-xs">{m.os}</span>}
+          {t?.os && <span className="label rounded border border-edge px-1.5 py-0.5 text-xs">{t.os}</span>}
           {loadPwnboxConfig().enabled && (
             <span className="label rounded border border-match/40 bg-match/10 px-1.5 py-0.5 text-xs text-match" title="Pwnbox SSH auto-pull is active — sessions are scp-pulled every 15s">
               ⟳ Pwnbox sync

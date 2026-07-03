@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.2",
+  "session": {
+    "uuid": "11111111-1111-4111-8111-111111111111",
+    "started_at": "2026-06-01T12:00:00Z",
+    "ended_at": "2026-06-01T12:40:00Z",
+    "target_scope": "THM::Blue (Easy)",
+    "context_path": "cloud:thm:openvpn",
+    "shell": "bash",
+    "source": "local_pty",
+    "target": { "platform": "thm", "kind": "room", "name": "Blue", "os": "Windows", "difficulty": { "level": 1, "label": "Easy" }, "emblem": { "avatar": null, "hue": 210 }, "url": "https://tryhackme.com/room/blue" }
+  },
+  "episodes": [
+    { "seq": 0, "cmd": "nmap -sV 10.10.1.5", "binary": "nmap", "duration_ms": 8000, "gap_before_ms": 0, "actor": "machine_bound", "tactic": "TA0007", "technique": "T1046", "output_digest": "445/tcp open microsoft-ds", "alignment": "match" },
+    { "seq": 1, "cmd": "cat root.txt", "binary": "cat", "duration_ms": 200, "gap_before_ms": 60000, "actor": "machine_bound", "tactic": "TA0004", "output_digest": "THM{redacted}", "alignment": "match" }
+  ],
+  "phases": [],
+  "golden_dag": [
+    { "objective": "enumerate_services", "tactic": "TA0007", "satisfied_by": ["nmap"], "user_satisfied_by_seq": 0, "status": "reached", "finding_refs": ["port:445-tcp"] },
+    { "objective": "capture_root", "tactic": "TA0004", "satisfied_by": ["read root flag"], "depends_on": ["enumerate_services"], "user_satisfied_by_seq": 1, "status": "proven", "proven_by_seq": 1, "finding_refs": ["flag:root"] }
+  ],
+  "metrics": { "efficiency_pct": 90, "time_waster": { "productive_ms": 8200, "detour_ms": 0, "stuck_ms": 0, "loop_ms": 0, "t_active_ms": 68200 }, "stealth_score": 88, "objective_coverage_pct": 100, "technique_breadth": 1 },
+  "coaching": { "skill_radar": { "recon": 80, "web": 50, "exploit": 60, "privesc": 70, "opsec": 88 }, "next_steps": [] },
+  "findings": [
+    { "id": "port:445-tcp", "kind": "port", "value": "445/tcp", "source_seq": 0, "tactic": "TA0007" },
+    { "id": "flag:root", "kind": "flag", "value": "THM{redacted}", "source_seq": 1, "proven": true }
+  ],
+  "redaction_profile": "public_safe"
+}

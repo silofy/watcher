@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { GoldenObjective, WatcherReport } from "../types/report";
-import { alignEpisodes } from "../lib/pipeline";
+import type { GoldenObjective, Target, WatcherReport } from "../types/report";
+import { alignEpisodes, annotateObjectiveStatus } from "../lib/pipeline";
 import {
   buildTimeline,
   phaseWindows as computePhaseWindows,
@@ -13,6 +13,7 @@ import { computeMetrics, round, type ComputedMetrics } from "../lib/metrics";
 import { applyTrim } from "../lib/trim";
 import { computeGrade } from "../lib/bridge/grade";
 import { machineOf, type MachineMeta } from "../lib/machine";
+import { targetOf } from "../lib/platform";
 import { finalizeLiveReport } from "../lib/finalize";
 import { sshSessionsFromDir, type SshLogFile } from "../lib/ssh/ingest";
 import { isLiveRecording } from "../lib/live";
@@ -91,6 +92,7 @@ for (const s of SESSIONS) REPORTS[s.id] = s.report;
 export interface SessionCard {
   id: string;
   machine: MachineMeta;
+  target: Target;
   target_scope: string;
   started_at: string;
   ended_at: string;
@@ -113,6 +115,7 @@ function toCard(id: string, r: WatcherReport): SessionCard {
   return {
     id,
     machine: machineOf(r),
+    target: targetOf(r),
     target_scope: r.session.target_scope,
     started_at: r.session.started_at,
     ended_at: r.session.ended_at,
@@ -248,7 +251,8 @@ export const useReport = create<ReportState>((set, get) => ({
     // Re-alignment reclassifies episodes (detour → match/alternative), which moves efficiency and the
     // other alignment-derived metrics — so re-derive the whole block, not just coverage, or the Grade
     // would keep the stale efficiency while the KPI cards showed the improved one.
-    const scoped: WatcherReport = { ...r, episodes, golden_dag: aligned };
+    const aligned2 = annotateObjectiveStatus(episodes, aligned, r.findings ?? []);
+    const scoped: WatcherReport = { ...r, episodes, golden_dag: aligned2 };
     const cm = computeMetrics(scoped);
     const next: WatcherReport = {
       ...scoped,
@@ -273,12 +277,13 @@ export const useReport = create<ReportState>((set, get) => ({
     // fold in this session's captured SSH sessions (files named <session-uuid>-<ts>.in|.meta)
     const mine = sshFiles.filter((f) => f.name.startsWith(report.session.uuid));
     const finalized = finalizeLiveReport(report, sshSessionsFromDir(mine));
-    const id = `htb:${finalized.session.uuid}`;
+    const target = targetOf(finalized);
+    const id = `${target.platform}:${finalized.session.uuid}`;
     const isNew = !(id in REPORTS);
     REPORTS[id] = finalized;
     const patch: Partial<ReportState> = { sessionCards: cardsFrom() };
     if (get().activeId === id) Object.assign(patch, derive(applyTrim(finalized, get().trimSeq)), { fullReport: finalized });
-    if (isNew && isLiveRecording(finalized)) patch.liveBanner = { id, name: machineOf(finalized).name };
+    if (isNew && isLiveRecording(finalized)) patch.liveBanner = { id, name: target.name };
     set(patch);
   },
   dismissLiveBanner: () => set({ liveBanner: null }),

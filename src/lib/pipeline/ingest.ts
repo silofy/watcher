@@ -10,6 +10,9 @@ import { redactText } from "../redact";
 import { classifyCoaching } from "../coaching";
 import { ingestSshSession, type SshIngestOptions } from "../ssh/ingest";
 import { runPipeline } from "./index";
+import { annotateObjectiveStatus } from "./align";
+import { extractFindings } from "./findings";
+import { targetOf } from "../platform";
 import type { RawCommand } from "./types";
 
 export interface TelemetryEvent {
@@ -151,6 +154,10 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     sessionStartMs: Number.isNaN(sessionStartMs) ? undefined : sessionStartMs,
   });
 
+  const profile = opts.redaction_profile ?? "full";
+  const findings = extractFindings(episodes, profile);
+  const annotatedGolden = annotateObjectiveStatus(episodes, golden, findings);
+
   const m: Metrics = {
     efficiency_pct: round(metrics.efficiency_pct),
     time_waster: metrics.time_waster,
@@ -163,17 +170,22 @@ export function assembleReport(raw: RawCommand[], opts: AssembleOptions): Watche
     weakness_breadth: metrics.weakness_breadth,
   };
 
-  return {
-    schema_version: "1.1",
+  const rep: WatcherReport = {
+    schema_version: "1.2",
     session: opts.session,
     episodes,
     phases,
-    golden_dag: golden,
+    golden_dag: annotatedGolden,
     metrics: m,
     coaching: deriveCoaching(golden, episodes, metrics),
     replay: { cast_ref: null, inline_cast: null },
-    redaction_profile: opts.redaction_profile ?? "full",
+    redaction_profile: profile,
+    findings,
   };
+  // Neutral target identity for every freshly assembled report — an explicit session.target (set
+  // upstream by capture) wins; otherwise it's resolved from the platform adapters.
+  rep.session.target = targetOf(rep);
+  return rep;
 }
 
 /** Convenience: NDJSON capture stream → full report in one call. */

@@ -86,6 +86,27 @@ describe("buildPhaseAudits", () => {
     expect(detour!.evidence_seq).toBe(8);
   });
 
+  it("marks a proven objective as proven, distinct from merely reached", () => {
+    const withProven = structuredClone(report);
+    // capture_root_flag (TA0004) is reached in the fixture but carries no status — not proven
+    const rootFlag = withProven.golden_dag.find((o) => o.objective === "capture_root_flag")!;
+    expect(rootFlag.user_satisfied_by_seq).not.toBeNull();
+    delete rootFlag.status;
+
+    // escalate_to_root (TA0004), reached at seq 29 — mark it proven
+    const escalate = withProven.golden_dag.find((o) => o.objective === "escalate_to_root")!;
+    escalate.status = "proven";
+
+    const privesc = buildPhaseAudits(withProven).phases.find((p) => p.tactic === "TA0004")!;
+    const proven = privesc.objectives.find((o) => o.slug === "escalate_to_root")!;
+    const merelyReached = privesc.objectives.find((o) => o.slug === "capture_root_flag")!;
+
+    expect(proven.reached).toBe(true);
+    expect(proven.proven).toBe(true);
+    expect(merelyReached.reached).toBe(true);
+    expect(merelyReached.proven).toBe(false);
+  });
+
   it("links a reached objective to the satisfying step", () => {
     const discovery = phases.find((p) => p.tactic === "TA0007")!;
     const obj = discovery.objectives.find((o) => o.slug === "enumerate_services");

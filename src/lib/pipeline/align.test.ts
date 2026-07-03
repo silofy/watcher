@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { alignEpisodes, objectiveCoverage, equivalenceIndex } from "./align";
-import type { Episode, GoldenObjective } from "../../types/report";
+import { alignEpisodes, objectiveCoverage, equivalenceIndex, annotateObjectiveStatus } from "./align";
+import type { Episode, Finding, GoldenObjective } from "../../types/report";
 
 const ep = (over: Partial<Episode>): Episode => ({
   seq: 0,
@@ -98,5 +98,68 @@ describe("alignEpisodes — out_of_order", () => {
     ];
     const { episodes: aligned } = alignEpisodes(episodes, golden);
     expect(aligned.find((e) => e.seq === 1)!.alignment).toBe("out_of_order");
+  });
+});
+
+describe("annotateObjectiveStatus", () => {
+  const eps: Episode[] = [
+    { seq: 0, cmd: "nmap 10.129.1.1", binary: "nmap", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0007", alignment: "match" },
+    { seq: 1, cmd: "cat root.txt", binary: "cat", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004", output_digest: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6", alignment: "match" },
+  ];
+  const findings: Finding[] = [
+    { id: "port:80-tcp", kind: "port", value: "80/tcp", source_seq: 0 },
+    { id: "flag:root", kind: "flag", value: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6", source_seq: 1, proven: true },
+  ];
+  const golden: GoldenObjective[] = [
+    { objective: "enumerate_services", tactic: "TA0007", satisfied_by: ["nmap"], user_satisfied_by_seq: 0 },
+    { objective: "capture_root", tactic: "TA0004", satisfied_by: ["read root flag"], user_satisfied_by_seq: 1 },
+  ];
+
+  it("marks a flag-backed root objective proven and others reached", () => {
+    const out = annotateObjectiveStatus(eps, golden, findings);
+    expect(out[0].status).toBe("reached");
+    expect(out[1].status).toBe("proven");
+    expect(out[1].proven_by_seq).toBe(1);
+  });
+  it("marks an unsatisfied objective untouched", () => {
+    const out = annotateObjectiveStatus(eps, [{ objective: "x", tactic: "TA0006", satisfied_by: ["hydra"], user_satisfied_by_seq: null }], findings);
+    expect(out[0].status).toBe("untouched");
+  });
+});
+
+describe("annotateObjectiveStatus — strong-only root proof", () => {
+  const golden: GoldenObjective[] = [
+    { objective: "capture_root", tactic: "TA0004", satisfied_by: ["cat root.txt"], user_satisfied_by_seq: 0 },
+  ];
+  const satisfier: Episode = { seq: 0, cmd: "cat root.txt", binary: "cat", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004" };
+
+  it("does not mark proven from 'root' merely appearing inside a path (weak match, stays reached)", () => {
+    const eps: Episode[] = [
+      satisfier,
+      { seq: 1, cmd: "cat /root/notes.txt", binary: "cat", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004", output_digest: "see /root/notes.txt for details" },
+    ];
+    const out = annotateObjectiveStatus(eps, golden, []);
+    expect(out[0].status).toBe("reached");
+    expect(out[0].proven_by_seq).toBeNull();
+  });
+
+  it("marks proven from a uid=0(root) marker in output", () => {
+    const eps: Episode[] = [
+      satisfier,
+      { seq: 1, cmd: "id", binary: "id", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004", output_digest: "uid=0(root) gid=0(root) groups=0(root)" },
+    ];
+    const out = annotateObjectiveStatus(eps, golden, []);
+    expect(out[0].status).toBe("proven");
+    expect(out[0].proven_by_seq).toBe(1);
+  });
+
+  it("marks proven from a standalone 'root' whoami output line", () => {
+    const eps: Episode[] = [
+      satisfier,
+      { seq: 1, cmd: "whoami", binary: "whoami", duration_ms: 1, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0004", output_digest: "root" },
+    ];
+    const out = annotateObjectiveStatus(eps, golden, []);
+    expect(out[0].status).toBe("proven");
+    expect(out[0].proven_by_seq).toBe(1);
   });
 });

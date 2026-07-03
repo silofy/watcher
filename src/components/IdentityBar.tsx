@@ -1,7 +1,8 @@
 import { useReport } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { tierColor } from "./ui";
-import { machineOf, DIFFICULTY_COLOR } from "../lib/machine";
+import { DIFFICULTY_COLOR } from "../lib/machine";
+import { targetOf } from "../lib/platform";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
@@ -60,7 +61,9 @@ function ScoreReadout({ label, value, sub, color }: { label: string; value: Reac
 /** The machine "about" header — identity + the headline scores, over the writeup-reference accordion. */
 export function IdentityBar() {
   const { report, timeline, metrics } = useReport();
-  const machine = machineOf(report);
+  const target = targetOf(report);
+  // Target (schema v1.2) doesn't carry `retired` — read it straight off the raw session.machine block.
+  const retired = report.session.machine?.retired ?? false;
 
   // live capture: the debrief is UNDERWAY, not a verdict — surface where you are, not a premature grade
   const recording = isLiveRecording(report);
@@ -73,14 +76,14 @@ export function IdentityBar() {
       {/* identity + the headline grade */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3.5">
-          <MachineAvatar machine={machine} size={88} />
+          <MachineAvatar target={target} size={88} />
           <div className="min-w-0">
-            <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{machine.name}</h1>
+            <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{target.name}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {machine.difficulty && <Pill text={machine.difficulty} color={DIFFICULTY_COLOR[machine.difficulty]} filled />}
-              {machine.os && <Pill text={machine.os} />}
-              {machine.retired && <Pill text="Retired" />}
-              {machine.local && <Pill text="Local" />}
+              {target.difficulty?.label && <Pill text={target.difficulty.label} color={DIFFICULTY_COLOR[target.difficulty.label]} filled />}
+              {target.os && <Pill text={target.os} />}
+              {retired && <Pill text="Retired" />}
+              {target.platform === "local" && <Pill text="Local" />}
             </div>
           </div>
         </div>

@@ -454,6 +454,13 @@ fn iso_now() -> String {
     chrono::Utc::now().to_rfc3339()
 }
 
+/// Neutral platform id from --platform (htb|thm|offsec|immersive|local); defaults to "local".
+/// Lets a capture declare which CTF/lab platform it belongs to without hardcoding HTB — used to
+/// build the report's context_path/target_scope and stamped onto provenance.platform (§3.3).
+fn platform_arg(args: &[String]) -> String {
+    arg_value(args, "--platform").unwrap_or_else(|| "local".to_string())
+}
+
 /// Build the machine-identity block for a standalone export from CLI args (Pwnbox has no live
 /// session to inherit it from). Null when --machine is omitted.
 fn machine_arg(args: &[String]) -> Value {
@@ -709,13 +716,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => platform_profile(),
     };
     let session = Uuid::new_v4().to_string();
-    let platform = profile.platform_tag();
+    let surface = profile.platform_tag(); // conpty | unix-pty — PTY backend, used only for the startup log line
+    let platform = platform_arg(&args); // htb | thm | offsec | immersive | local — neutral CTF/lab platform id
 
     // Standalone capture (the in-Pwnbox agent): record with our own identity, write a complete
     // report to a file the user downloads and imports.
     if let Some(out) = arg_value(&args, "--export") {
-        let target = arg_value(&args, "--machine").unwrap_or_else(|| "Pwnbox session".to_string());
-        let context = arg_value(&args, "--context").unwrap_or_else(|| "cloud:htb:pwnbox".to_string());
+        // --target names the box neutrally; --machine (HTB) still works as its alias.
+        let target = arg_value(&args, "--target")
+            .or_else(|| arg_value(&args, "--machine"))
+            .unwrap_or_else(|| "Pwnbox session".to_string());
+        let context = arg_value(&args, "--context").unwrap_or_else(|| match arg_value(&args, "--platform") {
+            Some(p) => format!("cloud:{p}:openvpn"),
+            None => "cloud:htb:pwnbox".to_string(), // unchanged HTB default when --platform is omitted
+        });
         let base = build_base_report(&session, machine_arg(&args), &target, &context, "in_vm_daemon");
         let path = std::path::PathBuf::from(&out);
         write_session_episodes(&path, &base, vec![]); // create it immediately so it's visible live
@@ -752,8 +766,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if prior.is_some() {
                     eprintln!("[watcher-capture] a session was already live — starting a new engagement.");
                 }
-                let target = requested_machine.clone().unwrap_or_else(|| "local session".to_string());
-                let context = arg_value(&args, "--context").unwrap_or_else(|| "host".to_string());
+                let target = arg_value(&args, "--target")
+                    .or_else(|| requested_machine.clone())
+                    .unwrap_or_else(|| "local session".to_string());
+                let context = arg_value(&args, "--context").unwrap_or_else(|| match arg_value(&args, "--platform") {
+                    Some(p) => format!("cloud:{p}:openvpn"),
+                    None => "host".to_string(), // unchanged local default when --platform is omitted
+                });
                 let base = build_base_report(&session, machine_arg(&args), &target, &context, "local_pty");
                 let dir = watcher_sessions_dir().ok_or("cannot resolve ~/.watcher/sessions")?;
                 std::fs::create_dir_all(&dir)?;
@@ -782,22 +801,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|i| args.get(i + 1).cloned())
         .unwrap_or_else(|| "capture session".to_string());
 
-    eprintln!("[watcher-capture] session {session} via {platform} ({})", if interactive { "interactive" } else { "scripted" });
+    eprintln!("[watcher-capture] session {session} via {surface} ({}, platform={platform})", if interactive { "interactive" } else { "scripted" });
 
     let raw_events = if interactive {
-        run_interactive(profile.as_ref(), &session, platform)?
+        run_interactive(profile.as_ref(), &session, &platform)?
     } else {
         let commands: Vec<String> = match args.iter().position(|a| a == "--") {
             Some(i) if i + 1 < args.len() => args[i + 1..].to_vec(),
             _ => profile.demo_commands(),
         };
-        run_scripted(profile.as_ref(), &commands, &session, platform)?
+        run_scripted(profile.as_ref(), &commands, &session, &platform)?
     };
-    let mut events = add_session_lifecycle(raw_events, &session, &label, platform);
+    let mut events = add_session_lifecycle(raw_events, &session, &label, &platform);
 
     // in-VM / agent identity: default to a local host PTY; override for a guest box.
     let source = arg_value(&args, "--source").unwrap_or_else(|| "local_pty".to_string());
-    let context = arg_value(&args, "--context").unwrap_or_else(|| "host".to_string());
+    let context = arg_value(&args, "--context").unwrap_or_else(|| match arg_value(&args, "--platform") {
+        Some(_) => format!("cloud:{platform}:openvpn"),
+        None => "host".to_string(), // unchanged default when --platform is omitted
+    });
     retag(&mut events, &source, &context);
 
     if let Some(addr) = arg_value(&args, "--forward") {
@@ -878,6 +900,49 @@ mod tests {
         retag(&mut evs, "in_vm_daemon", "cloud:htb:pwnbox");
         assert_eq!(evs[0].source, "in_vm_daemon");
         assert_eq!(evs[0].provenance.context_path, "cloud:htb:pwnbox");
+    }
+
+    #[test]
+    fn platform_arg_defaults_to_local() {
+        assert_eq!(platform_arg(&[]), "local");
+        assert_eq!(platform_arg(&["--machine".into(), "Forge".into()]), "local");
+    }
+
+    #[test]
+    fn platform_arg_reads_flag() {
+        let args = vec!["--platform".to_string(), "thm".to_string()];
+        assert_eq!(platform_arg(&args), "thm");
+    }
+
+    #[test]
+    fn build_base_report_carries_neutral_platform_into_context_and_target() {
+        // Mirrors how main() wires --platform/--target: --target wins over --machine for the
+        // scope, and an explicit --platform folds into context_path (cloud:<platform>:openvpn).
+        let args: Vec<String> =
+            ["--platform", "thm", "--target", "Blue", "--machine", "ignored-alias"].iter().map(|s| s.to_string()).collect();
+        let target = arg_value(&args, "--target").or_else(|| arg_value(&args, "--machine")).unwrap();
+        let platform = platform_arg(&args);
+        let context = format!("cloud:{platform}:openvpn");
+        let v = build_base_report("u3", machine_arg(&args), &target, &context, "local_pty");
+        assert_eq!(v["session"]["target_scope"], "Blue");
+        assert_eq!(v["session"]["context_path"], "cloud:thm:openvpn");
+    }
+
+    #[test]
+    fn machine_alone_keeps_htb_default_context() {
+        // No --platform/--target: --machine still names target_scope and context stays untouched
+        // by this helper set (callers keep their original "host"/"cloud:htb:pwnbox" default).
+        let args: Vec<String> = ["--machine", "Forge"].iter().map(|s| s.to_string()).collect();
+        let target = arg_value(&args, "--target").or_else(|| arg_value(&args, "--machine")).unwrap();
+        assert_eq!(target, "Forge");
+        assert!(arg_value(&args, "--platform").is_none());
+        // Mirrors the --export branch's context defaulting in main(): with --context and
+        // --platform both absent, it falls through to the unchanged HTB default.
+        let context = arg_value(&args, "--context").unwrap_or_else(|| match arg_value(&args, "--platform") {
+            Some(p) => format!("cloud:{p}:openvpn"),
+            None => "cloud:htb:pwnbox".to_string(),
+        });
+        assert_eq!(context, "cloud:htb:pwnbox");
     }
 
     #[test]

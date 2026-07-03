@@ -8,7 +8,7 @@
  * objective-equivalence judgment, stubbed here by a deterministic matcher the LLM later
  * refines.
  */
-import type { Episode, GoldenObjective } from "../../types/report";
+import type { Episode, Finding, GoldenObjective } from "../../types/report";
 
 /** Negative-yield signals in an output digest — used to tell a detour from valid enumeration. */
 const LOW_YIELD = /\b(no |not found|nothing|0 |zero|unreliable|rate.?limit|rejected|blocked|fail|invalid|denied)/i;
@@ -123,6 +123,41 @@ export function alignEpisodes(rawEpisodes: Episode[], rawGolden: GoldenObjective
   }
 
   return { episodes, golden };
+}
+
+const ROOT_OBJ = /root|admin|system/i;
+
+/** Deterministic objective status + proof marking (schema v1.2). */
+export function annotateObjectiveStatus(episodes: Episode[], golden: GoldenObjective[], findings: Finding[]): GoldenObjective[] {
+  return golden.map((o) => {
+    const seq = o.user_satisfied_by_seq;
+    // finding_refs: findings whose source or use touches the satisfier episode
+    const refs = findings.filter((f) => f.source_seq === seq || (f.used_by_seq?.includes(seq ?? -1) ?? false)).map((f) => f.id);
+
+    if (seq == null) {
+      // attempted if any episode shared the tactic but didn't land it; else untouched
+      const attempted = episodes.some((e) => e.tactic === o.tactic && (e.alignment === "detour" || e.loop_of_seq != null));
+      return { ...o, status: attempted ? "attempted" : "untouched", finding_refs: refs, proven_by_seq: null };
+    }
+
+    // proof rules
+    let proven_by_seq: number | null = null;
+    const flagRef = findings.find((f) => f.kind === "flag" && f.proven && (f.source_seq === seq || refs.includes(f.id)));
+    if (flagRef) proven_by_seq = flagRef.source_seq;
+    else if (o.tactic === "TA0004" && ROOT_OBJ.test(o.objective)) {
+      // Strong proof only: an actual uid/euid=0 marker, or "root" standing alone as a whoami-style
+      // output line. A bare `\broot\b` over-marks — it matches "root" inside a path (/root/notes.txt),
+      // an `ls -l` owner column (drwxr-xr-x root root), or /etc/passwd's `root:x:0:0`, which would
+      // flip a merely-reached objective to "proven" without real evidence of privilege escalation.
+      const proof = episodes.find(
+        (e) => e.seq >= seq && /\buid=0\b|\beuid=0\b|(^|\n)\s*root\s*(\r?$|\n)/.test(e.output_digest ?? "")
+      );
+      if (proof) proven_by_seq = proof.seq;
+    }
+
+    const status: GoldenObjective["status"] = proven_by_seq != null ? "proven" : "reached";
+    return { ...o, status, finding_refs: refs, proven_by_seq };
+  });
 }
 
 /** Objective coverage = satisfied objectives / total, as a percentage (deterministic). */

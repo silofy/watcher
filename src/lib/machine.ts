@@ -1,5 +1,6 @@
-/** Machine identity helpers — the HTB box (name/os/difficulty/avatar) that anchors a report. */
+/** Machine identity helpers — a thin legacy shim over the neutral platform/Target identity. */
 import type { WatcherReport } from "../types/report";
+import { targetOf } from "./platform";
 
 export interface MachineMeta {
   name: string;
@@ -10,25 +11,26 @@ export interface MachineMeta {
   local?: boolean; // not an HTB box — a local/plain capture
 }
 
-/** Resolve the machine from session.machine, falling back to parsing the target scope. */
+/**
+ * @deprecated use `targetOf()` from `../lib/platform` instead. Retained so un-migrated callers keep
+ * working; down-maps the neutral Target to the old HTB-shaped MachineMeta. `retired` is read straight
+ * off `session.machine` since Target (schema v1.2) doesn't carry it.
+ */
 export function machineOf(report: WatcherReport): MachineMeta {
-  const m = report.session.machine;
-  if (m?.name) {
-    return { name: m.name, os: m.os, difficulty: m.difficulty, avatar: m.avatar, retired: m.retired };
-  }
-  const ts = report.session.target_scope ?? "session";
-  if (/live capture|local/i.test(ts)) return { name: ts.replace(/\s*\(.*\)\s*/, "").trim() || "Local capture", local: true };
-  const name = (ts.includes("::") ? ts.split("::")[1] : ts).split("(")[0].split("—")[0].trim() || ts;
-  const difficulty = /\beasy\b/i.test(ts) ? "Easy" : /\bmedium\b/i.test(ts) ? "Medium" : /\bhard\b/i.test(ts) ? "Hard" : /\binsane\b/i.test(ts) ? "Insane" : undefined;
-  return { name, difficulty };
+  const t = targetOf(report);
+  return {
+    name: t.name,
+    os: t.os,
+    difficulty: t.difficulty?.label,
+    avatar: t.emblem?.avatar ?? null,
+    retired: report.session.machine?.retired,
+    local: t.platform === "local",
+  };
 }
 
-/** Deterministic hue (0–360) seeded from a string, for the generated emblem. */
-export function hueFor(seed: string): number {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (Math.imul(h, 31) + seed.charCodeAt(i)) >>> 0;
-  return h % 360;
-}
+/** Re-exported so existing `hueFor` consumers of this module keep working — the real definition now
+ *  lives in platform/detect.ts (a pure string→hue helper the adapters also need). */
+export { hueFor } from "./platform/detect";
 
 export const DIFFICULTY_COLOR: Record<string, string> = {
   Easy: "var(--color-match)",

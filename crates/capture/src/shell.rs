@@ -6,7 +6,8 @@
 use portable_pty::CommandBuilder;
 
 pub trait ShellProfile {
-    /// Tag recorded in provenance.platform.
+    /// PTY backend tag ("conpty" | "unix-pty"), surfaced only in the capture agent's startup
+    /// log line — distinct from the neutral `--platform` CLI id stamped on provenance.platform.
     fn platform_tag(&self) -> &'static str;
 
     /// The shell to launch as the PTY child.

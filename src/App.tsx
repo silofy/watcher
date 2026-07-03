@@ -5,6 +5,7 @@ import { IdentityBar } from "./components/IdentityBar";
 import { SessionFacts } from "./components/SessionFacts";
 import { TrimControl } from "./components/TrimControl";
 import { Collapse } from "./components/ui";
+import { Findings } from "./components/Findings";
 import { AttackTimeline } from "./components/AttackTimeline";
 import { FrameworkAxes } from "./components/FrameworkAxes";
 import { DeviationTimeline } from "./components/DeviationTimeline";
@@ -118,6 +119,9 @@ export function App() {
               <div id="deviated"><DeviationTimeline /></div>
               <div id="stealth"><StealthReport /></div>
               <div id="log"><CommandReplay /></div>
+              <Collapse name="debrief-details" title="Findings" subtitle="what the run surfaced — click to jump to the command">
+                <Findings />
+              </Collapse>
               <Collapse name="debrief-details" title="Session window" subtitle="session facts · retroactively trim the report">
                 <SessionFacts />
                 <TrimControl />

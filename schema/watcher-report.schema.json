@@ -34,6 +34,35 @@
             "points": { "type": ["integer", "null"] },
             "retired": { "type": "boolean" }
           }
+        },
+        "target": {
+          "type": "object",
+          "description": "Neutral, platform-agnostic target identity (schema v1.2). Supersedes session.machine; machine is retained for back-compat.",
+          "additionalProperties": false,
+          "properties": {
+            "platform": { "type": "string", "enum": ["htb", "thm", "offsec", "immersive", "local"] },
+            "kind": { "type": "string" },
+            "name": { "type": "string" },
+            "slug": { "type": "string" },
+            "os": { "type": "string" },
+            "difficulty": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "properties": {
+                "level": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "label": { "type": "string" }
+              }
+            },
+            "emblem": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "avatar": { "type": ["string", "null"] },
+                "hue": { "type": ["integer", "null"], "minimum": 0, "maximum": 360 }
+              }
+            },
+            "url": { "type": ["string", "null"] }
+          }
         }
       }
     },
@@ -116,7 +145,10 @@
           "tactic": { "type": "string", "pattern": "^TA[0-9]{4}$" },
           "satisfied_by": { "type": "array", "items": { "type": "string" }, "description": "Tools/methods that satisfy this objective." },
           "depends_on": { "type": "array", "items": { "type": "string" }, "description": "Objective ids that are true prerequisites." },
-          "user_satisfied_by_seq": { "type": ["integer", "null"], "description": "Episode seq that satisfied this objective, or null if skipped." }
+          "user_satisfied_by_seq": { "type": ["integer", "null"], "description": "Episode seq that satisfied this objective, or null if skipped." },
+          "status": { "type": "string", "enum": ["untouched", "attempted", "reached", "proven"] },
+          "finding_refs": { "type": "array", "items": { "type": "string" } },
+          "proven_by_seq": { "type": ["integer", "null"] }
         }
       }
     },
@@ -252,6 +284,27 @@
               "noise": { "type": "number", "minimum": 0, "description": "Its noise = weight × (1 + log10(volume))." }
             }
           }
+        }
+      }
+    },
+
+    "findings": {
+      "type": "array",
+      "description": "Platform-agnostic evidence entries (ports, creds, flags, etc.) extracted from episodes, cross-referenced by golden_dag objectives (schema v1.2).",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "value", "source_seq"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string", "enum": ["port", "service", "version", "cred", "url", "path", "host", "hash", "vuln", "flag"] },
+          "value": { "type": "string" },
+          "masked": { "type": "boolean" },
+          "source_seq": { "type": "integer", "minimum": 0 },
+          "used_by_seq": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+          "tactic": { "type": "string", "pattern": "^TA[0-9]{4}$" },
+          "proven": { "type": "boolean" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
         }
       }
     }

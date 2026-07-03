@@ -1,0 +1,110 @@
+import type { Episode, Finding, FindingKind, RedactionProfile } from "../../types/report";
+
+interface Detector {
+  kind: FindingKind;
+  re: RegExp;
+  /** Build (id, value, extra) from a match; return null to skip. */
+  make: (m: RegExpMatchArray) => { id: string; value: string; tactic?: string } | null;
+}
+
+function hash8(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, "0");
+}
+
+const DETECTORS: Detector[] = [
+  { kind: "port", re: /(\d{1,5})\/(tcp|udp)\s+open(?:\s+(\S+))?/g, make: (m) => ({ id: `port:${m[1]}-${m[2]}`, value: `${m[1]}/${m[2]}`, tactic: "TA0007" }) },
+  { kind: "url", re: /https?:\/\/[^\s"'<>]+/g, make: (m) => ({ id: `url:${hash8(m[0])}`, value: m[0], tactic: "TA0007" }) },
+  { kind: "hash", re: /\b[a-f0-9]{32,}\b|\$[0-9a-z]\$[^\s:]+/g, make: (m) => ({ id: `hash:${hash8(m[0])}`, value: m[0] }) },
+  { kind: "cred", re: /(?:password|passwd|pwd|user(?:name)?)\s*[:=]\s*(\S+)/gi, make: (m) => ({ id: `cred:${hash8(m[0])}`, value: m[0], tactic: "TA0006" }) },
+  { kind: "vuln", re: /CVE-\d{4}-\d{3,}/g, make: (m) => ({ id: `vuln:${m[0]}`, value: m[0], tactic: "TA0001" }) },
+];
+
+const FLAG_RE = /\b[a-f0-9]{32}\b|(?:HTB|THM|flag)\{[^}]*\}/gi;
+// Mirrors the sentinel `redactText` (../redact.ts) substitutes for a bare 32-hex flag. The ingest
+// path always redacts output_digest before findings run, so a real captured flag reaches here
+// already scrubbed to this literal — treat its presence as a proven flag observation (the value
+// stays the sentinel; nothing is un-redacted).
+const REDACTED_FLAG_SENTINEL = "[redacted-flag]";
+const SECRET_KINDS = new Set<FindingKind>(["cred", "hash", "flag"]);
+
+function mask(value: string): string {
+  const tail = value.slice(-2);
+  return `••••${tail}`;
+}
+
+/** Deterministic findings ledger. Iterates episodes in seq order; links used_by_seq by tokenised match. */
+export function extractFindings(episodes: Episode[], profile: RedactionProfile): Finding[] {
+  const byId = new Map<string, Finding>();
+
+  const add = (f: Omit<Finding, "used_by_seq">) => {
+    const existing = byId.get(f.id);
+    if (existing) return; // first occurrence wins as source_seq
+    byId.set(f.id, { ...f, used_by_seq: [] });
+  };
+
+  for (const ep of episodes) {
+    const text = ep.output_digest ?? "";
+    for (const d of DETECTORS) {
+      d.re.lastIndex = 0;
+      for (const m of text.matchAll(d.re)) {
+        const built = d.make(m);
+        if (!built) continue;
+        add({ id: built.id, kind: d.kind, value: built.value, source_seq: ep.seq, tactic: built.tactic });
+      }
+    }
+    // flags: a flag-shaped token in output is "proven" (observed). A bare `cat *.txt` with no token isn't.
+    // The redaction sentinel counts too — it's what a real 32-hex flag looks like by the time it
+    // reaches here (see REDACTED_FLAG_SENTINEL above), so it's an observation, not a miss.
+    FLAG_RE.lastIndex = 0;
+    const flagName = /(?:user|root|proof)\.txt/i.test(ep.cmd) ? (/root|proof/i.test(ep.cmd) ? "root" : "user") : null;
+    const flagMatch = text.match(FLAG_RE);
+    const sentinelObserved = text.includes(REDACTED_FLAG_SENTINEL);
+    if (flagName || flagMatch || sentinelObserved) {
+      const token = flagMatch ? flagMatch[0] : REDACTED_FLAG_SENTINEL;
+      const id = `flag:${flagName ?? hash8(token)}`;
+      const value = flagMatch ? flagMatch[0] : sentinelObserved ? REDACTED_FLAG_SENTINEL : `${flagName}.txt`;
+      const proven = Boolean(flagMatch) || sentinelObserved;
+      if (!byId.has(id)) {
+        byId.set(id, { id, kind: "flag", value, source_seq: ep.seq, proven, used_by_seq: [] });
+      }
+    }
+  }
+
+  // Link used_by_seq: a later episode whose cmd references the finding's value consumed it.
+  // Port values are short numeric tokens ("80") that would false-match as a bare substring
+  // inside ":8080", "1080", "10.10.10.80", or a PID — so ports require a colon-anchored,
+  // non-digit-bounded match (":80" in "...:80/admin" or "...:80", but not ":8080"). Other
+  // kinds (url, hash, cred, host, path, vuln, flag) carry long/distinctive values where a
+  // plain substring match has no such false-positive risk.
+  const findings = [...byId.values()];
+  for (const f of findings) {
+    if (f.kind === "port") {
+      const port = f.value.split("/")[0];
+      const escaped = port.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const portRe = new RegExp(":" + escaped + "(?!\\d)");
+      for (const ep of episodes) {
+        if (ep.seq <= f.source_seq) continue;
+        if (portRe.test(ep.cmd)) f.used_by_seq!.push(ep.seq);
+      }
+    } else {
+      const needle = f.value;
+      for (const ep of episodes) {
+        if (ep.seq <= f.source_seq) continue;
+        if (ep.cmd.includes(needle)) f.used_by_seq!.push(ep.seq);
+      }
+    }
+  }
+
+  // Redaction pass.
+  if (profile === "public_safe") {
+    for (const f of findings) {
+      if (SECRET_KINDS.has(f.kind)) { f.value = mask(f.value); f.masked = true; }
+    }
+  }
+
+  // Stable ordering: by source_seq, then id.
+  findings.sort((a, b) => a.source_seq - b.source_seq || a.id.localeCompare(b.id));
+  return findings;
+}

@@ -28,6 +28,47 @@ export interface Machine {
   retired?: boolean;
 }
 
+export type PlatformId = "htb" | "thm" | "offsec" | "immersive" | "local";
+
+export interface TargetDifficulty {
+  level: 1 | 2 | 3 | 4 | 5;
+  label: string;
+}
+
+export interface TargetEmblem {
+  avatar?: string | null;
+  hue?: number | null;
+}
+
+/** Neutral, platform-agnostic target identity (schema v1.2). Supersedes Machine. */
+export interface Target {
+  platform: PlatformId;
+  kind: string;
+  name: string;
+  slug?: string;
+  os?: string;
+  difficulty?: TargetDifficulty | null;
+  emblem?: TargetEmblem;
+  url?: string | null;
+}
+
+export type ObjectiveStatus = "untouched" | "attempted" | "reached" | "proven";
+
+export type FindingKind = "port" | "service" | "version" | "cred" | "url" | "path" | "host" | "hash" | "vuln" | "flag";
+
+/** Platform-agnostic evidence entry extracted from an episode (schema v1.2). */
+export interface Finding {
+  id: string;
+  kind: FindingKind;
+  value: string;
+  masked?: boolean;
+  source_seq: number;
+  used_by_seq?: number[];
+  tactic?: string;
+  proven?: boolean;
+  confidence?: number;
+}
+
 export interface Session {
   uuid: string;
   started_at: string;
@@ -37,6 +78,7 @@ export interface Session {
   shell: string;
   source: Source;
   machine?: Machine;
+  target?: Target;
 }
 
 /** Cross-framework tags overlaid on an episode's ATT&CK classification (schema v1.1). */
@@ -83,6 +125,9 @@ export interface GoldenObjective {
   satisfied_by: string[];
   depends_on?: string[];
   user_satisfied_by_seq?: number | null;
+  status?: ObjectiveStatus;
+  finding_refs?: string[];
+  proven_by_seq?: number | null;
 }
 
 export interface TimeWaster {
@@ -158,7 +203,7 @@ export interface NoiseBaseline {
 }
 
 export interface WatcherReport {
-  schema_version: "1.0" | "1.1";
+  schema_version: "1.0" | "1.1" | "1.2";
   session: Session;
   episodes: Episode[];
   phases: Phase[];
@@ -173,4 +218,6 @@ export interface WatcherReport {
    *  Derived per box from its expected loud tooling, so the 0–100 stealth score means something
    *  per box rather than against a global magic constant. */
   noise_baseline?: NoiseBaseline;
+  /** Platform-agnostic evidence entries cross-referenced by golden_dag objectives (schema v1.2). */
+  findings?: Finding[];
 }

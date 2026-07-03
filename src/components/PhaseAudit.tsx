@@ -189,10 +189,15 @@ function Objectives({ items }: { items: PhaseAuditT["objectives"] }) {
             onMouseLeave={() => o.reached && s.hover(null)}
             onClick={() => o.reached && o.seq != null && s.reveal(o.seq)}
           >
-            <span className="shrink-0" style={{ color: o.reached ? "var(--color-match)" : "var(--color-skipped)" }}>
+            <span className="shrink-0" style={{ color: o.proven ? "var(--color-flag)" : o.reached ? "var(--color-match)" : "var(--color-skipped)" }}>
               {o.reached ? "✓" : "○"}
             </span>
             <span className={o.reached ? "text-fg" : "text-muted"}>{o.label}</span>
+            {o.proven && (
+              <span className="label shrink-0 text-flag" title="Proven — backed by observable proof">
+                proven
+              </span>
+            )}
             {o.reached ? (
               <span className="label ml-auto shrink-0 text-faint">step {o.seq} ↗</span>
             ) : (
