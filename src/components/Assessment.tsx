@@ -3,8 +3,11 @@ import { Section, tierColor } from "./ui";
 import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
 import { minimizedBundle } from "../lib/bridge/bundle";
 import { isLiveRecording } from "../lib/live";
+import { radarPoint, RADAR_GEOMETRY } from "../lib/radar";
 
-/** The radar axes ARE the grade's weighted dimensions — chart, math, and letter tell one story. */
+/** The radar axes ARE the grade's weighted dimensions — chart, math, and letter tell one story.
+ *  Methodology + focus only render when the active grade actually carries them (v2 reports); see the
+ *  `axes` filter below, which reads `grade.components` rather than assuming a fixed axis count. */
 const RUBRIC_AXES: { key: RubricKey; short: string }[] = [
   { key: "coverage", short: "Coverage" },
   { key: "breadth", short: "Breadth" },
@@ -12,15 +15,12 @@ const RUBRIC_AXES: { key: RubricKey; short: string }[] = [
   { key: "progression", short: "Order" },
   { key: "discipline", short: "Discipline" },
   { key: "independence", short: "Indep." },
+  { key: "methodology", short: "Method." },
+  { key: "focus", short: "Focus" },
 ];
 
-const CX = 120;
-const CY = 115;
-const R = 78;
-function point(i: number, frac: number, n: number): [number, number] {
-  const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-  return [CX + Math.cos(angle) * R * frac, CY + Math.sin(angle) * R * frac];
-}
+const { cx: CX, cy: CY } = RADAR_GEOMETRY;
+const point = (i: number, frac: number, n: number) => radarPoint(i, frac, n);
 
 const RUBRIC_LABELS: Record<RubricKey, string> = {
   coverage: "Objective coverage",
@@ -35,9 +35,10 @@ const RUBRIC_LABELS: Record<RubricKey, string> = {
 const RUBRIC_COLS = "11rem minmax(0,1fr) 2.5rem 3rem 3.25rem";
 
 /**
- * Grade — one coherent picture: the radar plots the five weighted rubric dimensions with the letter in
- * its center, and the table shows the score × weight → points math behind it. The actionable moves live
- * in the Phase Audit; this is the explainable scorecard. Independence is a gate routed to a human.
+ * Grade — one coherent picture: the radar plots the active rubric's weighted dimensions (6 for v1, 8
+ * for v2) with the letter in its center, and the table shows the score × weight → points math behind
+ * it. The actionable moves live in the Phase Audit; this is the explainable scorecard. Independence is
+ * a gate routed to a human.
  */
 export function Assessment() {
   const s = useReport();
@@ -62,9 +63,11 @@ export function Assessment() {
   const flagged = grade.independence_gate.flagged;
   const satisfied = bundle.evidence_digests.filter((d) => d.satisfied).length;
 
-  // Independence is only a rubric axis when it was actually measured; otherwise it's excluded from the
-  // grade (see computeGrade) and so it drops off the radar and the breakdown table too.
-  const axes = RUBRIC_AXES.filter((a) => a.key !== "independence" || grade.independence_gate.measured);
+  // Render exactly the dimensions the ACTIVE grade carries: v1 reports have 6 components (no
+  // methodology/focus keys at all — see computeGrade), v2 have 8. Independence is additionally
+  // excluded when it was never measured, even though computeGrade still emits a zero-weight
+  // placeholder for it — otherwise it'd drop off the grade but linger on the radar.
+  const axes = RUBRIC_AXES.filter((a) => grade.components[a.key] !== undefined && (a.key !== "independence" || grade.independence_gate.measured));
   const n = axes.length;
 
   const valuePoly = axes.map((a, i) => point(i, grade.components[a.key]!.raw / 100, n).join(",")).join(" ");
@@ -77,19 +80,25 @@ export function Assessment() {
       title="Grade"
       subtitle="how your score breaks down — the explainable rubric"
       right={
-        <span
-          className="rounded-full border px-2 py-0.5"
-          style={{
-            color: flagged ? "var(--color-loud)" : "var(--color-match)",
-            borderColor: flagged ? "color-mix(in oklch, var(--color-loud) 35%, transparent)" : "color-mix(in oklch, var(--color-match) 35%, transparent)",
-          }}
-        >
-          {flagged ? "→ integrity queue" : "→ grade"}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* subtle — which rubric produced this grade, not a badge that competes with the verdict */}
+          <span className="text-faint" title={`Scored against rubric v${grade.version}`}>
+            v{grade.version}
+          </span>
+          <span
+            className="rounded-full border px-2 py-0.5"
+            style={{
+              color: flagged ? "var(--color-loud)" : "var(--color-match)",
+              borderColor: flagged ? "color-mix(in oklch, var(--color-loud) 35%, transparent)" : "color-mix(in oklch, var(--color-match) 35%, transparent)",
+            }}
+          >
+            {flagged ? "→ integrity queue" : "→ grade"}
+          </span>
+        </div>
       }
     >
       <div className="grid gap-8 md:grid-cols-[300px_1fr] md:items-center">
-        {/* the grade radar — the five weighted dimensions, letter in the center */}
+        {/* the grade radar — the active rubric's weighted dimensions, letter in the center */}
         <svg viewBox="0 0 240 230" className="mx-auto w-full max-w-[300px]">
           {[0.25, 0.5, 0.75, 1].map((ring) => (
             <polygon key={ring} points={axes.map((_, i) => point(i, ring, n).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
@@ -169,7 +178,9 @@ export function Assessment() {
       </div>
 
       <p className="mt-3 text-xs text-faint">
-        Methodology, focus, and recovery are surfaced as coaching — not yet weighted into the grade.
+        {grade.version === 2
+          ? "Recovery is surfaced as coaching — not yet weighted into the grade."
+          : "Methodology, focus, and recovery are surfaced as coaching — not yet weighted into the grade."}
       </p>
 
       {/* what actually leaves the machine on sync — plain-language consent, not a jargon dump */}
