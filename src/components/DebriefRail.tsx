@@ -47,12 +47,21 @@ function GhostMini() {
  * Sticky at `lg:` and up, matching the header's approximate height (`top-20`, the same offset the
  * report already uses for in-page scroll targets via `scroll-mt-20`). Below `lg:`, the caller renders
  * this as a normal (non-sticky) block that stacks above the main column — see App.tsx.
+ *
+ * The stack (identity + radar + rubric table + key numbers + ghost-mini) can plausibly exceed a
+ * laptop viewport's height; a sticky element taller than the viewport pins in place and hides
+ * whatever falls past the fold. `lg:max-h-[calc(100vh-5rem)]` (5rem == `top-20`) caps it to what's
+ * actually visible below the sticky offset, and `lg:overflow-y-auto` lets the rail itself scroll
+ * internally rather than clipping content — only at `lg:`, where it's sticky in the first place.
  */
 export function DebriefRail() {
   const { metrics } = useReport();
   return (
-    <aside aria-label="Target identity and verdict" className="flex flex-col gap-4 lg:sticky lg:top-20">
-      <IdentityBar />
+    <aside
+      aria-label="Target identity and verdict"
+      className="flex flex-col gap-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1"
+    >
+      <IdentityBar variant="rail" />
       <Assessment />
       <div className="flex gap-2">
         <KeyNumber label="Coverage" value={metrics.objective_coverage_pct} />
