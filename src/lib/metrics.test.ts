@@ -156,9 +156,21 @@ describe("analysis signals wiring (schema v1.3)", () => {
     expect(typeof m.methodology_coverage_pct).toBe("number");
     expect(typeof m.focus_discipline_pct).toBe("number");
     expect(m.recovery_median_ms === null || typeof m.recovery_median_ms === "number").toBe(true);
-    // existing fields untouched:
-    expect(m.objective_coverage_pct).toBe(computeMetrics(report).objective_coverage_pct);
-    // grade unchanged (analysis fields must not feed the grade):
-    expect(computeGrade({ ...report, metrics: { ...report.metrics } })).toEqual(before);
+    // existing fields still match the fixture's stored metrics (non-tautological: compares
+    // computed output to a value baked into the fixture, not to itself):
+    expect(round(m.objective_coverage_pct)).toBe(report.metrics.objective_coverage_pct);
+    // grade unchanged when the three new v1.3 analysis fields are actually present on metrics
+    // (grade.ts must keep ignoring them). Spreading `report.metrics` alone would be vacuous —
+    // the fixture's metrics never carry these fields — so splice in `m`'s values explicitly.
+    const withAnalysis: WatcherReport = {
+      ...report,
+      metrics: {
+        ...report.metrics,
+        methodology_coverage_pct: m.methodology_coverage_pct,
+        focus_discipline_pct: m.focus_discipline_pct,
+        recovery_median_ms: m.recovery_median_ms,
+      },
+    };
+    expect(computeGrade(withAnalysis)).toEqual(before);
   });
 });

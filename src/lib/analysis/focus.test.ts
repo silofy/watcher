@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeFocus } from "./focus";
+import { wasteBreakdown } from "../metrics";
 import type { WatcherReport, Episode } from "../../types/report";
 
 const ep = (o: Partial<Episode> & { seq: number }): Episode => ({ cmd: "", binary: "sqlmap", duration_ms: 60000, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0001", ...o });
@@ -25,4 +26,39 @@ describe("computeFocus", () => {
     expect(res.discipline_pct).toBe(100);
   });
   it("is deterministic", () => { const r = rep([0,1,2].map((seq)=>ep({seq,alignment:"detour",output_digest:"fail"}))); expect(computeFocus(r)).toEqual(computeFocus(r)); });
+});
+
+describe("focus/metrics t_active_ms guard", () => {
+  // focus.ts deliberately reimplements activeMs locally (to avoid an import cycle with metrics.ts)
+  // instead of reading report.metrics.time_waster.t_active_ms. Nothing else ties the two formulas
+  // together, so a future edit to either could silently desync focus_discipline_pct from the
+  // metrics engine's own notion of active time. This test is the tripwire: it computes t_active_ms
+  // two ways over the same episodes — metrics.ts's wasteBreakdown and a copy of focus.ts's local
+  // formula — and proves they still agree, then checks computeFocus's discipline math against that
+  // shared t_active_ms for a known rabbit hole.
+  const eps: Episode[] = [
+    ep({ seq: 0, binary: "gobuster", duration_ms: 10000, gap_before_ms: 2000, alignment: "detour", output_digest: "no results found" }),
+    ep({ seq: 1, binary: "gobuster", duration_ms: 8000, gap_before_ms: 1000, alignment: "detour", output_digest: "no results found" }),
+    ep({ seq: 2, binary: "gobuster", duration_ms: 9000, gap_before_ms: 500, alignment: "detour", output_digest: "no results found" }),
+    ep({ seq: 3, binary: "nikto", duration_ms: 15000, gap_before_ms: 3000, actor: "human_active" }),
+    ep({ seq: 4, binary: "sleep", duration_ms: 5000, gap_before_ms: 5000, actor: "idle" }),
+  ];
+
+  it("metrics.ts's t_active_ms and focus.ts's local activeMs formula agree over the same episodes", () => {
+    const metricsTActive = wasteBreakdown(eps).t_active_ms;
+    // mirrors focus.ts's private `activeMs` exactly: active wall-clock is duration + gap-before,
+    // zeroed out for idle episodes.
+    const focusTActive = eps.reduce((a, e) => a + (e.actor === "idle" ? 0 : e.duration_ms + e.gap_before_ms), 0);
+    expect(focusTActive).toBe(metricsTActive);
+  });
+
+  it("computeFocus's discipline_pct is consistent with that shared t_active_ms for a known rabbit hole", () => {
+    const metricsTActive = wasteBreakdown(eps).t_active_ms;
+    const res = computeFocus(rep(eps));
+    // the gobuster run (seq 0-2) is the one sustained low-yield rabbit hole in this fixture
+    expect(res.rabbit_holes).toHaveLength(1);
+    const wastedTotal = res.rabbit_holes.reduce((a, h) => a + h.wasted_ms, 0);
+    const clamp = (n: number) => Math.max(0, Math.min(100, n));
+    expect(res.discipline_pct).toBeCloseTo(clamp(100 - (wastedTotal / metricsTActive) * 100), 6);
+  });
 });
