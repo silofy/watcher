@@ -47,7 +47,7 @@ export function Assessment() {
   // the grade is a verdict — premature while the capture is live; settle it only when the run ends
   if (isLiveRecording(report)) {
     return (
-      <Section collapsible name="debrief-details" title="Grade" subtitle="the explainable rubric — settles when the run ends">
+      <Section title="Grade" subtitle="the explainable rubric — settles when the run ends">
         <p className="text-sm text-faint">
           <span className="animate-pulse" style={{ color: "var(--color-loud)" }}>
             ●
@@ -75,8 +75,6 @@ export function Assessment() {
 
   return (
     <Section
-      collapsible
-      name="debrief-details"
       title="Grade"
       subtitle="how your score breaks down — the explainable rubric"
       right={
@@ -97,7 +95,10 @@ export function Assessment() {
         </div>
       }
     >
-      <div className="grid gap-8 md:grid-cols-[300px_1fr] md:items-center">
+      {/* Always stacked (radar over the rubric table) — this panel now lives in the narrow sticky rail
+          (see DebriefRail), where the old side-by-side split (keyed on viewport width, not column
+          width) would squeeze the table into a sliver at typical desktop widths. */}
+      <div className="grid gap-6">
         {/* the grade radar — the active rubric's weighted dimensions, letter in the center */}
         <svg viewBox="0 0 240 230" className="mx-auto w-full max-w-[300px]">
           {[0.25, 0.5, 0.75, 1].map((ring) => (

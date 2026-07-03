@@ -67,6 +67,7 @@ export function AttackTimeline() {
       title="How the run unfolded"
       subtitle={`MITRE phases, tinted by efficiency · ${metrics.technique_breadth} distinct ATT&CK techniques`}
       right={<ActorLegend />}
+      srTitle
     >
       <ZoomControls zoomed={zoomed} w0={w0} w1={w1} zoomOut={zoomOut} reset={reset} />
 

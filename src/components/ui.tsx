@@ -17,6 +17,7 @@ export function Section({
   collapsible = false,
   name,
   defaultOpen = false,
+  srTitle = false,
 }: {
   title?: string;
   subtitle?: string;
@@ -30,8 +31,12 @@ export function Section({
   /** Shared name → only one `<details>` in the group stays open at a time (native accordion). */
   name?: string;
   defaultOpen?: boolean;
+  /** Keep the title in the markup (static export, screen readers) but visually hidden — for a section
+   *  hosted under a tab/label that already shows the same heading (e.g. the Deep dive tabs), so the
+   *  title isn't printed twice. Subtitle/right (often the section's only unique context) stay visible. */
+  srTitle?: boolean;
 }) {
-  const titleEl = title && <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>;
+  const titleEl = title && <h2 className={`font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted ${srTitle ? "sr-only" : ""}`}>{title}</h2>;
   const subEl = subtitle && <span className="text-xs text-faint">{subtitle}</span>;
   const rightEl = right && <div className="text-xs text-muted">{right}</div>;
 

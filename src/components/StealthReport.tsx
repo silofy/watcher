@@ -74,6 +74,7 @@ export function StealthReport() {
     <Section
       title="Stealth & Noise"
       subtitle="footprint over the run — cumulative builds, exposure decays"
+      srTitle
       right={
         <span>
           Stealth{" "}
