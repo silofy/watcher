@@ -936,6 +936,13 @@ mod tests {
         let target = arg_value(&args, "--target").or_else(|| arg_value(&args, "--machine")).unwrap();
         assert_eq!(target, "Forge");
         assert!(arg_value(&args, "--platform").is_none());
+        // Mirrors the --export branch's context defaulting in main(): with --context and
+        // --platform both absent, it falls through to the unchanged HTB default.
+        let context = arg_value(&args, "--context").unwrap_or_else(|| match arg_value(&args, "--platform") {
+            Some(p) => format!("cloud:{p}:openvpn"),
+            None => "cloud:htb:pwnbox".to_string(),
+        });
+        assert_eq!(context, "cloud:htb:pwnbox");
     }
 
     #[test]
