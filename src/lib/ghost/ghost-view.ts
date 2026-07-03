@@ -1,6 +1,7 @@
 /** Pure view-layer helpers for the ghost UI (the "You vs. the Ghost" card + timeline overlay) — no
  *  React, so the color/label vocabulary and the seq→axis projection are unit-testable in isolation. */
 import type { GhostItem, GhostVerdict } from "../../types/report";
+import type { GhostResult } from "./ghost";
 import type { Timeline } from "../scale";
 
 export interface VerdictMeta {
@@ -44,6 +45,17 @@ export function connectorLabel(verdict: GhostVerdict): string | null {
     case "skipped":
       return null;
   }
+}
+
+/** Notes the model actually refined: objective -> new note, only where it differs from the deterministic one. */
+export function refinedNotes(base: GhostResult, narrated: GhostResult): Map<string, string> {
+  const out = new Map<string, string>();
+  const baseByObj = new Map(base.items.map((i) => [i.objective, i.note]));
+  for (const it of narrated.items) {
+    const original = baseByObj.get(it.objective);
+    if (it.note && it.note !== original) out.set(it.objective, it.note);
+  }
+  return out;
 }
 
 export interface GhostMarker {

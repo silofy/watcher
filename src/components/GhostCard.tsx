@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useReport } from "../store/report";
-import { verdictMeta } from "../lib/ghost/ghost-view";
+import { refinedNotes, verdictMeta } from "../lib/ghost/ghost-view";
 import { narrateGhost } from "../lib/ghost/narrate";
-import type { GhostDiffItem } from "../lib/ghost/ghost";
+import type { GhostDiffItem, GhostResult } from "../lib/ghost/ghost";
 import { resolveProvider } from "../lib/llm";
 import { humanizeObjective } from "../lib/audits";
 import { fmtMinutes } from "../lib/format";
@@ -38,10 +38,10 @@ export function GhostCard() {
         lag_ms: it.lag_ms ?? 0,
         note: it.note ?? "",
       }));
-      const out = await narrateGhost({ time_lost_ms: ghost?.time_lost_ms ?? 0, human_wins: ghost?.human_wins ?? 0, items: diffItems }, provider);
+      const base: GhostResult = { time_lost_ms: ghost?.time_lost_ms ?? 0, human_wins: ghost?.human_wins ?? 0, items: diffItems };
+      const out = await narrateGhost(base, provider);
       if (!alive) return;
-      const m = new Map<string, string>();
-      for (const it of out.items) if (it.note) m.set(it.objective, it.note);
+      const m = refinedNotes(base, out);
       if (m.size) setNarrated(m);
     })();
     return () => {

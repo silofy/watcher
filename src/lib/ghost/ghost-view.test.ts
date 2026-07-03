@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { verdictMeta, ghostMarkers, connectorLabel, type GhostMarker } from "./ghost-view";
+import { verdictMeta, ghostMarkers, connectorLabel, refinedNotes, type GhostMarker } from "./ghost-view";
+import type { GhostDiffItem, GhostResult } from "./ghost";
 import type { GhostItem } from "../../types/report";
 import type { Timeline, TimedEpisode } from "../scale";
 
@@ -53,6 +54,42 @@ describe("connectorLabel", () => {
   it("draws no connector for on_time or skipped", () => {
     expect(connectorLabel("on_time")).toBeNull();
     expect(connectorLabel("skipped")).toBeNull();
+  });
+});
+
+function diffItem(objective: string, note: string): GhostDiffItem {
+  return { objective, verdict: "on_time", unlock_seq: 0, actual_seq: 0, lag_ms: 0, note };
+}
+
+describe("refinedNotes", () => {
+  it("returns an empty map when narrated is the same reference as base (no-model default)", () => {
+    const base: GhostResult = { time_lost_ms: 0, human_wins: 0, items: [diffItem("enumerate_smb", "deterministic note")] };
+    expect(refinedNotes(base, base)).toEqual(new Map());
+  });
+
+  it("returns an empty map when narrated notes are identical to the deterministic ones", () => {
+    const base: GhostResult = { time_lost_ms: 0, human_wins: 0, items: [diffItem("enumerate_smb", "deterministic note")] };
+    const narrated: GhostResult = { ...base, items: [diffItem("enumerate_smb", "deterministic note")] };
+    expect(refinedNotes(base, narrated)).toEqual(new Map());
+  });
+
+  it("includes only the item whose note the model actually changed", () => {
+    const base: GhostResult = {
+      time_lost_ms: 0,
+      human_wins: 0,
+      items: [diffItem("enumerate_smb", "deterministic a"), diffItem("exploit_web", "deterministic b")],
+    };
+    const narrated: GhostResult = {
+      ...base,
+      items: [diffItem("enumerate_smb", "sharpened a"), diffItem("exploit_web", "deterministic b")],
+    };
+    expect(refinedNotes(base, narrated)).toEqual(new Map([["enumerate_smb", "sharpened a"]]));
+  });
+
+  it("excludes an item whose narrated note is empty — the deterministic note stands", () => {
+    const base: GhostResult = { time_lost_ms: 0, human_wins: 0, items: [diffItem("enumerate_smb", "deterministic note")] };
+    const narrated: GhostResult = { ...base, items: [diffItem("enumerate_smb", "")] };
+    expect(refinedNotes(base, narrated)).toEqual(new Map());
   });
 });
 
