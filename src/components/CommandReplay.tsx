@@ -97,8 +97,6 @@ export function CommandReplay() {
 
   return (
     <Section
-      collapsible
-      name="debrief-details"
       title="Command Log"
       subtitle="DVR · synced to the timeline"
       right={

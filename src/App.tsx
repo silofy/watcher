@@ -5,13 +5,8 @@ import { IdentityBar } from "./components/IdentityBar";
 import { SessionFacts } from "./components/SessionFacts";
 import { TrimControl } from "./components/TrimControl";
 import { Collapse } from "./components/ui";
-import { Findings } from "./components/Findings";
+import { DeepDive } from "./components/DeepDive";
 import { GhostCard } from "./components/GhostCard";
-import { AttackTimeline } from "./components/AttackTimeline";
-import { FrameworkAxes } from "./components/FrameworkAxes";
-import { DeviationTimeline } from "./components/DeviationTimeline";
-import { StealthReport } from "./components/StealthReport";
-import { CommandReplay } from "./components/CommandReplay";
 import { PathComparison } from "./components/PathComparison";
 import { Assessment } from "./components/Assessment";
 import { History } from "./components/History";
@@ -110,7 +105,8 @@ export function App() {
               <PhaseAudit />
             </Rise>
 
-            {/* Details — every supporting view, collapsed; opening one closes the others (accordion) */}
+            {/* Details — path/assessment stay here for now (Task 2 moves them); the six timeline /
+                stealth / deviation / frameworks / findings / log views live in one Deep dive panel. */}
             <div className="mt-1 flex items-center gap-3 lg:col-span-12">
               <span className="label text-faint">Details</span>
               <div className="h-px flex-1 bg-edge" />
@@ -119,14 +115,7 @@ export function App() {
             <div className="flex flex-col gap-2 lg:col-span-12">
               <div id="path"><PathComparison /></div>
               <div id="bridge"><Assessment /></div>
-              <div id="unfolded"><AttackTimeline /></div>
-              <div id="frameworks"><FrameworkAxes /></div>
-              <div id="deviated"><DeviationTimeline /></div>
-              <div id="stealth"><StealthReport /></div>
-              <div id="log"><CommandReplay /></div>
-              <Collapse name="debrief-details" title="Findings" subtitle="what the run surfaced — click to jump to the command">
-                <Findings />
-              </Collapse>
+              <DeepDive />
               {report.ghost?.items?.length ? (
                 <Collapse name="debrief-details" title="You vs. the Ghost" subtitle="the optimal line from where you stood — wins first">
                   <GhostCard />
