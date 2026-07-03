@@ -1,7 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useReport } from "./store/report";
 import { PhaseAudit } from "./components/PhaseAudit";
-import { DebriefRail } from "./components/DebriefRail";
+import { IdentityBar } from "./components/IdentityBar";
+import { Assessment } from "./components/Assessment";
 import { SessionFacts } from "./components/SessionFacts";
 import { TrimControl } from "./components/TrimControl";
 import { Collapse, Section } from "./components/ui";
@@ -18,6 +19,8 @@ import { AiBanner } from "./components/AiBanner";
 import { LiveBridge } from "./components/LiveBridge";
 import { DemoDriver } from "./components/DemoDriver";
 import { LiveDashboard } from "./components/LiveDashboard";
+import { isLiveRecording } from "./lib/live";
+import { normalizeCoaching, stepText } from "./lib/coaching";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
   return (
@@ -43,10 +46,27 @@ function Tab({ id, label }: { id: "debrief" | "history" | "install" | "progress"
   );
 }
 
+/** The hero card — the single highest-value coaching takeaway, led big and unmissable at the top of
+ *  the narrative. Same source `PhaseAudit` used for its own (now-suppressed) "Key takeaway" banner —
+ *  see `hideTakeaway` there. Renders nothing when there's no coaching lead (e.g. an old report, or a
+ *  live capture still in progress). */
+function HeroLesson() {
+  const { report } = useReport();
+  const lead = normalizeCoaching(report.coaching?.next_steps)[0];
+  if (!lead) return null;
+  return (
+    <div className="rounded-xl border border-signal/40 bg-signal/10 px-6 py-5">
+      <span className="label text-signal">The one lesson</span>
+      <p className="mt-2 text-xl font-semibold leading-snug text-fg sm:text-2xl">{stepText(lead)}</p>
+    </div>
+  );
+}
+
 export function App() {
   const { report, view, gateDismissed } = useReport();
   const { session } = report;
   const needsWriteup = report.golden_dag.length === 0 && !gateDismissed;
+  const recording = isLiveRecording(report);
 
   return (
     <div className="min-h-full">
@@ -89,44 +109,58 @@ export function App() {
         ) : needsWriteup ? (
           <WriteupGate />
         ) : (
-          <div className="grid grid-cols-1 gap-x-6 gap-y-6 lg:grid-cols-12 lg:items-start">
-            {/* Left rail — identity + rooted status, the grade + radar, key numbers, the ghost-mini.
-                Sticky at lg: and up; on narrow widths this simply stacks above the main column. */}
-            <Rise i={0} id="identity" className="lg:col-span-4">
-              <DebriefRail />
+          <div className="mx-auto flex max-w-4xl flex-col gap-6">
+            {/* 1. verdict band — identity + grade + stealth + rooted + platform, full width */}
+            <Rise i={0} id="identity">
+              <IdentityBar />
             </Rise>
 
-            {/* Main column — the scrollable narrative: the Ops bento (live companion / run-summary,
-                stays mounted across the live→resolved flip) → Phase audit (leads with the single
-                highest-value coaching takeaway, then the per-phase "what you'd do differently") →
-                the intended-path comparison → you vs the Ghost → the Deep dive tabs → session window. */}
-            <div className="flex flex-col gap-6 lg:col-span-8">
+            {/* live companion — the mid-run reference bento, shown only while the capture is underway.
+                Once the run resolves this disappears and the narrative below is the whole picture. */}
+            {recording && (
               <Rise i={1} id="summary">
                 <LiveDashboard />
               </Rise>
-              <Rise i={2} id="audit">
-                <PhaseAudit />
-              </Rise>
-              <Rise i={3} id="path">
-                <PathComparison />
-              </Rise>
-              {report.ghost?.items?.length ? (
-                <Rise i={4} id="ghost">
+            )}
+
+            {/* 2. the one lesson — the hero takeaway, unmissable */}
+            <Rise i={2}>
+              <HeroLesson />
+            </Rise>
+
+            {/* 3. what you'd do differently */}
+            <Rise i={3} id="path">
+              <PathComparison />
+            </Rise>
+
+            {/* 4. phase audit — the actionable per-phase spine (its own takeaway banner is suppressed,
+                since the hero above already leads with it) */}
+            <Rise i={4} id="audit">
+              <PhaseAudit hideTakeaway />
+            </Rise>
+
+            {/* 5. evidence & detail — the raw record, collapsed by default. `Collapse` is a native
+                <details>: its children stay in the DOM (just visually hidden) even when closed, so the
+                static export still carries every section's markup. */}
+            <Collapse title="Evidence & detail" subtitle="the raw record — timeline, stealth, frameworks, log, findings, ghost">
+              <div className="flex flex-col gap-6">
+                {report.ghost?.items?.length ? (
                   <Section title="You vs. the Ghost" subtitle="the optimal line from where you stood — wins first">
                     <GhostCard />
                   </Section>
-                </Rise>
-              ) : null}
-              <Rise i={5}>
+                ) : null}
                 <DeepDive />
-              </Rise>
-              <Collapse name="debrief-details" title="Session window" subtitle="session facts · retroactively trim the report">
-                <SessionFacts />
-                <TrimControl />
-              </Collapse>
-            </div>
+                <Assessment />
+              </div>
+            </Collapse>
 
-            <footer className="flex items-center justify-between py-6 text-xs text-faint lg:col-span-12">
+            {/* 6. session window */}
+            <Collapse name="debrief-details" title="Session window" subtitle="session facts · retroactively trim the report">
+              <SessionFacts />
+              <TrimControl />
+            </Collapse>
+
+            <footer className="flex items-center justify-between py-6 text-xs text-faint">
               <span className="mono">
                 schema v{report.schema_version} · {session.uuid.slice(0, 8)}
               </span>

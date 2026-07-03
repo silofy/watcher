@@ -72,18 +72,10 @@ function AttributePills({ target, retired }: { target: ReturnType<typeof targetO
 
 /**
  * The machine "about" header — identity + the headline scores, over the writeup-reference accordion.
- *
- * `variant="band"` (default) is the original full-width verdict band: a wide `justify-between` row
- * with an 88px avatar + `text-5xl` name on the left, and the two headline `ScoreReadout` cards
- * (Stealth, Grade) on the right. Any consumer other than `DebriefRail` gets this, unchanged.
- *
- * `variant="rail"` is a compact vertical stack sized for the ~1/3-viewport sticky debrief rail
- * (`DebriefRail`), where the wide band's viewport-keyed Tailwind breakpoints don't help — the rail is
- * narrow at any viewport width. It also drops the Grade/Stealth readouts entirely: in the rail, the
- * grade is already carried by the `Assessment` radar and stealth by the key-numbers tri-tile directly
- * below, so repeating them here would just be duplication in a space-constrained layout.
+ * The full-width verdict band: a wide `justify-between` row with an 88px avatar + platform label +
+ * `text-5xl` name on the left, and the two headline `ScoreReadout` cards (Stealth, Grade) on the right.
  */
-export function IdentityBar({ variant = "band" }: { variant?: "band" | "rail" } = {}) {
+export function IdentityBar() {
   const { report, timeline, metrics } = useReport();
   const target = targetOf(report);
   // Target (schema v1.2) doesn't carry `retired` — read it straight off the raw session.machine block.
@@ -97,88 +89,56 @@ export function IdentityBar({ variant = "band" }: { variant?: "band" | "rail" } 
 
   return (
     <div className="py-1">
-      {variant === "rail" ? (
-        <div className="flex flex-col gap-3">
-          {/* identity — a vertical stack, not the wide band's side-by-side row, so a ~350-400px rail
-              never squeezes the avatar/name against anything */}
-          <div className="flex items-center gap-3">
-            <MachineAvatar target={target} size={56} />
-            <div className="min-w-0">
-              {/* platform attribution — which service this run is from, read before the name itself */}
-              <div className="label text-faint">{platformLabel(target.platform)}</div>
-              <h1 className="font-display text-2xl font-bold leading-tight tracking-tight text-fg sm:text-3xl">{target.name}</h1>
+      {/* identity + the headline grade */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <MachineAvatar target={target} size={88} />
+          <div className="min-w-0">
+            {/* platform attribution — which service this run is from, read before the name itself */}
+            <div className="label text-faint">{platformLabel(target.platform)}</div>
+            <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{target.name}</h1>
+            <div className="mt-2">
+              <AttributePills target={target} retired={retired} />
             </div>
           </div>
-          <AttributePills target={target} retired={retired} />
-          {recording && (
-            /* live: a compact status line — the same signal as the band's status block, sized down */
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          {recording ? (
+            /* live: a status block instead of a premature verdict — where you are, right now */
             <div
-              className="rounded-lg border px-3 py-2"
+              className="rounded-lg border px-4 py-2 text-right"
               style={{
                 borderColor: "color-mix(in oklch, var(--color-loud) 32%, var(--color-edge))",
                 backgroundColor: "color-mix(in oklch, var(--color-loud) 12%, transparent)",
               }}
             >
-              <div className="label flex items-center gap-1.5" style={{ color: "var(--color-loud)" }}>
+              <div className="label flex items-center justify-end gap-1.5" style={{ color: "var(--color-loud)" }}>
                 <span className="animate-pulse">●</span> Recording
               </div>
-              <div className="font-display text-xl font-bold leading-none text-fg">{currentPhase}</div>
+              <div className="font-display text-3xl font-bold leading-none text-fg">{currentPhase}</div>
               <div className="label mt-1 tabular-nums text-faint">
                 <AnimatedNumber value={cmdCount} /> cmd{cmdCount === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)}
               </div>
             </div>
+          ) : (
+            /* finished: the two headline scores, each tinted by its quality tier */
+            <>
+              <ScoreReadout
+                label="Stealth"
+                value={<AnimatedNumber value={Math.round(metrics.stealth_score)} />}
+                sub={`/100 · ${tierWord(metrics.stealth_score)}`}
+                color={tierColor(metrics.stealth_score)}
+              />
+              <ScoreReadout
+                label="Grade"
+                value={grade.letter}
+                sub={`${Math.round(grade.score)} / 100`}
+                color={gradeColor(grade.letter)}
+              />
+            </>
           )}
         </div>
-      ) : (
-        /* identity + the headline grade */
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3.5">
-            <MachineAvatar target={target} size={88} />
-            <div className="min-w-0">
-              <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{target.name}</h1>
-              <div className="mt-2">
-                <AttributePills target={target} retired={retired} />
-              </div>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            {recording ? (
-              /* live: a status block instead of a premature verdict — where you are, right now */
-              <div
-                className="rounded-lg border px-4 py-2 text-right"
-                style={{
-                  borderColor: "color-mix(in oklch, var(--color-loud) 32%, var(--color-edge))",
-                  backgroundColor: "color-mix(in oklch, var(--color-loud) 12%, transparent)",
-                }}
-              >
-                <div className="label flex items-center justify-end gap-1.5" style={{ color: "var(--color-loud)" }}>
-                  <span className="animate-pulse">●</span> Recording
-                </div>
-                <div className="font-display text-3xl font-bold leading-none text-fg">{currentPhase}</div>
-                <div className="label mt-1 tabular-nums text-faint">
-                  <AnimatedNumber value={cmdCount} /> cmd{cmdCount === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)}
-                </div>
-              </div>
-            ) : (
-              /* finished: the two headline scores, each tinted by its quality tier */
-              <>
-                <ScoreReadout
-                  label="Stealth"
-                  value={<AnimatedNumber value={Math.round(metrics.stealth_score)} />}
-                  sub={`/100 · ${tierWord(metrics.stealth_score)}`}
-                  color={tierColor(metrics.stealth_score)}
-                />
-                <ScoreReadout
-                  label="Grade"
-                  value={grade.letter}
-                  sub={`${Math.round(grade.score)} / 100`}
-                  color={gradeColor(grade.letter)}
-                />
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* writeup reference — a minimal accordion under a divider (flags/metrics now live in the run
           summary bento below, so the old verdict band was pure duplication) */}

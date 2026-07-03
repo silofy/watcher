@@ -349,7 +349,7 @@ function GeneralCard({ items }: { items: AuditItem[] }) {
  * directly under the KPI stats: scannable, text-first, actionable. Complements (does not replace) the
  * timeline/graph sections below.
  */
-export function PhaseAudit() {
+export function PhaseAudit({ hideTakeaway = false }: { hideTakeaway?: boolean } = {}) {
   const s = useReport();
   const { phases, general } = buildPhaseAudits(s.report);
   if (phases.length === 0 && general.length === 0) return null;
@@ -359,9 +359,10 @@ export function PhaseAudit() {
   // keep the focus reactive so deep-links from here highlight elsewhere (and vice-versa)
   void activeSeq(s);
 
-  // the single most important lesson — the top-ranked coaching step, led here as the audit's headline
+  // the single most important lesson — the top-ranked coaching step, led here as the audit's headline.
+  // Suppressed when a caller (the debrief's hero card) already shows it, so it isn't shown twice.
   const lead = normalizeCoaching(s.report.coaching?.next_steps)[0];
-  const takeaway = lead ? stepText(lead) : undefined;
+  const takeaway = !hideTakeaway && lead ? stepText(lead) : undefined;
 
   return (
     <Section title="Phase audit" subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}>

@@ -34,17 +34,17 @@ const RUBRIC_LABELS: Record<RubricKey, string> = {
   focus: "Focus discipline",
 };
 // The metric-label and bar columns are both `minmax(0, …)` — an explicit 0 minimum, so the track
-// (and the `truncate`d label inside it) can shrink to fit the rail rather than forcing a ~11rem
-// floor that used to be wider than the rail itself and force a horizontal scrollbar (see
-// DebriefRail's `overflow-x-hidden`). The three numeric columns stay fixed — they're already
-// narrow, tabular-nums content that never needs to shrink.
+// (and the `truncate`d label inside it) can shrink rather than forcing a ~11rem floor that would
+// force a horizontal scrollbar on narrower widths. The three numeric columns stay fixed — they're
+// already narrow, tabular-nums content that never needs to shrink.
 const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
 
 /**
  * Grade — one coherent picture: the radar plots the active rubric's weighted dimensions (6 for v1, 8
  * for v2) with the letter in its center, and the table shows the score × weight → points math behind
  * it. The actionable moves live in the Phase Audit; this is the explainable scorecard. Independence is
- * a gate routed to a human.
+ * a gate routed to a human. Lives inside the debrief's "Evidence & detail" drawer (see App.tsx) —
+ * the raw grade breakdown, one click away from the hero takeaway.
  */
 export function Assessment() {
   const s = useReport();
@@ -108,9 +108,8 @@ export function Assessment() {
         </div>
       }
     >
-      {/* Always stacked (radar over the rubric table) — this panel now lives in the narrow sticky rail
-          (see DebriefRail), where the old side-by-side split (keyed on viewport width, not column
-          width) would squeeze the table into a sliver at typical desktop widths. */}
+      {/* Always stacked (radar over the rubric table) — a side-by-side split (keyed on viewport width,
+          not column width) would squeeze the table into a sliver at typical desktop widths. */}
       <div className="grid gap-6">
         {/* the grade radar — the active rubric's weighted dimensions, letter in the center */}
         <svg viewBox="0 0 240 230" className="mx-auto h-auto w-full max-w-full">
