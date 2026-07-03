@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useReport, type SessionCard } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { DIFFICULTY_COLOR } from "../lib/machine";
-import { targetOf } from "../lib/platform";
+import { targetOf, platformLabel } from "../lib/platform";
 import type { WatcherReport } from "../types/report";
 
 function gradeColor(letter: string): string {
@@ -52,6 +52,8 @@ function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
           )}
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+          {/* which platform this run is from — read at a glance, before difficulty/OS */}
+          <span className="label text-faint">{platformLabel(t.platform)}</span>
           {t.difficulty?.label && (
             <span className="label" style={{ color: DIFFICULTY_COLOR[t.difficulty.label] }}>
               {t.difficulty.label}

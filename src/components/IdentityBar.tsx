@@ -2,7 +2,7 @@ import { useReport } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { tierColor } from "./ui";
 import { DIFFICULTY_COLOR } from "../lib/machine";
-import { targetOf } from "../lib/platform";
+import { targetOf, platformLabel } from "../lib/platform";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
@@ -104,6 +104,8 @@ export function IdentityBar({ variant = "band" }: { variant?: "band" | "rail" } 
           <div className="flex items-center gap-3">
             <MachineAvatar target={target} size={56} />
             <div className="min-w-0">
+              {/* platform attribution — which service this run is from, read before the name itself */}
+              <div className="label text-faint">{platformLabel(target.platform)}</div>
               <h1 className="font-display text-2xl font-bold leading-tight tracking-tight text-fg sm:text-3xl">{target.name}</h1>
             </div>
           </div>

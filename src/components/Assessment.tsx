@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
 import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
@@ -48,6 +49,11 @@ const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
 export function Assessment() {
   const s = useReport();
   const { report } = s;
+  // detail behind "Sync to institution" — collapsed by default so the rail reads as grade + radar +
+  // rubric + one action, not an essay; the trust copy stays in the DOM (just visually hidden) so it's
+  // one click away rather than gone. Declared before the live-recording return so hook order stays
+  // stable across renders.
+  const [showSyncDetail, setShowSyncDetail] = useState(false);
 
   // the grade is a verdict — premature while the capture is live; settle it only when the run ends
   if (isLiveRecording(report)) {
@@ -191,16 +197,29 @@ export function Assessment() {
           : "Methodology, focus, and recovery are surfaced as coaching — not yet weighted into the grade."}
       </p>
 
-      {/* what actually leaves the machine on sync — plain-language consent, not a jargon dump */}
-      <div className="mt-5 rounded-lg border border-edge bg-ink/50 p-4 text-xs">
-        <div className="mb-2.5">
-          <div className="label text-fg">If you sync this to your institution</div>
-          <p className="mt-1 text-muted">
-            Only your <span className="text-fg">grade and scores</span> leave this machine. Your commands, their output,
-            and the live IP never do.
-          </p>
-        </div>
+      {/* what actually leaves the machine on sync — a single compact action, not an inline consent
+          essay. The plain-language breakdown (what they receive / never see / the signature) is one
+          click away via `showSyncDetail`, kept in the DOM (just visually `hidden`) rather than
+          unmounted, so the transparency copy is never actually gone. */}
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-edge bg-ink/50 p-3.5">
+        <p className="text-xs text-muted">
+          Only your <span className="text-fg">grade and scores</span> leave this machine — never your commands or the live IP.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowSyncDetail((v) => !v)}
+          aria-expanded={showSyncDetail}
+          aria-controls="sync-detail"
+          className="label shrink-0 rounded-full border border-signal/50 px-3 py-1.5 text-signal transition-colors hover:bg-signal/15"
+        >
+          Sync to institution{" "}
+          <span className="inline-block transition-transform duration-200" style={showSyncDetail ? { transform: "rotate(90deg)" } : undefined}>
+            ▸
+          </span>
+        </button>
+      </div>
 
+      <div id="sync-detail" hidden={!showSyncDetail} className="mt-2 rounded-lg border border-edge bg-ink/50 p-4 text-xs">
         <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
           {/* what they receive */}
           <div>
