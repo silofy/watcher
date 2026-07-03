@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useReport } from "./store/report";
 import { PhaseAudit } from "./components/PhaseAudit";
 import { IdentityBar } from "./components/IdentityBar";
@@ -79,10 +79,19 @@ function HeroLesson() {
 }
 
 export function App() {
-  const { report, view, gateDismissed } = useReport();
+  const { report, view, gateDismissed, revealNonce } = useReport();
   const { session } = report;
   const needsWriteup = report.golden_dag.length === 0 && !gateDismissed;
   const recording = isLiveRecording(report);
+
+  // The Evidence drawer starts closed; a deep-link reveal (a "step N ↗" click from PhaseAudit,
+  // coaching, or GhostCard) must force it open so DeepDive's log-tab-and-scroll effect has a
+  // visible panel to scroll — otherwise the scroll is a no-op inside a closed <details>. Guarded
+  // on nonce > 0 so it doesn't force-open on initial mount (revealNonce starts at 0).
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  useEffect(() => {
+    if (revealNonce > 0) setEvidenceOpen(true);
+  }, [revealNonce]);
 
   return (
     <div className="min-h-full">
@@ -175,7 +184,12 @@ export function App() {
             {/* 5. evidence & detail — the raw record, collapsed by default. `Collapse` is a native
                 <details>: its children stay in the DOM (just visually hidden) even when closed, so the
                 static export still carries every section's markup. */}
-            <Collapse title="Evidence & detail" subtitle="the raw record — timeline, stealth, frameworks, log, findings">
+            <Collapse
+              title="Evidence & detail"
+              subtitle="the raw record — timeline, stealth, frameworks, log, findings"
+              open={evidenceOpen}
+              onToggle={setEvidenceOpen}
+            >
               <DeepDive />
             </Collapse>
 
