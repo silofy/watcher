@@ -5,6 +5,9 @@ import { useAxisZoom } from "./useAxisZoom";
 import { ZoomControls } from "./ZoomControls";
 import { techniqueName } from "../lib/attack";
 import { fmtDuration, fmtClock } from "../lib/format";
+import { ghostMarkers, verdictMeta } from "../lib/ghost/ghost-view";
+
+const GHOST_H = 14; // ghost-overlay lane height in viewBox units — thin, secondary to the ribbon
 
 const RIB_H = 44; // ribbon height in viewBox units
 
@@ -53,6 +56,11 @@ export function AttackTimeline() {
   const twoLane = report.episodes.some((e) => episodeLane(e) === "target");
   // shared drag-to-zoom — window lives in the store, synced with the deviation chart
   const { w0, w1, span, zx, leftPct, zoomed, zoomOut, reset, sel, handlers } = useAxisZoom(timeline.totalMs);
+
+  // ghost overlay (schema v1.4, additive) — each objective's unlock vs. actual instant projected onto
+  // the same shared axis; absent when the report carries no golden tree.
+  const ghostItems = report.ghost?.items ?? [];
+  const markers = ghostItems.length ? ghostMarkers(ghostItems, timeline) : [];
 
   return (
     <Section
@@ -176,6 +184,50 @@ export function AttackTimeline() {
         )}
         </div>
       </div>
+
+      {/* ghost overlay (schema v1.4, additive) — muted unlock/actual markers per objective; a
+          connector shows the gap when a late pivot left them apart. Absent when there's no golden tree. */}
+      {markers.length > 0 && (
+        <div className="mt-1 overflow-x-auto">
+          <svg viewBox={`0 0 ${AXIS_W} ${GHOST_H}`} preserveAspectRatio="none" className="h-3.5 w-full">
+            {markers.map((m) => {
+              const meta = verdictMeta(m.verdict);
+              const ux = m.unlockMs != null ? zx(m.unlockMs) : null;
+              const ax = m.actualMs != null ? zx(m.actualMs) : null;
+              const mid = GHOST_H / 2;
+              return (
+                <g key={m.objective} opacity={0.85}>
+                  {ux != null && ax != null && ux !== ax && (
+                    <line
+                      x1={ux}
+                      y1={mid}
+                      x2={ax}
+                      y2={mid}
+                      stroke={meta.tone}
+                      strokeWidth={1.25}
+                      strokeDasharray="2,2"
+                      vectorEffect="non-scaling-stroke"
+                    >
+                      <title>{`${m.objective.replace(/_/g, " ")} — unlocked, then acted on later`}</title>
+                    </line>
+                  )}
+                  {ux != null && (
+                    <circle cx={ux} cy={mid} r={1.75} fill="var(--color-faint)">
+                      <title>{`${m.objective.replace(/_/g, " ")} — unlocked here`}</title>
+                    </circle>
+                  )}
+                  {ax != null && (
+                    <circle cx={ax} cy={mid} r={2.25} fill={meta.tone}>
+                      <title>{`${m.objective.replace(/_/g, " ")} — ${meta.label}`}</title>
+                    </circle>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+          <div className="mt-0.5 text-[10px] text-faint">ghost: dim = unlocked · bright = your step, colored by verdict</div>
+        </div>
+      )}
 
       {/* axis — HTML row, crisp 12px; ticks track the zoom window */}
       <div className="mono mt-1 flex justify-between text-xs text-faint">

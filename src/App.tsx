@@ -6,6 +6,7 @@ import { SessionFacts } from "./components/SessionFacts";
 import { TrimControl } from "./components/TrimControl";
 import { Collapse } from "./components/ui";
 import { Findings } from "./components/Findings";
+import { GhostCard } from "./components/GhostCard";
 import { AttackTimeline } from "./components/AttackTimeline";
 import { FrameworkAxes } from "./components/FrameworkAxes";
 import { DeviationTimeline } from "./components/DeviationTimeline";
@@ -126,6 +127,11 @@ export function App() {
               <Collapse name="debrief-details" title="Findings" subtitle="what the run surfaced — click to jump to the command">
                 <Findings />
               </Collapse>
+              {report.ghost?.items?.length ? (
+                <Collapse name="debrief-details" title="You vs. the Ghost" subtitle="the optimal line from where you stood — wins first">
+                  <GhostCard />
+                </Collapse>
+              ) : null}
               <Collapse name="debrief-details" title="Session window" subtitle="session facts · retroactively trim the report">
                 <SessionFacts />
                 <TrimControl />
