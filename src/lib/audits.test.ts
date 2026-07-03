@@ -125,6 +125,53 @@ describe("buildPhaseAudits", () => {
     }
   });
 
+  it("surfaces an unmet methodology check (SMB open, no SMB tooling) as a Discovery insight", () => {
+    const withSmb = structuredClone(report);
+    withSmb.findings = [...(withSmb.findings ?? []), { id: "port:445-tcp", kind: "port", value: "445/tcp", source_seq: 2 }];
+    const discovery = buildPhaseAudits(withSmb).phases.find((p) => p.tactic === "TA0007")!;
+    const smb = discovery.insights.find((i) => /smb/i.test(i.title) || /smb/i.test(i.detail ?? ""));
+    expect(smb).toBeDefined();
+    expect(smb!.evidence_seq).toBe(2);
+  });
+
+  it("surfaces the largest rabbit hole as a step-back insight in its owning phase", () => {
+    const withHole = structuredClone(report);
+    const holeEps: typeof withHole.episodes = [0, 1, 2].map((i) => ({
+      seq: 900 + i,
+      cmd: `sqlmap --dbs --url http://10.10.1.5/${i}`,
+      binary: "sqlmap",
+      duration_ms: 60_000,
+      gap_before_ms: 0,
+      actor: "machine_bound",
+      tactic: "TA0001",
+      alignment: "detour",
+      output_digest: "no results found",
+    }));
+    withHole.episodes.push(...holeEps);
+    const { phases: ph, general } = buildPhaseAudits(withHole);
+    const access = ph.find((p) => p.tactic === "TA0001")!;
+    const hole = access.insights.find((i) => i.id === "focus-rabbit-hole") ?? general.find((i) => i.id === "focus-rabbit-hole");
+    expect(hole).toBeDefined();
+    expect(hole!.title).toMatch(/step back and enumerate/);
+    expect(hole!.title).toMatch(/sqlmap/);
+    expect(hole!.evidence_seq).toBe(900);
+  });
+
+  it("adds a general note when recovery from stuck moments is slow (median > 5 min)", () => {
+    const withSlowRecovery = structuredClone(report);
+    // four isolated stuck→recovered clusters (400s stuck + 10s recovery each), outweighing the
+    // fixture's existing fast recoveries so the median crosses the 5-minute threshold.
+    for (let k = 0; k < 4; k++) {
+      const base = 950 + k * 10;
+      withSlowRecovery.episodes.push(
+        { seq: base, cmd: "gobuster dir -u http://10.10.1.5", binary: "gobuster", duration_ms: 400_000, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0007", alignment: "detour" },
+        { seq: base + 1, cmd: "ffuf -u http://10.10.1.5/FUZZ", binary: "ffuf", duration_ms: 10_000, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0007", alignment: "match" },
+      );
+    }
+    const { general } = buildPhaseAudits(withSlowRecovery);
+    expect(general.some((g) => g.id === "recovery-slow")).toBe(true);
+  });
+
   it("routes an unplaceable coaching step (Tactics, no evidence) to the General bucket", () => {
     const orphan = { action: "Trim ~5 min of detours", why: "low-yield paths", category: "Tactics" as const, evidence_seq: null };
     const withOrphan = { ...report, coaching: { ...report.coaching, next_steps: [...report.coaching.next_steps, orphan] } };

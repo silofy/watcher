@@ -13,6 +13,7 @@ import {
 } from "./metrics";
 import type { Episode } from "../types/report";
 import { fmtMinutes } from "./format";
+import { computeGrade } from "./bridge/grade";
 
 const report = fixture as unknown as WatcherReport;
 
@@ -145,5 +146,31 @@ describe("conformance: the engine reproduces the fixture's stored metrics", () =
 describe("determinism", () => {
   it("two runs over the same episodes are byte-identical", () => {
     expect(computeMetrics(report)).toEqual(computeMetrics(report));
+  });
+});
+
+describe("analysis signals wiring (schema v1.3)", () => {
+  it("adds analysis fields without changing existing metrics or the grade", () => {
+    const before = computeGrade(report);
+    const m = computeMetrics(report);
+    expect(typeof m.methodology_coverage_pct).toBe("number");
+    expect(typeof m.focus_discipline_pct).toBe("number");
+    expect(m.recovery_median_ms === null || typeof m.recovery_median_ms === "number").toBe(true);
+    // existing fields still match the fixture's stored metrics (non-tautological: compares
+    // computed output to a value baked into the fixture, not to itself):
+    expect(round(m.objective_coverage_pct)).toBe(report.metrics.objective_coverage_pct);
+    // grade unchanged when the three new v1.3 analysis fields are actually present on metrics
+    // (grade.ts must keep ignoring them). Spreading `report.metrics` alone would be vacuous —
+    // the fixture's metrics never carry these fields — so splice in `m`'s values explicitly.
+    const withAnalysis: WatcherReport = {
+      ...report,
+      metrics: {
+        ...report.metrics,
+        methodology_coverage_pct: m.methodology_coverage_pct,
+        focus_discipline_pct: m.focus_discipline_pct,
+        recovery_median_ms: m.recovery_median_ms,
+      },
+    };
+    expect(computeGrade(withAnalysis)).toEqual(before);
   });
 });

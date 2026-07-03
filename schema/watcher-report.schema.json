@@ -7,7 +7,7 @@
   "required": ["schema_version", "session", "episodes", "phases", "golden_dag", "metrics", "coaching", "redaction_profile"],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "enum": ["1.0", "1.1", "1.2"] },
+    "schema_version": { "enum": ["1.0", "1.1", "1.2", "1.3"] },
 
     "session": {
       "type": "object",
@@ -207,7 +207,10 @@
         "technique_breadth": { "type": "integer", "minimum": 0, "description": "Count of distinct MITRE techniques touched." },
         "ukc_coverage_pct": { "type": "number", "minimum": 0, "maximum": 100, "description": "Distinct UKC phases reached vs. those the intended path requires (schema v1.1)." },
         "ukc_progression": { "type": "number", "minimum": 0, "maximum": 100, "description": "Share of UKC-phase transitions that advance rather than backtrack (schema v1.1)." },
-        "weakness_breadth": { "type": "integer", "minimum": 0, "description": "Count of distinct CWE weakness classes exploited (schema v1.1)." }
+        "weakness_breadth": { "type": "integer", "minimum": 0, "description": "Count of distinct CWE weakness classes exploited (schema v1.1)." },
+        "methodology_coverage_pct": { "type": "number", "minimum": 0, "maximum": 100, "description": "Share of the expected methodology checklist actually touched (schema v1.3)." },
+        "focus_discipline_pct": { "type": "number", "minimum": 0, "maximum": 100, "description": "Share of active time spent on-path vs. detours (schema v1.3)." },
+        "recovery_median_ms": { "type": ["integer", "null"], "minimum": 0, "description": "Median time to recover from a stuck/loop episode (schema v1.3)." }
       }
     },
 

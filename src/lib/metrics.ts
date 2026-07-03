@@ -15,6 +15,9 @@
 import type { Episode, WatcherReport } from "../types/report";
 import { ukcCoverage, ukcProgression, weaknessBreadth } from "./pipeline/frameworks";
 import { isOnTarget } from "./pipeline/mitre";
+import { computeMethodology } from "./analysis/methodology";
+import { computeFocus } from "./analysis/focus";
+import { computeRecovery } from "./analysis/recovery";
 
 /**
  * Per-lab loudness baseline the summed noise is normalized against (brief §6.1):
@@ -185,6 +188,9 @@ export interface ComputedMetrics {
   weakness_breadth: number;
   p75_gap_ms: number;
   efficiency_by_tactic: Record<string, number>;
+  methodology_coverage_pct: number;
+  focus_discipline_pct: number;
+  recovery_median_ms: number | null;
 }
 
 /** The single deterministic computation the UI and the conformance test both call. */
@@ -232,6 +238,9 @@ export function computeMetrics(report: WatcherReport): ComputedMetrics {
     weakness_breadth: weaknessBreadth(episodes),
     p75_gap_ms: thinkBaselineP75(episodes),
     efficiency_by_tactic: efficiencyByTactic(episodes),
+    methodology_coverage_pct: computeMethodology(report).coverage_pct,
+    focus_discipline_pct: computeFocus(report).discipline_pct,
+    recovery_median_ms: computeRecovery(report).median_ms,
   };
 }
 
