@@ -12,7 +12,8 @@ pub struct Provenance {
     pub redaction_method: String,
     /// host -> vm -> container provenance, e.g. "host" or "cloud:htb:pwnbox".
     pub context_path: String,
-    /// the capturing surface, e.g. "conpty" | "unix-pty" | "ttyd".
+    /// the neutral CTF/lab platform this capture belongs to (from `--platform`), e.g.
+    /// "htb" | "thm" | "offsec" | "immersive" | "local" (default).
     pub platform: String,
 }
 

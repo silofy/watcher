@@ -24,8 +24,8 @@ Verified on Windows 11 (ConPTY, Rust 1.96 MSVC). Sample output (one `command` + 
 `output` envelope per step):
 
 ```json
-{"source":"local_pty","session_uuid":"…","seq":1,"ts_utc_us":1781783082024729,"kind":"command","payload":{"cmd":"whoami"},"provenance":{"boundary_confidence":0.8,"redaction_method":"none","context_path":"host","platform":"conpty"}}
-{"source":"local_pty","session_uuid":"…","seq":1,"ts_utc_us":1781783082147198,"kind":"output","payload":{"stream":"stdout","text":"desktop-d9n33i8\\tiago peter","line_count":1},"provenance":{"boundary_confidence":0.8,"redaction_method":"none","context_path":"host","platform":"conpty"}}
+{"source":"local_pty","session_uuid":"…","seq":1,"ts_utc_us":1781783082024729,"kind":"command","payload":{"cmd":"whoami"},"provenance":{"boundary_confidence":0.8,"redaction_method":"none","context_path":"host","platform":"local"}}
+{"source":"local_pty","session_uuid":"…","seq":1,"ts_utc_us":1781783082147198,"kind":"output","payload":{"stream":"stdout","text":"desktop-d9n33i8\\tiago peter","line_count":1},"provenance":{"boundary_confidence":0.8,"redaction_method":"none","context_path":"host","platform":"local"}}
 ```
 
 ## The platform-abstraction seam
@@ -65,6 +65,20 @@ cargo run --manifest-path crates/capture/Cargo.toml -- --interactive      # live
 Interactive mode tees real stdin↔PTY in raw mode, forwards terminal resizes to the PTY (the
 cross-platform stand-in for SIGWINCH), and reconstructs the commands from the OSC 133 markers on
 exit (`extract_sessions`). It needs a real TTY, so it's driven by hand, not in CI.
+
+## Neutral platform declaration
+
+`--platform <id>` (htb|thm|offsec|immersive|local, default `local`) and `--target <name>` let a
+capture declare its lab/CTF platform and box name without hardcoding HTB. They're additive:
+`--machine <name>` keeps working unchanged as the HTB alias for `--target`, and omitting
+`--platform` leaves `context_path`/`provenance.platform` exactly as before (`"host"` / `"local"`).
+Passing `--platform` sets `provenance.platform` on every emitted envelope and (unless `--context`
+is given explicitly) folds the platform into `context_path` as `cloud:<platform>:openvpn`.
+
+```bash
+watcher-capture --attach --platform thm --target Blue   # neutral: THM box "Blue"
+watcher-capture --attach --machine Forge                # unchanged: HTB alias still works
+```
 
 ## In-VM daemon (§5.2) — capturing inside a pixel-streamed box
 
