@@ -35,6 +35,17 @@ describe("progressSummary", () => {
     expect(Math.round(s.rootedRate)).toBe(67);
     expect(s.platforms.sort()).toEqual(["htb", "thm"]);
   });
+
+  it("computes medianGrade as the rounded average of the two middle values (even count)", () => {
+    const pts = progressSeries([
+      card({ id: "a", grade: 60 }),
+      card({ id: "b", ended_at: "2026-02-01T00:00:00Z", grade: 81 }),
+      card({ id: "c", ended_at: "2026-03-01T00:00:00Z", grade: 90 }),
+      card({ id: "d", ended_at: "2026-04-01T00:00:00Z", grade: 100 }),
+    ]);
+    const s = progressSummary(pts);
+    expect(s.medianGrade).toBe(Math.round((81 + 90) / 2));
+  });
 });
 
 describe("progressPath", () => {
@@ -45,5 +56,14 @@ describe("progressPath", () => {
   });
   it("returns empty string for < 2 non-null values", () => {
     expect(progressPath([null, 5], 100, 20)).toBe("");
+  });
+  it("breaks the line at an internal null, producing two subpaths", () => {
+    const d = progressPath([10, null, 30], 100, 20, 0, 100);
+    expect((d.match(/M/g) || []).length).toBe(2);
+  });
+  it("keeps a contiguous run as a single subpath", () => {
+    const d = progressPath([0, 50, 100], 100, 20, 0, 100);
+    expect((d.match(/M/g) || []).length).toBe(1);
+    expect(d).toContain("L");
   });
 });

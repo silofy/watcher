@@ -33,19 +33,22 @@ export function progressSummary(points: ProgressPoint[]): ProgressSummary {
   };
 }
 
-/** An SVG path over a value series scaled into [0,width]×[0,height] (y inverted). Nulls break the line;
- *  needs ≥2 non-null points to draw anything. Pure/deterministic. */
+/** An SVG path over a value series scaled into [0,width]×[0,height] (y inverted). Each contiguous
+ *  run of non-null values is its own subpath; nulls break the line (no bridging across gaps).
+ *  Needs ≥2 non-null points total to draw anything. Pure/deterministic. */
 export function progressPath(values: (number | null)[], width: number, height: number, min = 0, max = 100): string {
   const n = values.length;
   if (n < 2) return "";
   const span = max - min || 1;
   const pts: string[] = [];
   let drawn = 0;
+  let inRun = false;
   values.forEach((v, i) => {
-    if (v == null) { return; }
+    if (v == null) { inRun = false; return; }
     const x = (i / (n - 1)) * width;
     const y = height - ((v - min) / span) * height;
-    pts.push(`${pts.length === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`);
+    pts.push(`${inRun ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`);
+    inRun = true;
     drawn++;
   });
   return drawn >= 2 ? pts.join(" ") : "";
