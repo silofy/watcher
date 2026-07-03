@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeMethodology } from "./methodology";
+import { computeMethodology, topUnmetCheck } from "./methodology";
 import type { WatcherReport, Episode, Finding } from "../../types/report";
 
 const ep = (o: Partial<Episode> & { seq: number }): Episode => ({ cmd: "", binary: "", duration_ms: 0, gap_before_ms: 0, actor: "machine_bound", tactic: "TA0007", ...o });
@@ -79,5 +79,43 @@ describe("computeMethodology", () => {
     );
     // evidence_seq depends on first-occurrence-in-array for port-derived checks, so it may legitimately
     // differ between orderings; only applicable/done/coverage are asserted equal above.
+  });
+});
+
+describe("topUnmetCheck", () => {
+  it("returns the smb_enum check when 445 is found and no SMB tool was used", () => {
+    const r = rep([ep({ seq: 0, cmd: "nmap -sV -sC 10.10.1.5", binary: "nmap", tactic: "TA0007" })],
+      [
+        { id: "port:445-tcp", kind: "port", value: "445/tcp", source_seq: 0 },
+        { id: "version:1", kind: "version", value: "smb 3.1", source_seq: 0 },
+      ]);
+    const top = topUnmetCheck(r);
+    expect(top).not.toBeNull();
+    expect(top!.id).toBe("smb_enum");
+    expect(top!.applicable).toBe(true);
+    expect(top!.done).toBe(false);
+    expect(top!.evidence_seq).toBe(0);
+  });
+
+  it("returns null when every applicable check is done", () => {
+    const golden: WatcherReport["golden_dag"] = [
+      { objective: "Get a foothold", tactic: "TA0002", satisfied_by: [], user_satisfied_by_seq: 5 },
+    ];
+    const r = rep(
+      [
+        ep({ seq: 0, cmd: "nmap -sV -sC 10.10.1.5", binary: "nmap", tactic: "TA0007" }),
+        ep({ seq: 1, cmd: "gobuster dir -u http://10.10.1.5", binary: "gobuster", tactic: "TA0007" }),
+        ep({ seq: 2, cmd: "enum4linux-ng 10.10.1.5", binary: "enum4linux-ng", tactic: "TA0007" }),
+        ep({ seq: 5, cmd: "id", binary: "id", tactic: "TA0002" }),
+        ep({ seq: 6, cmd: "./linpeas.sh", binary: "linpeas.sh", tactic: "TA0004" }),
+      ],
+      [
+        { id: "port:445-tcp", kind: "port", value: "445/tcp", source_seq: 0 },
+        { id: "port:80-tcp", kind: "port", value: "80/tcp", source_seq: 0 },
+        { id: "version:1", kind: "version", value: "nginx 1.18", source_seq: 0 },
+      ],
+      golden,
+    );
+    expect(topUnmetCheck(r)).toBeNull();
   });
 });
