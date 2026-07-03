@@ -11,7 +11,7 @@
 import type { Episode, Finding, GoldenObjective } from "../../types/report";
 
 /** Negative-yield signals in an output digest — used to tell a detour from valid enumeration. */
-const LOW_YIELD = /\b(no |not found|nothing|0 |zero|unreliable|rate.?limit|rejected|blocked|fail|invalid|denied)/i;
+export const LOW_YIELD = /\b(no |not found|nothing|0 |zero|unreliable|rate.?limit|rejected|blocked|fail|invalid|denied)/i;
 
 function firstWord(s: string): string {
   return s.trim().split(/\s+/)[0]?.replace(/^.*[\\/]/, "") ?? "";
