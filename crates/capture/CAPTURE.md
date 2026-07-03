@@ -79,7 +79,14 @@ to watch. Instead, run the agent **inside** Pwnbox and import the result.
 | `--attach` | stream into a live local session; self-starts one if none is recording (same machine) |
 | `--new` | with `--attach`, skip the join-or-new prompt and force a fresh engagement |
 | `--export <file>` | standalone capture → write a complete report to `<file>` (for Pwnbox) |
-| `--machine <name>` | name the box — identity for `--export` and for a self-started `--attach` (also `--os`, `--difficulty`) |
+| `--machine <name>` | name the box (HTB alias) — identity for `--export` and for a self-started `--attach` (also `--os`, `--difficulty`) |
+| `--platform <id>` | which training platform this run belongs to — `htb`, `thm`, `offsec`, `immersive`, or `local` (default: `local`); stamped onto the report's provenance so the UI resolves the right adapter |
+| `--target <name>` | name the target neutrally — the platform-agnostic alias for `--machine`; if both are given, `--target` wins |
 | `--shell <name>` | shell to watch, by family — `bash`/`zsh`/`sh` or `pwsh`/`powershell` (default: your login shell) |
 | `-i` / `--interactive` | raw capture to NDJSON on stdout (no session file) |
 | `--forward <addr>` | ship envelopes to a daemon `--listen` socket instead of a file |
+
+This document walks the HTB paths specifically since that's the platform with the most capture
+tooling (Pwnbox sync, HTB API write-up fetch), but the agent itself is platform-agnostic — the same
+`--attach`/`--export` flow works unchanged against TryHackMe, OffSec, Immersive Labs, or a local/CTF
+box; just pass `--platform <id> --target <name>` instead of `--machine <name>`.

@@ -1,5 +1,5 @@
 import type { PlatformAdapter } from "./types";
-import type { Target, WatcherReport } from "../../types/report";
+import type { PlatformId, Target, WatcherReport } from "../../types/report";
 import { htbAdapter } from "./htb";
 import { thmAdapter } from "./thm";
 import { offsecAdapter } from "./offsec";
@@ -13,6 +13,13 @@ export { htbAdapter, thmAdapter, offsecAdapter, immersiveAdapter, localAdapter }
 
 // Order matters for ties: HTB before THM so the 10.10.10.x overlap resolves to HTB by default.
 export const ADAPTERS: PlatformAdapter[] = [htbAdapter, thmAdapter, offsecAdapter, immersiveAdapter, localAdapter];
+
+/** Look up an adapter by platform id — the seam call sites (e.g. the write-up gate) use to try a
+ *  target's native intended-path extraction, if the adapter has one, before falling back to
+ *  write-up extraction. Generic over any future adapter; not just HTB/THM. */
+export function adapterFor(id: PlatformId): PlatformAdapter | undefined {
+  return ADAPTERS.find((a) => a.id === id);
+}
 
 /** Highest detect() confidence wins; localAdapter's 0.1 floor guarantees a winner. */
 export function resolveAdapter(ctx: DetectContext): PlatformAdapter {

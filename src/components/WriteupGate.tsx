@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useReport } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { DIFFICULTY_COLOR } from "../lib/machine";
-import { targetOf, thmAdapter } from "../lib/platform";
+import { targetOf, adapterFor } from "../lib/platform";
 import { resolveProvider } from "../lib/llm";
 import { goldenFromText } from "../lib/writeup";
 import { fetchWriteupUrl, isDesktop } from "../lib/net";
@@ -40,10 +40,13 @@ export function WriteupGate() {
           return;
         }
       }
-      if (isThm) {
-        const tree = await thmAdapter.intendedPath!({ target, raw: content });
+      // Try the target's native intended-path first (any adapter that has one — currently just THM's
+      // task list) before falling back to write-up extraction below.
+      const adapter = adapterFor(target.platform);
+      if (adapter?.intendedPath) {
+        const tree = await adapter.intendedPath({ target, raw: content });
         if (tree) {
-          applyGoldenDag(tree, { source: "thm-tasks", confidence: 0.7 });
+          applyGoldenDag(tree, { source: adapter.id === "thm" ? "thm-tasks" : `${adapter.id}-native`, confidence: 0.7 });
           // golden_dag is now populated → the gate condition clears and the full debrief renders
           return;
         }

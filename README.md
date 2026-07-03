@@ -1,8 +1,9 @@
 # The Watcher
 
 A local-first **flight-data-recorder for offensive-security practice**. It records the commands you
-run against a box (HTB, labs, CTFs) and turns them into a graded debrief — a Lighthouse-style audit
-per phase: what you achieved, where you wasted time, and what to do better next time.
+run against a target on **any training platform** — Hack The Box, TryHackMe, OffSec, Immersive Labs,
+or a local/CTF box — and turns them into a graded debrief — a Lighthouse-style audit per phase: what
+you achieved, where you wasted time, and what to do better next time.
 
 Your run is read through three frameworks at once: **MITRE ATT&CK** for *what* you did, the **Unified
 Kill Chain** for the *order* it should happen in (so backtracking and clean progression are
@@ -124,9 +125,27 @@ cd crates/capture && cargo build --release
 ./target/release/watcher-capture --attach --machine <box>
 ```
 
-Commands stream into the app live; `exit` to stop. In-app **Install** tab walks through both capture
-paths (your own VM over VPN, or in Pwnbox). Full guide:
+Commands stream into the app live; `exit` to stop. Pass `--platform <htb|thm|offsec|immersive|local>
+--target <name>` to name the target neutrally instead of (or alongside) `--machine` — it's how a
+capture declares which platform it belongs to without hardcoding HTB. In-app **Install** tab walks
+through both capture paths (your own VM over VPN, or in Pwnbox). Full guide:
 **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
+
+## Adding a platform
+
+The Watcher grades any run the same way; a "platform" is just a **detect + identify** seam over that
+neutral pipeline. Adding one is a single adapter file in `src/lib/platform/` — see `htb.ts` or
+`thm.ts` for the shape (`id`, `label`, `kindNoun`, `detect()`, `identify()`, and an optional
+`intendedPath()` if the platform has a structured task list to parse natively instead of falling back
+to write-up extraction). Register it in `ADAPTERS` in `src/lib/platform/index.ts`, then run
+`npm run platform:conformance` — every adapter in `ADAPTERS` must pass `checkAdapter()`
+(`src/lib/platform/conformance.ts`) before it's wired in.
+
+Today only TryHackMe has a native intended-path — a deterministic parse of the room's pasted task
+list, no model involved. HTB, OffSec, and Immersive Labs all have detection and identity, but no
+native intended-path yet: they grade against a write-up run through the (local or cloud) model
+instead. HTB additionally has automated write-up fetching (0xdf's sitemap, the official write-up via
+your HTB API token) — convenience for *getting* a write-up, not a substitute for a native path.
 
 ## How it works
 
