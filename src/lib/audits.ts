@@ -16,6 +16,9 @@ import { activeMs, wasteByTactic, type WasteBreakdown } from "./metrics";
 import { normalizeCoaching } from "./coaching";
 import { runWeaknesses } from "./pipeline/frameworks";
 import { isOnTarget } from "./pipeline/mitre";
+import { computeMethodology } from "./analysis/methodology";
+import { computeFocus } from "./analysis/focus";
+import { computeRecovery } from "./analysis/recovery";
 
 export type AuditKind = "insight" | "manual" | "pass";
 
@@ -103,6 +106,19 @@ const CATEGORY_TACTIC: Record<CoachCategory, string | null> = {
   Tactics: null,
   Recap: null,
 };
+
+/** Home coaching category for a MITRE tactic, for the methodology checks (which come with a tactic,
+ *  not a category) to get the same colored chip as coaching-sourced insights. Covers the tactics the
+ *  methodology rules actually target; a tactic with no natural category gets no chip. */
+const TACTIC_CATEGORY: Record<string, CoachCategory | undefined> = {
+  TA0007: "Recon",
+  TA0001: "Access",
+  TA0004: "PrivEsc",
+};
+
+/** Slow-recovery threshold for the general coaching note: above this, getting back on track after a
+ *  dead end or loop is taking long enough to call out explicitly. */
+const SLOW_RECOVERY_MS = 5 * 60 * 1000;
 
 /** Clean display names for the objectives the deterministic pipeline knows about, so the checklist
  *  reads like prose. Unknown slugs (e.g. from a freshly-extracted write-up) fall back to a humanized
@@ -307,6 +323,54 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
         "A long interactive `ssh` session was recorded as a single block — the enumeration, privesc, and flag reads you ran on the box aren't in this debrief. Run remote commands non-interactively (`ssh host 'cmd'`), or let the capture agent tap the session, for per-command detail.",
       evidence_seq: bigSsh.seq,
       category: "Tactics",
+    });
+  }
+
+  // ── coaching insights from the methodology / focus / recovery analysis engines ─────────────────
+  // Same engines that already feed the run's headline metrics — surfaced here as per-check, per-hole
+  // guidance instead of a single rolled-up percentage. Appended, so nothing built above regresses.
+  const phaseByTactic = new Map(phaseAudits.map((p) => [p.tactic, p]));
+
+  const methodology = computeMethodology(report);
+  for (const check of methodology.checks) {
+    if (!check.applicable || check.done) continue;
+    const item: AuditItem = {
+      id: `methodology-${check.id}`,
+      kind: "insight",
+      title: check.label,
+      detail: check.hint,
+      evidence_seq: check.evidence_seq,
+      category: TACTIC_CATEGORY[check.tactic],
+    };
+    (phaseByTactic.get(check.tactic)?.insights ?? general).push(item);
+  }
+
+  const focus = computeFocus(report);
+  if (focus.rabbit_holes.length > 0) {
+    let worst = focus.rabbit_holes[0];
+    for (const h of focus.rabbit_holes) if (h.wasted_ms > worst.wasted_ms) worst = h;
+    const attempts = episodes.filter(
+      (e) => e.seq >= worst.start_seq && e.seq <= worst.end_seq && e.binary.toLowerCase() === worst.binary,
+    ).length;
+    const item: AuditItem = {
+      id: "focus-rabbit-hole",
+      kind: "insight",
+      title: `Rabbit hole: ${attempts} low-yield \`${worst.binary}\` attempts — step back and enumerate`,
+      detail: "Sustained low-yield attempts on the same tool with no new lead — a signal to pause and re-enumerate rather than keep grinding.",
+      savings_ms: worst.wasted_ms,
+      evidence_seq: worst.start_seq,
+    };
+    const ownerTactic = bySeq.get(worst.start_seq)?.tactic;
+    ((ownerTactic && phaseByTactic.get(ownerTactic)?.insights) || general).push(item);
+  }
+
+  const recovery = computeRecovery(report);
+  if (recovery.median_ms != null && recovery.median_ms > SLOW_RECOVERY_MS) {
+    general.push({
+      id: "recovery-slow",
+      kind: "insight",
+      title: `Slow recovery from stuck moments — median ${Math.round(recovery.median_ms / 60000)} min to get back on track`,
+      detail: "After a dead end or a loop, it took a while before the next real advance. Time-box detours more tightly: if a path isn't paying off in a few minutes, switch approaches.",
     });
   }
 
