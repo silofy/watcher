@@ -1,10 +1,10 @@
 /**
  * Deterministic, key-sorted JSON serialization — the seed `attest.ts` hashes to produce an
- * attestation's `hash`. Split into its own module (no `node:crypto`, no Node-only APIs) so it can be
- * imported from browser code too: the debrief's "Sync to institution" download (`Assessment.tsx`)
- * reuses it with Web Crypto (`crypto.subtle`) to compute the exact same content hash `npm run attest`
- * would sign, without pulling `node:crypto` into the client bundle (Vite/Rollup externalizes it and
- * the production build fails hard the moment anything importing it is reachable from browser code).
+ * attestation's `hash`. Split into its own module (no `node:crypto`, no Node-only APIs) so the same
+ * canonicalization can be reused anywhere a matching hash is needed without pulling in `attest.ts`'s
+ * Node-only surface. Today its only importer is `attest.ts` itself, used by the `npm run attest` /
+ * bundle-signing path (`scripts/attest.tsx`, `bundle.ts`) that produces the hash-chained attestation
+ * handed to an institution — not anything reachable from the browser app.
  */
 export function canonical(v: unknown): string {
   if (v === null || typeof v !== "object") return JSON.stringify(v);

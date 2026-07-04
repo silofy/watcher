@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useReport } from "./store/report";
 import { PhaseAudit } from "./components/PhaseAudit";
 import { IdentityBar } from "./components/IdentityBar";
@@ -91,11 +91,25 @@ export function App() {
 
   // The Evidence drawer starts closed; a deep-link reveal (a "step N ↗" click from PhaseAudit,
   // coaching, or GhostCard) must force it open so DeepDive's log-tab-and-scroll effect has a
-  // visible panel to scroll — otherwise the scroll is a no-op inside a closed <details>. Guarded
-  // on nonce > 0 so it doesn't force-open on initial mount (revealNonce starts at 0).
+  // visible panel to scroll — otherwise the scroll is a no-op inside a closed <details>.
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+
+  // `revealNonce` is global on the store and never resets on session switch (App mounts once,
+  // with no key), so it stays > 0 for the tab's whole life once any reveal has fired. Force-closed
+  // on every session change so a fresh (or re-opened) report never inherits a prior session's
+  // force-opened drawer.
   useEffect(() => {
-    if (revealNonce > 0) setEvidenceOpen(true);
+    setEvidenceOpen(false);
+  }, [report.session.uuid]);
+
+  // Open only on a genuine reveal within the current session — i.e. an actual increment of
+  // `revealNonce`, not merely a render where it happens to already be > 0 (initial mount, or a
+  // session switch that leaves the nonce unchanged from before).
+  const lastRevealNonce = useRef(revealNonce);
+  useEffect(() => {
+    const prev = lastRevealNonce.current;
+    lastRevealNonce.current = revealNonce;
+    if (revealNonce > 0 && revealNonce !== prev) setEvidenceOpen(true);
   }, [revealNonce]);
 
   return (
@@ -201,7 +215,7 @@ export function App() {
             </Collapse>
 
             {/* 6. session window */}
-            <Collapse name="debrief-details" title="Session window" subtitle="session facts · retroactively trim the report">
+            <Collapse title="Session window" subtitle="session facts · retroactively trim the report">
               <SessionFacts />
               <TrimControl />
             </Collapse>
