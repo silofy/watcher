@@ -50,25 +50,37 @@ recorded before the methodology engine existed just show a gap in that line inst
 
 ## The debrief, section by section
 
-When the run ends, the live panel settles into a graded report. Every view below is from that same
-Forge playthrough — nothing is a mock-up. A fuller visual redesign of this debrief is a deliberate
-next pass, not this one.
+When the run ends, the live panel settles into a **single-column, lesson-first report**. The reading
+order is the hierarchy: the verdict, then the one thing to fix, then the detail — arranged so "what do
+I do differently next time" is answered before you scroll.
 
-### Headline — box, stealth, and grade
+> **Note — the screenshots below predate the current redesign.** Each *view* is still accurate on its
+> own, but the debrief now arranges them lesson-first (as described here) rather than the older stacked
+> layout the images show. Fresh full-page captures of the redesigned debrief are pending a browser
+> capture pass.
+
+### Verdict band — box, platform, grade
 
 ![Identity and headline scores](docs/screenshots/identity.png)
 
-The machine, its difficulty, and the two numbers that matter at a glance: **Stealth** and **Grade**,
-each tinted by quality.
+The target and its platform (HTB · TryHackMe · OffSec · Immersive · local), difficulty, whether you
+rooted it, and the two numbers that matter at a glance: **Stealth** and **Grade**, each tinted by
+quality.
 
-### Run summary — the run at a glance
+### The one lesson — the single most useful takeaway
 
-![Run summary bento](docs/screenshots/run-summary.png)
+Leading the report is one prominent, evidence-backed lesson — not a recap. It's the highest-value thing
+to change next time, picked deterministically from the run's own signals: the biggest **Ghost
+late-pivot** ("you unlocked SMB early but acted on it late"), else the top **methodology miss** ("445
+was open and you never enumerated it"), else the worst **rabbit hole**, else the first actionable
+coaching step. It deep-links to the step it's about.
 
-The same bento the live panel used, now settled: the **kill-chain trajectory** (advances green,
-backtracks red), the **stealth burn** stacking toward the lab baseline, **key moments** (flags with
-timing, loudest tool, objectives), the **run timeline**, and **where you lost time**. Every tile links
-into the matching detail below.
+### What you'd do differently — vs the write-up
+
+![Intended-path comparison](docs/screenshots/path-comparison.png)
+
+Leads with how closely you retraced the intended path — **"you followed N% of the write-up's intended
+steps"** — then the breakdown: matched steps, alternative methods, out-of-order moves, and skips.
 
 ### Phase audit — one card per MITRE phase
 
@@ -77,13 +89,6 @@ into the matching detail below.
 Lighthouse-style. Each phase (Discovery → Initial Access → … → Privilege Escalation) gets an efficiency
 ring, the objectives reached, its ATT&CK techniques, and the highest-impact next moves — each with an
 estimated time saved.
-
-### What you'd do differently — vs the write-up
-
-![Intended-path comparison](docs/screenshots/path-comparison.png)
-
-Your route diffed against the write-up's intended path: matched steps, alternative methods, out-of-order
-moves, and skips. Here: **90% coverage** — the only miss was the cron-job check (`pspy`).
 
 ### The Ghost — you vs. the optimal-from-your-state line
 
@@ -103,8 +108,9 @@ never feeds the letter grade.
 
 The radar plots the active rubric's weighted dimensions — six for older reports (**v1**), eight for
 reports that carry methodology/focus signals (**v2**) — with the letter in its center; the table shows
-the score × weight → points math behind it. Independence is a gate routed to a human, not an
-auto-verdict.
+the score × weight → points math behind it, and **hovering any metric name explains what it measures
+and its scale** (e.g. "technique breadth — distinct ATT&CK techniques, target of 12"). Independence is
+a gate routed to a human, not an auto-verdict.
 
 **Methodology signals.** Three deterministic checks run alongside the rubric: **methodology coverage**
 (did you run the standard check for each phase you touched — SUID sweep, cron check, and so on),
@@ -116,35 +122,48 @@ remains coaching-only: it surfaces in the Phase Audit, informing the write-up ra
 All three are exposed in the report JSON as `metrics.methodology_coverage_pct`, `focus_discipline_pct`,
 and `recovery_median_ms`.
 
-### Kill chain & frameworks — ATT&CK · UKC · CWE
+### Evidence & detail — the raw record, one collapsed drawer
+
+The full detail views live behind a single **Evidence & detail** drawer (collapsed by default, so the
+report leads with the lesson, not the raw log). Inside, they're **tabs** rather than a long accordion —
+and a "step N" link anywhere in the report opens the drawer and jumps to that command.
+
+#### Kill chain & frameworks — ATT&CK · UKC · CWE
 
 ![Frameworks](docs/screenshots/frameworks.png)
 
 Three lenses on the same run: ATT&CK says *what*, the Unified Kill Chain adds the *order* (so
-backtracking is visible), and CWE names the *weakness class* exploited.
+backtracking is visible), and CWE names the *weakness class* exploited. Every technique id is
+hoverable — name, plain-English description, and a link to the MITRE page.
 
-### Attack timeline — the phases on one axis
+#### Attack timeline — the phases on one axis
 
 ![Attack timeline](docs/screenshots/attack-timeline.png)
 
 The MITRE phase ribbon tinted by efficiency, over a host / on-target episode ribbon — drag to zoom,
 scrub the playhead, hover any command.
 
-### Stealth & noise — the exposure curve
+#### Stealth & noise — the exposure curve
 
 ![Stealth and noise](docs/screenshots/stealth.png)
 
 Cumulative noise climbing toward the lab baseline, the rolling-exposure decay, and a ranked list of
 your loudest moments.
 
-### Where you lost time — dead-ends, loops, stalls
+#### Where you lost time — dead-ends, loops, stalls
 
 ![Deviation timeline](docs/screenshots/deviation-timeline.png)
 
 Self-relative waste — the spikes where a dead-end, a loop, or a stall cost you time, with the biggest
 sinks called out.
 
-### Command log — a DVR of the run
+#### Findings — the evidence ledger
+
+Structured findings pulled from your output — open ports, services/versions, URLs, credentials, hashes,
+flags — each linked to the command that surfaced it and the later steps that used it. A captured flag
+is marked **proven** only when it was actually observed, so "reached" and "proven" don't blur.
+
+#### Command log — a DVR of the run
 
 ![Command log](docs/screenshots/command-log.png)
 
