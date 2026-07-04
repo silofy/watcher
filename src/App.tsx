@@ -69,11 +69,16 @@ function HeroLesson() {
     </>
   );
   if (lesson.evidence_seq == null) {
-    return <div className="rounded-xl border border-signal/40 bg-signal/10 px-6 py-5">{body}</div>;
+    return (
+      <div data-shot="one-lesson" className="rounded-xl border border-signal/40 bg-signal/10 px-6 py-5">
+        {body}
+      </div>
+    );
   }
   return (
     <button
       type="button"
+      data-shot="one-lesson"
       onClick={() => reveal(lesson.evidence_seq!)}
       className="w-full rounded-xl border border-signal/40 bg-signal/10 px-6 py-5 text-left transition-colors hover:bg-signal/15"
       title={`jump to step #${lesson.evidence_seq}`}
@@ -210,6 +215,7 @@ export function App() {
               subtitle="the raw record — timeline, stealth, frameworks, log, findings"
               open={evidenceOpen}
               onToggle={setEvidenceOpen}
+              summaryDataShot="evidence-drawer-summary"
             >
               <DeepDive />
             </Collapse>

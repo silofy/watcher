@@ -54,11 +54,6 @@ When the run ends, the live panel settles into a **single-column, lesson-first r
 order is the hierarchy: the verdict, then the one thing to fix, then the detail — arranged so "what do
 I do differently next time" is answered before you scroll.
 
-> **Note — the screenshots below predate the current redesign.** Each *view* is still accurate on its
-> own, but the debrief now arranges them lesson-first (as described here) rather than the older stacked
-> layout the images show. Fresh full-page captures of the redesigned debrief are pending a browser
-> capture pass.
-
 ### Verdict band — box, platform, grade
 
 ![Identity and headline scores](docs/screenshots/identity.png)
@@ -91,6 +86,8 @@ ring, the objectives reached, its ATT&CK techniques, and the highest-impact next
 estimated time saved.
 
 ### The Ghost — you vs. the optimal-from-your-state line
+
+![The Ghost — you vs. the optimal-from-your-state line](docs/screenshots/ghost.png)
 
 Where a run has an intended path, **The Ghost** derives what the optimal line would have looked like
 from *your* findings at each moment — not a live agent replaying the box, a deterministic diff between

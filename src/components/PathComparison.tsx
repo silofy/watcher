@@ -45,6 +45,7 @@ export function PathComparison() {
 
   return (
     <Section
+      dataShot="path"
       title="What you'd do differently"
       subtitle="the intended write-up path vs your route"
       right={

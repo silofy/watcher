@@ -88,7 +88,7 @@ export function IdentityBar() {
   const grade = computeGrade(report);
 
   return (
-    <div className="py-1">
+    <div className="py-1" data-shot="verdict">
       {/* identity + the headline grade */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3.5">

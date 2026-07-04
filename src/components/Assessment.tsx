@@ -65,7 +65,7 @@ export function Assessment() {
   // the grade is a verdict — premature while the capture is live; settle it only when the run ends
   if (isLiveRecording(report)) {
     return (
-      <Section title="Grade" subtitle="the explainable rubric — settles when the run ends">
+      <Section dataShot="grade" title="Grade" subtitle="the explainable rubric — settles when the run ends">
         <p className="text-sm text-faint">
           <span className="animate-pulse" style={{ color: "var(--color-loud)" }}>
             ●
@@ -91,6 +91,7 @@ export function Assessment() {
 
   return (
     <Section
+      dataShot="grade"
       title="Grade"
       subtitle="how your score breaks down — the explainable rubric"
       right={

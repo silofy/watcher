@@ -12,5 +12,18 @@ export default defineConfig({
   build: {
     target: "es2022",
     outDir: "dist",
+    rollupOptions: {
+      output: {
+        // Force a single JS chunk. Rollup otherwise splits a shared chunk (the code behind
+        // src/lib/llm/*, src/lib/pwnbox.ts, etc.'s dynamic import()s) into its own file — fine for
+        // the normal dev-server/Tauri build (both serve dist/assets/* as real files), but it breaks
+        // scripts/export-html.tsx's portable file:// export: that script inlines exactly one JS
+        // asset (`readAsset(".js")`) directly into a <script type="module"> tag, so a runtime
+        // dynamic import() of a second chunk resolves against the *document's* URL (there's no
+        // src="…" to resolve relative to) and always 404s — silently breaking every client
+        // interaction (tabs, the write-up form, live sync) in the exported report.
+        inlineDynamicImports: true,
+      },
+    },
   },
 });
