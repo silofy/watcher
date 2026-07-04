@@ -1,55 +1,8 @@
-import { useState } from "react";
 import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
 import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
-import { minimizedBundle, type AttestationContent } from "../lib/bridge/bundle";
-import { canonical } from "../lib/bridge/canonical";
 import { isLiveRecording } from "../lib/live";
 import { radarPoint, RADAR_GEOMETRY } from "../lib/radar";
-import { Check, ChevronDown } from "./icons";
-
-/**
- * The downloadable, pre-signature artifact: the redacted bundle plus the exact content hash
- * `buildAttestation` (attest.ts) would sign — computed here with Web Crypto instead of node:crypto,
- * since attest.ts itself is Node-only (it's built by the daemon/CLI, which holds the device private
- * key; a browser tab never can — and importing it here would drag `node:crypto` into the client
- * bundle). `canonical` is the same seed function attest.ts hashes, shared via `lib/bridge/canonical.ts`,
- * so this hash matches bit-for-bit what `npm run attest` produces for the same content with no
- * previous link (`prev_hash: null`).
- */
-async function buildDownloadPayload(content: AttestationContent) {
-  const base = { schema_version: content.schema_version, content, prev_hash: null as string | null, signed: false as const };
-  if (typeof crypto === "undefined" || !crypto.subtle) return base;
-  try {
-    const bytes = new TextEncoder().encode(canonical({ prev_hash: null, content }));
-    const digest = await crypto.subtle.digest("SHA-256", bytes);
-    const hash = Array.from(new Uint8Array(digest))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    return { ...base, hash };
-  } catch {
-    return base;
-  }
-}
-
-/** Trigger a browser download of the bundle as a `.json` file — a Blob + `<a download>`, no dep. */
-async function downloadGradeBundle(content: AttestationContent) {
-  if (typeof document === "undefined") return false;
-  const payload = await buildDownloadPayload(content);
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `watcher-grade-bundle-${content.session.uuid}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-  return true;
-}
 
 /** The radar axes ARE the grade's weighted dimensions — chart, math, and letter tell one story.
  *  Methodology + focus only render when the active grade actually carries them (v2 reports); see the
@@ -78,6 +31,20 @@ const RUBRIC_LABELS: Record<RubricKey, string> = {
   methodology: "Methodology",
   focus: "Focus discipline",
 };
+
+/** What each dimension means and what it's scored against — surfaced as a hover card on the metric
+ *  name (see the `RUBRIC_COLS` row below), mirroring `TechniqueChip`'s hover-card pattern so a reader
+ *  never has to already know what "breadth" or "independence" means to trust the number next to it. */
+const RUBRIC_DESC: Record<RubricKey, string> = {
+  coverage: "Objectives you reached vs. the write-up's intended path (0–100%).",
+  breadth: "Distinct MITRE ATT&CK techniques used, scored against a target of 12.",
+  efficiency: "Share of active time that moved an objective forward — vs. dead-ends, loops, and stalls.",
+  progression: "Kill-chain phase transitions that advanced rather than backtracked.",
+  discipline: "Stealth — how quiet you stayed vs. this box's loud reference-solve baseline.",
+  methodology: "Disciplined checks your findings made relevant that you performed (e.g. found 445 → enumerate SMB).",
+  focus: "Focus discipline — the inverse of time lost rabbit-holing on one low-yield surface.",
+  independence: "Integrity signal — routed to a human reviewer, never an automated verdict.",
+};
 // The metric-label and bar columns are both `minmax(0, …)` — an explicit 0 minimum, so the track
 // (and the `truncate`d label inside it) can shrink rather than forcing a ~11rem floor that would
 // force a horizontal scrollbar on narrower widths. The three numeric columns stay fixed — they're
@@ -94,12 +61,6 @@ const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
 export function Assessment() {
   const s = useReport();
   const { report } = s;
-  // detail behind the "Sync to institution" action — collapsed by default so the rail reads as grade
-  // + radar + rubric + one action, not an essay; the trust copy stays in the DOM (just visually
-  // hidden) so it's one click away rather than gone. Declared before the live-recording return so hook
-  // order stays stable across renders.
-  const [showSyncDetail, setShowSyncDetail] = useState(false);
-  const [syncState, setSyncState] = useState<"idle" | "done" | "error">("idle");
 
   // the grade is a verdict — premature while the capture is live; settle it only when the run ends
   if (isLiveRecording(report)) {
@@ -116,19 +77,7 @@ export function Assessment() {
   }
 
   const grade = computeGrade(report);
-  const bundle = minimizedBundle(report, grade);
   const flagged = grade.independence_gate.flagged;
-  const satisfied = bundle.evidence_digests.filter((d) => d.satisfied).length;
-
-  async function handleSync() {
-    try {
-      const ok = await downloadGradeBundle(bundle);
-      setSyncState(ok ? "done" : "error");
-    } catch {
-      setSyncState("error");
-    }
-    setTimeout(() => setSyncState("idle"), 2000);
-  }
 
   // Render exactly the dimensions the ACTIVE grade carries: v1 reports have 6 components (no
   // methodology/focus keys at all — see computeGrade), v2 have 8. Independence is additionally
@@ -224,7 +173,18 @@ export function Assessment() {
               const barColor = gate ? "var(--color-loud)" : tierColor(c.raw);
               return (
                 <div key={k} className="grid items-center gap-2 px-1.5 py-1.5 text-sm" style={{ gridTemplateColumns: RUBRIC_COLS }}>
-                  <span className="min-w-0 truncate text-muted">{RUBRIC_LABELS[k]}</span>
+                  <span className="group/rubric relative inline-block min-w-0 max-w-full">
+                    <span className="block cursor-help truncate text-muted underline decoration-dotted decoration-faint/60 underline-offset-2 transition-colors group-hover/rubric:text-fg">
+                      {RUBRIC_LABELS[k]}
+                    </span>
+                    <span
+                      role="tooltip"
+                      className="invisible absolute left-0 top-full z-30 mt-2 w-64 rounded-lg border border-edge bg-panel p-3 text-left opacity-0 shadow-xl transition-opacity duration-150 group-hover/rubric:visible group-hover/rubric:opacity-100"
+                    >
+                      <span className="block font-display text-sm font-semibold text-fg">{RUBRIC_LABELS[k]}</span>
+                      <span className="mt-1.5 block text-xs leading-relaxed text-muted">{RUBRIC_DESC[k]}</span>
+                    </span>
+                  </span>
                   <div className="min-w-0 h-1.5 overflow-hidden rounded-full bg-edge">
                     <div className="h-full rounded-full" style={{ width: `${c.raw}%`, backgroundColor: barColor }} />
                   </div>
@@ -254,77 +214,6 @@ export function Assessment() {
           ? "Recovery is surfaced as coaching — not yet weighted into the grade."
           : "Methodology, focus, and recovery are surfaced as coaching — not yet weighted into the grade."}
       </p>
-
-      {/* what actually leaves the machine on sync — a single compact action, not an inline consent
-          essay. Clicking the button itself downloads the redacted bundle (a Blob + `<a download>`);
-          the plain-language breakdown (what they receive / never see / the signature) is one click
-          away via the separate details toggle, kept in the DOM (just visually `hidden`) rather than
-          unmounted, so the transparency copy is never actually gone. */}
-      <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-edge bg-ink/50 p-3.5">
-        <p className="text-xs text-muted">
-          Downloads your <span className="text-fg">grade and the {axes.length} scores</span> behind it as an unsigned{" "}
-          <span className="text-fg">.json</span> preview — never your commands, output, or the target IP.
-        </p>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleSync}
-            className="label rounded-full border border-signal/50 px-3 py-1.5 text-signal transition-colors hover:bg-signal/15"
-          >
-            {syncState === "done" ? "Downloaded ✓" : syncState === "error" ? "Download failed" : "Sync to institution"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowSyncDetail((v) => !v)}
-            aria-expanded={showSyncDetail}
-            aria-controls="sync-detail"
-            aria-label="What's in the sync bundle"
-            className="rounded-full border border-edge p-1.5 text-faint transition-colors hover:bg-panel-2 hover:text-fg"
-          >
-            <ChevronDown className="transition-transform duration-200" style={showSyncDetail ? { transform: "rotate(180deg)" } : undefined} />
-          </button>
-        </div>
-      </div>
-
-      <div id="sync-detail" hidden={!showSyncDetail} className="mt-2 rounded-lg border border-edge bg-ink/50 p-4 text-xs">
-        <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-          {/* what they receive */}
-          <div>
-            <div className="label mb-1.5 flex items-center gap-1.5 text-match">
-              <Check size={14} /> They receive
-            </div>
-            <ul className="space-y-1 text-muted">
-              <li>The box: <span className="text-fg">{bundle.session.target_scope}</span> <span className="text-faint">(IP removed)</span></li>
-              <li>Your grade, plus the {axes.length} scores behind it</li>
-              <li>
-                Which objectives you reached — <span className="text-fg">{satisfied} of {bundle.evidence_digests.length}</span>{" "}
-                <span className="text-faint">(just a checkmark per objective, not how you did it)</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* what never leaves */}
-          <div>
-            <div className="label mb-1.5 flex items-center gap-1.5 text-detour">
-              <span>✕</span> They never see
-            </div>
-            <ul className="space-y-1 text-muted">
-              <li>The commands you typed</li>
-              <li>Any command output or files</li>
-              <li>The target's IP address</li>
-            </ul>
-          </div>
-        </div>
-
-        <p className="mt-3 border-t border-edge/60 pt-2.5 text-faint">
-          This download is <span className="text-fg">unsigned</span> — it carries the exact content hash{" "}
-          <span className="mono text-muted">npm run attest</span> will sign, but the signature itself needs the device private
-          key, which only the desktop app / CLI holds (a browser tab never can). Run{" "}
-          <span className="mono text-muted">npm run attest</span> against your session report — or use the desktop app — to
-          produce the signed attestation, so your institution can confirm the grade is genuinely yours and hasn't been edited
-          after the fact.
-        </p>
-      </div>
 
       {flagged && <p className="mt-3 text-xs text-loud">{grade.rationale[0]}</p>}
     </Section>
