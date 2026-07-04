@@ -11,6 +11,7 @@ import { ukcOf, ukcLabel } from "../lib/pipeline/frameworks";
 import { detectFlags } from "../lib/flags";
 import { techniqueName } from "../lib/attack";
 import { openDetail } from "../lib/nav";
+import { ArrowUpRight, Flag, ScanEye } from "./icons";
 
 // plain-language actor labels for the detail card
 const ACTOR_TEXT: Record<string, string> = { machine_bound: "machine bound", human_active: "typed by hand", think_pause: "thinking", idle: "idle" };
@@ -108,8 +109,8 @@ function RunDetail({ timeline, focus, onOpen }: { timeline: Timeline; focus: num
             <span className="mono text-muted">{ep.technique}</span> {techniqueName(ep.technique)}
           </span>
         )}
-        <button type="button" onClick={onOpen} title="Open How the run unfolded" className="label ml-auto shrink-0 rounded border border-edge px-1.5 py-0.5 text-faint transition-colors hover:text-fg">
-          view ↗
+        <button type="button" onClick={onOpen} title="Open How the run unfolded" className="label ml-auto flex shrink-0 items-center gap-0.5 rounded border border-edge px-1.5 py-0.5 text-faint transition-colors hover:text-fg">
+          view <ArrowUpRight size={11} />
         </button>
       </div>
       <div className="mono mt-1.5 flex items-start gap-2 overflow-x-auto rounded bg-ink/60 px-2 py-1.5 text-xs">
@@ -204,7 +205,7 @@ function KeyMoments({ report, timeline, loudestBinary, loudestSeq, onReveal }: {
   // each moment deep-links to where you'd inspect it: flags → the deviation timeline (its capture
   // pennants); loudest → the exact command in the log; stall → the deviation timeline; objectives →
   // the intended-path comparison.
-  const Row = ({ icon, label, value, color, onClick, hint }: { icon: string; label: string; value: string; color: string; onClick?: () => void; hint?: string }) => (
+  const Row = ({ icon, label, value, color, onClick, hint }: { icon: ReactNode; label: string; value: string; color: string; onClick?: () => void; hint?: string }) => (
     <li>
       <button
         type="button"
@@ -213,25 +214,25 @@ function KeyMoments({ report, timeline, loudestBinary, loudestSeq, onReveal }: {
         title={onClick ? hint : undefined}
         className={`group flex w-full items-center gap-2 rounded px-1 py-1 text-left ${onClick ? "cursor-pointer hover:bg-panel-2/50" : "cursor-default"}`}
       >
-        <span className="w-4 shrink-0 text-center" style={{ color }}>
+        <span className="flex w-4 shrink-0 items-center justify-center" style={{ color }}>
           {icon}
         </span>
         <span className="text-muted">{label}</span>
         <span className="mono ml-auto tabular-nums" style={{ color }}>
           {value}
         </span>
-        {onClick && <span className="shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100">↗</span>}
+        {onClick && <ArrowUpRight size={12} className="shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" />}
       </button>
     </li>
   );
 
   return (
     <ul className="fade-in space-y-0.5 text-sm">
-      <Row icon="⚑" label="User flag" value={userSeq != null ? at(userSeq)! : "not captured"} color={userSeq != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={userSeq != null ? () => openDetail("deviated") : undefined} hint="Open Where you lost time" />
-      <Row icon="⚑" label="Root flag" value={flags.system != null ? at(flags.system)! : "not captured"} color={flags.system != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={flags.system != null ? () => openDetail("deviated") : undefined} hint="Open Where you lost time" />
+      <Row icon={<Flag size={13} />} label="User flag" value={userSeq != null ? at(userSeq)! : "not captured"} color={userSeq != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={userSeq != null ? () => openDetail("deviated") : undefined} hint="Open Where you lost time" />
+      <Row icon={<Flag size={13} />} label="Root flag" value={flags.system != null ? at(flags.system)! : "not captured"} color={flags.system != null ? "var(--color-flag)" : "var(--color-faint)"} onClick={flags.system != null ? () => openDetail("deviated") : undefined} hint="Open Where you lost time" />
       {loudestBinary && <Row icon="🔊" label="Loudest" value={loudestBinary} color="var(--color-loud)" onClick={loudestSeq != null ? () => onReveal(loudestSeq) : undefined} hint="Show the command in the log" />}
       {longestStall > 60_000 && <Row icon="⏱" label="Longest stall" value={fmtDuration(longestStall)} color="var(--color-stuck)" onClick={() => openDetail("deviated")} hint="Open Where you lost time" />}
-      {golden.length > 0 && <Row icon="◎" label="Objectives" value={`${done}/${golden.length}`} color={tierColor((done / golden.length) * 100)} onClick={() => openDetail("path")} hint="Open What you'd do differently" />}
+      {golden.length > 0 && <Row icon={<ScanEye size={13} />} label="Objectives" value={`${done}/${golden.length}`} color={tierColor((done / golden.length) * 100)} onClick={() => openDetail("path")} hint="Open What you'd do differently" />}
     </ul>
   );
 }

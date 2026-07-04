@@ -18,6 +18,7 @@ import {
   type LlmRuntimeStatus,
 } from "../lib/llm";
 import { isDesktop, openExternal } from "../lib/net";
+import { Check, ChevronDown, ExternalLink } from "./icons";
 
 function errMsg(e: unknown, fallback: string): string {
   if (typeof e === "string" && e.trim()) return e;
@@ -141,7 +142,7 @@ export function LlmStatusChip() {
           <span className="relative h-2 w-2 rounded-full" style={{ background: active.dot }} />
         </span>
         <span>AI · {busy === "pulling" ? "downloading…" : busy === "starting" ? "starting…" : active.label}</span>
-        <span className="text-faint transition-colors group-hover:text-signal">▾</span>
+        <ChevronDown size={13} className="text-faint transition-colors group-hover:text-signal" />
       </button>
 
       {open && (
@@ -164,7 +165,11 @@ export function LlmStatusChip() {
                     <span className="text-sm text-fg">{o.label}</span>
                     <span className="text-xs text-faint">{o.sub}</span>
                   </span>
-                  {isCloud && cloudReady[isCloud] && <span className="text-xs text-match">✓ key</span>}
+                  {isCloud && cloudReady[isCloud] && (
+                    <span className="flex items-center gap-1 text-xs text-match">
+                      <Check size={11} /> key
+                    </span>
+                  )}
                   {selected && <span className="ml-2 text-signal">●</span>}
                 </button>
               );
@@ -192,7 +197,7 @@ export function LlmStatusChip() {
                     <button type="button" onClick={localAction} disabled={!!busy} className="label rounded bg-signal/20 px-2.5 py-1 text-signal transition-colors hover:bg-signal/30 disabled:opacity-40">
                       {ollamaStep === "needs-model" ? `Download ${DEFAULT_MODEL} (~2GB)` : "Start Ollama"}
                     </button>
-                    <a href={OLLAMA_DOWNLOAD_URL} onClick={(e) => { e.preventDefault(); openExternal(OLLAMA_DOWNLOAD_URL); }} className="text-signal hover:underline">Get Ollama ↗</a>
+                    <a href={OLLAMA_DOWNLOAD_URL} onClick={(e) => { e.preventDefault(); openExternal(OLLAMA_DOWNLOAD_URL); }} className="inline-flex items-center gap-1 text-signal hover:underline">Get Ollama <ExternalLink size={11} /></a>
                   </div>
                 )
               ) : (

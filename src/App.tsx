@@ -21,6 +21,7 @@ import { DemoDriver } from "./components/DemoDriver";
 import { LiveDashboard } from "./components/LiveDashboard";
 import { isLiveRecording } from "./lib/live";
 import { pickOneLesson } from "./lib/one-lesson";
+import { ArrowUpRight, ScanEye } from "./components/icons";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
   return (
@@ -60,7 +61,11 @@ function HeroLesson() {
     <>
       <span className="label text-signal">The one lesson</span>
       <p className="mt-2 text-xl font-semibold leading-snug text-fg sm:text-2xl">{lesson.text}</p>
-      {lesson.evidence_seq != null && <span className="label mt-2 inline-block text-signal/70">jump to step {lesson.evidence_seq} ↗</span>}
+      {lesson.evidence_seq != null && (
+        <span className="label mt-2 flex items-center gap-0.5 text-signal/70">
+          jump to step {lesson.evidence_seq} <ArrowUpRight size={12} />
+        </span>
+      )}
     </>
   );
   if (lesson.evidence_seq == null) {
@@ -102,7 +107,9 @@ export function App() {
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-5">
             <div className="flex items-center gap-7 py-2.5">
               <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-signal/15 text-signal">◎</span>
+                <span className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-signal/15 text-signal">
+                  <ScanEye size={13} />
+                </span>
                 <span className="font-display font-semibold tracking-tight text-fg">The Watcher</span>
               </div>
               <nav className="flex items-center gap-5">

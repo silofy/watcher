@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ACTOR_COLORS, ACTOR_LABELS, DETOUR_COLOR } from "../lib/scale";
 import type { ActorMode } from "../types/report";
+import { ChevronDown } from "./icons";
 
 /**
  * A flat console section — a stenciled label over a hairline rule, content flush on the ground. No
@@ -50,7 +51,7 @@ export function Section({
       >
         <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 py-1 [&::-webkit-details-marker]:hidden">
           <div className="flex items-baseline gap-2.5">
-            <span className="text-faint transition-transform duration-200 group-open/sec:rotate-90">▸</span>
+            <ChevronDown className="text-faint transition-transform duration-200 group-open/sec:rotate-180" />
             {titleEl}
             {subEl}
           </div>
@@ -119,7 +120,7 @@ export function Collapse({
       onToggle={controlled ? (e) => onToggle?.((e.currentTarget as HTMLDetailsElement).open) : undefined}
     >
       <summary className="flex cursor-pointer list-none items-baseline gap-2.5 py-1 [&::-webkit-details-marker]:hidden">
-        <span className="text-faint transition-transform duration-200 group-open/sec:rotate-90">▸</span>
+        <ChevronDown className="text-faint transition-transform duration-200 group-open/sec:rotate-180" />
         <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>
         {subtitle && <span className="text-xs text-faint">{subtitle}</span>}
       </summary>

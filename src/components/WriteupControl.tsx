@@ -5,6 +5,7 @@ import { targetOf, adapterFor } from "../lib/platform";
 import { resolveProvider } from "../lib/llm";
 import { goldenFromText } from "../lib/writeup";
 import { fetchWriteupUrl, fetchWriteupFrom0xdf, writeupSearchUrl, isDesktop, hasHtbToken, setHtbToken, fetchHtbWriteup, openExternal } from "../lib/net";
+import { Check, ChevronDown, ExternalLink } from "./icons";
 
 type Status = { kind: "idle" | "working" | "error"; msg?: string };
 
@@ -136,7 +137,7 @@ export function WriteupControl() {
           </span>
           {writeup ? (
             <span className="flex items-center gap-1.5 text-sm">
-              <span className="text-match">✓</span>
+              <Check size={14} className="text-match" />
               <span className="font-medium text-fg">{SRC[writeup.source] ?? writeup.source}</span>
               <span className="text-xs text-faint">· {Math.round(writeup.confidence * 100)}%</span>
             </span>
@@ -148,7 +149,7 @@ export function WriteupControl() {
         </div>
         <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs text-faint">
           {writeup ? "Replace" : "Add to compare"}
-          <span className="transition-transform group-open:rotate-90">▸</span>
+          <ChevronDown className="transition-transform group-open:rotate-180" />
         </span>
       </summary>
 
@@ -171,16 +172,16 @@ export function WriteupControl() {
           >
             0xdf
           </button>
-          <button type="button" onClick={() => openExternal(writeupSearchUrl("ippsec", box.name))} title="IppSec is video — opens his walkthrough on YouTube" className={btnSecondary}>
-            IppSec ↗
+          <button type="button" onClick={() => openExternal(writeupSearchUrl("ippsec", box.name))} title="IppSec is video — opens his walkthrough on YouTube" className={`${btnSecondary} inline-flex items-center gap-1`}>
+            IppSec <ExternalLink size={12} />
           </button>
           {isDesktop() ? (
             <button type="button" onClick={fromHtb} disabled={working} title={htbReady ? "Fetch HTB's official write-up" : "Add your HTB App Token first"} className={btnSecondary}>
               HTB{htbReady ? "" : " ⚙"}
             </button>
           ) : (
-            <button type="button" onClick={() => openExternal(writeupSearchUrl("htb", box.name))} title="HTB write-ups are auth-gated — opens a search" className={btnSecondary}>
-              HTB ↗
+            <button type="button" onClick={() => openExternal(writeupSearchUrl("htb", box.name))} title="HTB write-ups are auth-gated — opens a search" className={`${btnSecondary} inline-flex items-center gap-1`}>
+              HTB <ExternalLink size={12} />
             </button>
           )}
           <span className="mx-1 text-faint">or</span>

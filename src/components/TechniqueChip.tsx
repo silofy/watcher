@@ -1,5 +1,6 @@
 import { techniqueName, techniqueDesc, techniqueUrl } from "../lib/attack";
 import { openExternal } from "../lib/net";
+import { ExternalLink } from "./icons";
 
 /**
  * An ATT&CK technique id that reveals a rich hover card — name, plain-English description, and a link
@@ -26,9 +27,9 @@ export function TechniqueChip({ id }: { id: string }) {
             e.preventDefault();
             openExternal(techniqueUrl(id));
           }}
-          className="mt-2 inline-block text-xs text-signal hover:underline"
+          className="mt-2 inline-flex items-center gap-1 text-xs text-signal hover:underline"
         >
-          MITRE ATT&amp;CK ↗
+          MITRE ATT&amp;CK <ExternalLink size={11} />
         </a>
       </span>
     </span>

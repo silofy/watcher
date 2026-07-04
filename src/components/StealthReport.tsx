@@ -5,6 +5,7 @@ import { Section, tierColor, Chip } from "./ui";
 import { useAxisZoom } from "./useAxisZoom";
 import { ZoomControls } from "./ZoomControls";
 import { fmtClock } from "../lib/format";
+import { ChevronDown } from "./icons";
 
 const H = 84;
 const TOP = 10;
@@ -222,7 +223,7 @@ export function StealthReport() {
       {report.noise_baseline && (
         <details className="group mt-2 rounded-lg border border-edge bg-panel-2/30">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
-            <span className="text-faint transition-transform group-open:rotate-90">▸</span>
+            <ChevronDown className="text-faint transition-transform group-open:rotate-180" />
             <span className="label text-faint">Why {Math.round(baseline)}?</span>
             <span className="text-xs text-muted">· the loud reference solve that equals stealth 0</span>
           </summary>

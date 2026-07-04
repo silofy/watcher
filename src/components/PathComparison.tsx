@@ -1,16 +1,18 @@
+import type { ReactNode } from "react";
 import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
 import { PathGraph } from "./PathGraph";
 import { humanizeObjective } from "../lib/audits";
 import { isLiveRecording } from "../lib/live";
 import type { Episode, GoldenObjective } from "../types/report";
+import { Check, Circle, Flag } from "./icons";
 
-const LEGEND: [string, string][] = [
-  ["✓ did", "var(--color-match)"],
-  ["~ alt method", "var(--color-alt)"],
-  ["⤺ out of order", "var(--color-stuck)"],
-  ["○ skipped", "var(--color-skipped)"],
-  ["⚑ flag captured", "var(--color-flag)"],
+const LEGEND: [ReactNode, string, string][] = [
+  [<Check key="did" size={12} />, "did", "var(--color-match)"],
+  ["~", "alt method", "var(--color-alt)"],
+  ["⤺", "out of order", "var(--color-stuck)"],
+  [<Circle key="skipped" size={12} />, "skipped", "var(--color-skipped)"],
+  [<Flag key="flag" size={12} />, "flag captured", "var(--color-flag)"],
 ];
 
 /** An objective's outcome vs the intended path: skipped (never satisfied), or the alignment of the
@@ -69,7 +71,9 @@ export function PathComparison() {
           {/* the answer up front — what to change, scannable, before the graph */}
           <div className="mb-3 rounded-lg border border-edge bg-panel-2/30 p-3">
             {deviations === 0 ? (
-              <p className="text-sm text-match">✓ You followed the intended path — nothing to change.</p>
+              <p className="flex items-center gap-1.5 text-sm text-match">
+                <Check size={14} /> You followed the intended path — nothing to change.
+              </p>
             ) : (
               <>
                 <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -81,8 +85,8 @@ export function PathComparison() {
                 {skipped.length > 0 && (
                   <ul className="space-y-1">
                     {skipped.map((o) => (
-                      <li key={o.objective} className="flex flex-wrap items-baseline gap-x-2 text-sm">
-                        <span className="shrink-0" style={{ color: "var(--color-skipped)" }}>○</span>
+                      <li key={o.objective} className="flex flex-wrap items-center gap-x-2 text-sm">
+                        <Circle size={12} className="shrink-0" style={{ color: "var(--color-skipped)" }} />
                         <span className="text-fg">{humanizeObjective(o.objective)}</span>
                         <span className="ml-auto shrink-0 text-xs text-faint">
                           try <span className="mono text-muted">{o.satisfied_by[0]}</span>
@@ -101,10 +105,10 @@ export function PathComparison() {
           <PathGraph />
           {/* legend reads as the chart's caption, below the canvas */}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
-            {LEGEND.map(([t, c]) => (
-              <span key={t} className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-[1px]" style={{ background: c }} />
-                {t}
+            {LEGEND.map(([icon, label, c]) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span style={{ color: c }}>{icon}</span>
+                {label}
               </span>
             ))}
             <span className="ml-auto">top → bottom · intended path on the left, deviations on the right · click to inspect</span>

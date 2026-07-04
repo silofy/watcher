@@ -5,6 +5,7 @@ import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
 import { minimizedBundle } from "../lib/bridge/bundle";
 import { isLiveRecording } from "../lib/live";
 import { radarPoint, RADAR_GEOMETRY } from "../lib/radar";
+import { Check, ChevronDown } from "./icons";
 
 /** The radar axes ARE the grade's weighted dimensions — chart, math, and letter tell one story.
  *  Methodology + focus only render when the active grade actually carries them (v2 reports); see the
@@ -215,9 +216,7 @@ export function Assessment() {
           className="label shrink-0 rounded-full border border-signal/50 px-3 py-1.5 text-signal transition-colors hover:bg-signal/15"
         >
           Sync to institution{" "}
-          <span className="inline-block transition-transform duration-200" style={showSyncDetail ? { transform: "rotate(90deg)" } : undefined}>
-            ▸
-          </span>
+          <ChevronDown className="inline-block transition-transform duration-200" style={showSyncDetail ? { transform: "rotate(180deg)" } : undefined} />
         </button>
       </div>
 
@@ -226,7 +225,7 @@ export function Assessment() {
           {/* what they receive */}
           <div>
             <div className="label mb-1.5 flex items-center gap-1.5 text-match">
-              <span>✓</span> They receive
+              <Check size={14} /> They receive
             </div>
             <ul className="space-y-1 text-muted">
               <li>The box: <span className="text-fg">{bundle.session.target_scope}</span> <span className="text-faint">(IP removed)</span></li>

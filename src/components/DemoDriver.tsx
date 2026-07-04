@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useReport } from "../store/report";
+import { Check } from "./icons";
 
 /**
  * The live-demo surface. The streaming itself lives in the store (startLiveDemo) so it can be launched
@@ -38,7 +39,7 @@ export function DemoDriver() {
         backgroundColor: "color-mix(in oklch, var(--color-ink) 80%, transparent)",
       }}
     >
-      <span className={recording ? "animate-pulse" : ""}>{recording ? "●" : "✓"}</span>
+      <span className={recording ? "animate-pulse" : ""}>{recording ? "●" : <Check size={12} />}</span>
       <span className="font-medium">{text}</span>
       <span className="text-faint">Forge · demo</span>
     </div>
