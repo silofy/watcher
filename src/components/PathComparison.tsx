@@ -41,6 +41,7 @@ export function PathComparison() {
   const outOfOrder = golden.filter((o) => statusOf(o, epBySeq) === "out_of_order");
   const alt = golden.filter((o) => statusOf(o, epBySeq) === "alternative");
   const deviations = skipped.length + outOfOrder.length + alt.length;
+  const matched = golden.length - deviations;
 
   return (
     <Section
@@ -51,11 +52,7 @@ export function PathComparison() {
           <span className="label" style={{ color: "var(--color-loud)" }}>
             <span className="animate-pulse">●</span> recording
           </span>
-        ) : (
-          <span className="mono tabular-nums" style={{ color: tierColor(coverage) }}>
-            {coverage}% coverage
-          </span>
-        )
+        ) : null
       }
     >
       {recording ? (
@@ -68,22 +65,31 @@ export function PathComparison() {
         </p>
       ) : (
         <>
-          {/* the answer up front — what to change, scannable, before the graph */}
+          {/* the answer up front — how closely the run retraced the write-up's intended steps, in
+              plain words, before the counts or the graph. This is the same objective_coverage_pct
+              that used to be a small "{n}% coverage" tucked in the header corner. */}
           <div className="mb-3 rounded-lg border border-edge bg-panel-2/30 p-3">
+            <p className="text-sm leading-snug text-fg">
+              You followed <span className="mono text-base font-semibold tabular-nums" style={{ color: tierColor(coverage) }}>{coverage}%</span> of the
+              write-up&rsquo;s intended path
+            </p>
+            <p className="mt-0.5 text-xs text-faint">objectives reached vs. its total — how closely you retraced its intended steps, in its intended order.</p>
+
+            <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-edge/60 pt-2.5">
+              <Count n={matched} label="matched" color="var(--color-match)" />
+              {alt.length > 0 && <Count n={alt.length} label="alt method" color="var(--color-alt)" />}
+              {outOfOrder.length > 0 && <Count n={outOfOrder.length} label="out of order" color="var(--color-stuck)" />}
+              {skipped.length > 0 && <Count n={skipped.length} label="skipped" color="var(--color-skipped)" />}
+            </div>
+
             {deviations === 0 ? (
-              <p className="flex items-center gap-1.5 text-sm text-match">
+              <p className="mt-2.5 flex items-center gap-1.5 text-sm text-match">
                 <Check size={14} /> You followed the intended path — nothing to change.
               </p>
             ) : (
               <>
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="label text-faint">Do differently</span>
-                  {skipped.length > 0 && <Count n={skipped.length} label="skipped" color="var(--color-skipped)" />}
-                  {outOfOrder.length > 0 && <Count n={outOfOrder.length} label="out of order" color="var(--color-stuck)" />}
-                  {alt.length > 0 && <Count n={alt.length} label="alt method" color="var(--color-alt)" />}
-                </div>
                 {skipped.length > 0 && (
-                  <ul className="space-y-1">
+                  <ul className="mt-2.5 space-y-1">
                     {skipped.map((o) => (
                       <li key={o.objective} className="flex flex-wrap items-center gap-x-2 text-sm">
                         <Circle size={12} className="shrink-0" style={{ color: "var(--color-skipped)" }} />
@@ -96,7 +102,7 @@ export function PathComparison() {
                   </ul>
                 )}
                 {skipped.length === 0 && (
-                  <p className="text-xs text-faint">You hit every objective — some by a different route or order. See the graph for where.</p>
+                  <p className="mt-2.5 text-xs text-faint">You hit every objective — some by a different route or order. See the graph for where.</p>
                 )}
               </>
             )}

@@ -2,10 +2,54 @@ import { useState } from "react";
 import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
 import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
-import { minimizedBundle } from "../lib/bridge/bundle";
+import { minimizedBundle, type AttestationContent } from "../lib/bridge/bundle";
+import { canonical } from "../lib/bridge/canonical";
 import { isLiveRecording } from "../lib/live";
 import { radarPoint, RADAR_GEOMETRY } from "../lib/radar";
 import { Check, ChevronDown } from "./icons";
+
+/**
+ * The downloadable, pre-signature artifact: the redacted bundle plus the exact content hash
+ * `buildAttestation` (attest.ts) would sign — computed here with Web Crypto instead of node:crypto,
+ * since attest.ts itself is Node-only (it's built by the daemon/CLI, which holds the device private
+ * key; a browser tab never can — and importing it here would drag `node:crypto` into the client
+ * bundle). `canonical` is the same seed function attest.ts hashes, shared via `lib/bridge/canonical.ts`,
+ * so this hash matches bit-for-bit what `npm run attest` produces for the same content with no
+ * previous link (`prev_hash: null`).
+ */
+async function buildDownloadPayload(content: AttestationContent) {
+  const base = { schema_version: content.schema_version, content, prev_hash: null as string | null, signed: false as const };
+  if (typeof crypto === "undefined" || !crypto.subtle) return base;
+  try {
+    const bytes = new TextEncoder().encode(canonical({ prev_hash: null, content }));
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const hash = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return { ...base, hash };
+  } catch {
+    return base;
+  }
+}
+
+/** Trigger a browser download of the bundle as a `.json` file — a Blob + `<a download>`, no dep. */
+async function downloadGradeBundle(content: AttestationContent) {
+  if (typeof document === "undefined") return false;
+  const payload = await buildDownloadPayload(content);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `watcher-grade-bundle-${content.session.uuid}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  return true;
+}
 
 /** The radar axes ARE the grade's weighted dimensions — chart, math, and letter tell one story.
  *  Methodology + focus only render when the active grade actually carries them (v2 reports); see the
@@ -50,11 +94,12 @@ const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
 export function Assessment() {
   const s = useReport();
   const { report } = s;
-  // detail behind "Sync to institution" — collapsed by default so the rail reads as grade + radar +
-  // rubric + one action, not an essay; the trust copy stays in the DOM (just visually hidden) so it's
-  // one click away rather than gone. Declared before the live-recording return so hook order stays
-  // stable across renders.
+  // detail behind the "Sync to institution" action — collapsed by default so the rail reads as grade
+  // + radar + rubric + one action, not an essay; the trust copy stays in the DOM (just visually
+  // hidden) so it's one click away rather than gone. Declared before the live-recording return so hook
+  // order stays stable across renders.
   const [showSyncDetail, setShowSyncDetail] = useState(false);
+  const [syncState, setSyncState] = useState<"idle" | "done" | "error">("idle");
 
   // the grade is a verdict — premature while the capture is live; settle it only when the run ends
   if (isLiveRecording(report)) {
@@ -74,6 +119,16 @@ export function Assessment() {
   const bundle = minimizedBundle(report, grade);
   const flagged = grade.independence_gate.flagged;
   const satisfied = bundle.evidence_digests.filter((d) => d.satisfied).length;
+
+  async function handleSync() {
+    try {
+      const ok = await downloadGradeBundle(bundle);
+      setSyncState(ok ? "done" : "error");
+    } catch {
+      setSyncState("error");
+    }
+    setTimeout(() => setSyncState("idle"), 2000);
+  }
 
   // Render exactly the dimensions the ACTIVE grade carries: v1 reports have 6 components (no
   // methodology/focus keys at all — see computeGrade), v2 have 8. Independence is additionally
@@ -201,23 +256,34 @@ export function Assessment() {
       </p>
 
       {/* what actually leaves the machine on sync — a single compact action, not an inline consent
-          essay. The plain-language breakdown (what they receive / never see / the signature) is one
-          click away via `showSyncDetail`, kept in the DOM (just visually `hidden`) rather than
+          essay. Clicking the button itself downloads the redacted bundle (a Blob + `<a download>`);
+          the plain-language breakdown (what they receive / never see / the signature) is one click
+          away via the separate details toggle, kept in the DOM (just visually `hidden`) rather than
           unmounted, so the transparency copy is never actually gone. */}
       <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-edge bg-ink/50 p-3.5">
         <p className="text-xs text-muted">
-          Only your <span className="text-fg">grade and scores</span> leave this machine — never your commands or the live IP.
+          Downloads your <span className="text-fg">grade and the {axes.length} scores</span> behind it as an unsigned{" "}
+          <span className="text-fg">.json</span> preview — never your commands, output, or the target IP.
         </p>
-        <button
-          type="button"
-          onClick={() => setShowSyncDetail((v) => !v)}
-          aria-expanded={showSyncDetail}
-          aria-controls="sync-detail"
-          className="label shrink-0 rounded-full border border-signal/50 px-3 py-1.5 text-signal transition-colors hover:bg-signal/15"
-        >
-          Sync to institution{" "}
-          <ChevronDown className="inline-block transition-transform duration-200" style={showSyncDetail ? { transform: "rotate(180deg)" } : undefined} />
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleSync}
+            className="label rounded-full border border-signal/50 px-3 py-1.5 text-signal transition-colors hover:bg-signal/15"
+          >
+            {syncState === "done" ? "Downloaded ✓" : syncState === "error" ? "Download failed" : "Sync to institution"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSyncDetail((v) => !v)}
+            aria-expanded={showSyncDetail}
+            aria-controls="sync-detail"
+            aria-label="What's in the sync bundle"
+            className="rounded-full border border-edge p-1.5 text-faint transition-colors hover:bg-panel-2 hover:text-fg"
+          >
+            <ChevronDown className="transition-transform duration-200" style={showSyncDetail ? { transform: "rotate(180deg)" } : undefined} />
+          </button>
+        </div>
       </div>
 
       <div id="sync-detail" hidden={!showSyncDetail} className="mt-2 rounded-lg border border-edge bg-ink/50 p-4 text-xs">
@@ -251,7 +317,11 @@ export function Assessment() {
         </div>
 
         <p className="mt-3 border-t border-edge/60 pt-2.5 text-faint">
-          Signed before it sends, so your institution can confirm the grade is genuinely yours and hasn't been edited
+          This download is <span className="text-fg">unsigned</span> — it carries the exact content hash{" "}
+          <span className="mono text-muted">npm run attest</span> will sign, but the signature itself needs the device private
+          key, which only the desktop app / CLI holds (a browser tab never can). Run{" "}
+          <span className="mono text-muted">npm run attest</span> against your session report — or use the desktop app — to
+          produce the signed attestation, so your institution can confirm the grade is genuinely yours and hasn't been edited
           after the fact.
         </p>
       </div>
