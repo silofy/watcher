@@ -1,8 +1,8 @@
 # Regenerating docs/screenshots/*.png
 
-The images in `docs/screenshots/` predate the lesson-first debrief redesign (see the note in
-`README.md`). This is the tooling to recapture them against the current UI — a rich demo report,
-driven through a real Chromium via Playwright.
+This is the tooling that captures `docs/screenshots/*.png` against the current lesson-first debrief —
+a rich demo report, driven through a real Chromium via Playwright. Re-run it whenever the UI changes
+so the README images stay current.
 
 ## One-time setup
 
