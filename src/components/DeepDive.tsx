@@ -97,6 +97,7 @@ export function DeepDive() {
           key={t.id}
           ref={t.id === "log" ? logPanelRef : undefined}
           id={`deep-dive-panel-${t.id}`}
+          data-shot={`deepdive-${t.id}`}
           role="tabpanel"
           aria-labelledby={`deep-dive-tab-${t.id}`}
           hidden={active !== t.id}

@@ -19,6 +19,7 @@ export function Section({
   name,
   defaultOpen = false,
   srTitle = false,
+  dataShot,
 }: {
   title?: string;
   subtitle?: string;
@@ -36,6 +37,9 @@ export function Section({
    *  hosted under a tab/label that already shows the same heading (e.g. the Deep dive tabs), so the
    *  title isn't printed twice. Subtitle/right (often the section's only unique context) stay visible. */
   srTitle?: boolean;
+  /** Presentation-only capture anchor for the screenshot tooling (scripts/screenshots.mjs) — a
+   *  stable `data-shot="…"` hook on the outer element, inert otherwise. */
+  dataShot?: string;
 }) {
   const titleEl = title && <h2 className={`font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted ${srTitle ? "sr-only" : ""}`}>{title}</h2>;
   const subEl = subtitle && <span className="text-xs text-faint">{subtitle}</span>;
@@ -46,6 +50,7 @@ export function Section({
       <details
         name={name}
         open={defaultOpen}
+        data-shot={dataShot}
         className={`group/sec relative ${i != null ? "rise" : ""} ${className}`}
         style={i != null ? ({ "--i": i } as CSSProperties) : undefined}
       >
@@ -65,6 +70,7 @@ export function Section({
 
   return (
     <section
+      data-shot={dataShot}
       className={`relative ${boxed ? "rounded border border-edge bg-panel px-4 py-3" : ""} ${i != null ? "rise" : ""} ${className}`}
       style={i != null ? ({ "--i": i } as CSSProperties) : undefined}
     >
@@ -99,6 +105,7 @@ export function Collapse({
   onToggle,
   className = "",
   children,
+  summaryDataShot,
 }: {
   title: string;
   subtitle?: string;
@@ -110,6 +117,9 @@ export function Collapse({
   onToggle?: (open: boolean) => void;
   className?: string;
   children: ReactNode;
+  /** Presentation-only capture anchor for the screenshot tooling — a `data-shot="…"` hook on the
+   *  clickable `<summary>`, so a script can open this drawer without depending on click position. */
+  summaryDataShot?: string;
 }) {
   const controlled = open !== undefined;
   return (
@@ -119,7 +129,7 @@ export function Collapse({
       className={`group/sec relative ${className}`}
       onToggle={controlled ? (e) => onToggle?.((e.currentTarget as HTMLDetailsElement).open) : undefined}
     >
-      <summary className="flex cursor-pointer list-none items-baseline gap-2.5 py-1 [&::-webkit-details-marker]:hidden">
+      <summary data-shot={summaryDataShot} className="flex cursor-pointer list-none items-baseline gap-2.5 py-1 [&::-webkit-details-marker]:hidden">
         <ChevronDown className="text-faint transition-transform duration-200 group-open/sec:rotate-180" />
         <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>
         {subtitle && <span className="text-xs text-faint">{subtitle}</span>}

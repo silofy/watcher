@@ -354,7 +354,7 @@ export function PhaseAudit({ hideTakeaway = false }: { hideTakeaway?: boolean } 
   const takeaway = !hideTakeaway && lead ? stepText(lead) : undefined;
 
   return (
-    <Section title="Phase audit" subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}>
+    <Section dataShot="phase-audit" title="Phase audit" subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}>
       {takeaway && (
         <div className="mb-3 rounded-lg bg-signal/10 px-3.5 py-3">
           <span className="label text-signal">Key takeaway</span>
