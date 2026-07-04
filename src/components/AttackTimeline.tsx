@@ -6,6 +6,7 @@ import { ZoomControls } from "./ZoomControls";
 import { techniqueName } from "../lib/attack";
 import { fmtDuration, fmtClock } from "../lib/format";
 import { ghostMarkers, verdictMeta, connectorLabel } from "../lib/ghost/ghost-view";
+import { ChevronDown } from "./icons";
 
 const GHOST_H = 14; // ghost-overlay lane height in viewBox units — thin, secondary to the ribbon
 
@@ -64,11 +65,10 @@ export function AttackTimeline() {
 
   return (
     <Section
-      collapsible
-      name="debrief-details"
       title="How the run unfolded"
       subtitle={`MITRE phases, tinted by efficiency · ${metrics.technique_breadth} distinct ATT&CK techniques`}
       right={<ActorLegend />}
+      srTitle
     >
       <ZoomControls zoomed={zoomed} w0={w0} w1={w1} zoomOut={zoomOut} reset={reset} />
 
@@ -272,7 +272,7 @@ export function AttackTimeline() {
       {techniques.length > 0 && (
         <details className="group mt-2 rounded-lg border border-edge bg-panel-2/30">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
-            <span className="text-faint transition-transform group-open:rotate-90">▸</span>
+            <ChevronDown className="text-faint transition-transform group-open:rotate-180" />
             <span className="label text-faint">ATT&CK techniques</span>
             <span className="text-xs text-muted">· {techniques.length} distinct</span>
           </summary>

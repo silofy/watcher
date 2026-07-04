@@ -15,12 +15,7 @@ export function FrameworkAxes() {
   const weaknesses = runWeaknesses(report.episodes);
 
   return (
-    <Section
-      title="Frameworks"
-      subtitle="ATT&CK · UKC · CWE — three lenses on the same run"
-      collapsible
-      name="debrief-details"
-    >
+    <Section title="Frameworks" subtitle="ATT&CK · UKC · CWE — three lenses on the same run" srTitle>
       {/* three headline readouts */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="flex flex-col items-center gap-2 rounded-lg border border-edge bg-panel px-3 py-4">

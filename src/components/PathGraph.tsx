@@ -5,10 +5,17 @@ import { useReport } from "../store/report";
 import { ALIGNMENT_COLORS } from "../lib/scale";
 import { detectFlags } from "../lib/flags";
 import type { Episode, GoldenObjective } from "../types/report";
+import { Check, Circle, Flag as FlagIcon } from "./icons";
 
 const FLAG_LABEL = { user: "User flag", system: "System flag" } as const;
 
-const GLYPH: Record<string, string> = { match: "✓", alternative: "~", out_of_order: "⤺", detour: "!", skipped: "○" };
+const GLYPH: Record<string, ReactNode> = {
+  match: <Check size={12} />,
+  alternative: "~",
+  out_of_order: "⤺",
+  detour: "!",
+  skipped: <Circle size={12} />,
+};
 const STATUS_WORD: Record<string, string> = { match: "You did this", alternative: "Alt method", out_of_order: "Out of order", detour: "Off-path", skipped: "Skipped" };
 
 // Invisible handles on every side; edges pick a side per relationship (spine = bottom→top,
@@ -129,10 +136,10 @@ export function PathGraph() {
                   className="mb-1 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-semibold"
                   style={{ color: "var(--color-ink)", background: "var(--color-flag)" }}
                 >
-                  ⚑ {FLAG_LABEL[flag]} captured
+                  <FlagIcon size={12} /> {FLAG_LABEL[flag]} captured
                 </div>
               )}
-              <div className="truncate font-semibold" style={{ color: st.color }}>
+              <div className="flex items-center gap-1 truncate font-semibold" style={{ color: st.color }}>
                 {GLYPH[st.status] ?? "•"} {o.objective.replace(/_/g, " ")}
               </div>
               <div className="mono truncate text-xs opacity-70">{o.satisfied_by[0]}</div>
@@ -228,10 +235,10 @@ export function PathGraph() {
                   className="mb-2 flex w-fit items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-semibold"
                   style={{ color: "var(--color-ink)", background: "var(--color-flag)" }}
                 >
-                  ⚑ {FLAG_LABEL[flagBySeq.get(objSt.seq)!]} captured here{objAt != null ? ` · ${objAt}m in` : ""}
+                  <FlagIcon size={12} /> {FLAG_LABEL[flagBySeq.get(objSt.seq)!]} captured here{objAt != null ? ` · ${objAt}m in` : ""}
                 </div>
               )}
-              <span className="label block" style={{ color: objSt.color }}>
+              <span className="label flex items-center gap-1" style={{ color: objSt.color }}>
                 {GLYPH[objSt.status]} {STATUS_WORD[objSt.status] ?? objSt.status}
               </span>
               <h4 className="mt-1 font-display text-base font-semibold leading-tight text-fg">{obj.objective.replace(/_/g, " ")}</h4>

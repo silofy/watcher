@@ -1,7 +1,6 @@
 import { useReport } from "../store/report";
 import { Section, tierColor } from "./ui";
 import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
-import { minimizedBundle } from "../lib/bridge/bundle";
 import { isLiveRecording } from "../lib/live";
 import { radarPoint, RADAR_GEOMETRY } from "../lib/radar";
 
@@ -32,13 +31,32 @@ const RUBRIC_LABELS: Record<RubricKey, string> = {
   methodology: "Methodology",
   focus: "Focus discipline",
 };
-const RUBRIC_COLS = "11rem minmax(0,1fr) 2.5rem 3rem 3.25rem";
+
+/** What each dimension means and what it's scored against — surfaced as a hover card on the metric
+ *  name (see the `RUBRIC_COLS` row below), mirroring `TechniqueChip`'s hover-card pattern so a reader
+ *  never has to already know what "breadth" or "independence" means to trust the number next to it. */
+const RUBRIC_DESC: Record<RubricKey, string> = {
+  coverage: "Objectives you reached vs. the write-up's intended path (0–100%).",
+  breadth: "Distinct MITRE ATT&CK techniques used, scored against a target of 12.",
+  efficiency: "Share of active time that moved an objective forward — vs. dead-ends, loops, and stalls.",
+  progression: "Kill-chain phase transitions that advanced rather than backtracked.",
+  discipline: "Stealth — how quiet you stayed vs. this box's loud reference-solve baseline.",
+  methodology: "Disciplined checks your findings made relevant that you performed (e.g. found 445 → enumerate SMB).",
+  focus: "Focus discipline — the inverse of time lost rabbit-holing on one low-yield surface.",
+  independence: "Integrity signal — routed to a human reviewer, never an automated verdict.",
+};
+// The metric-label and bar columns are both `minmax(0, …)` — an explicit 0 minimum, so the track
+// (and the `truncate`d label inside it) can shrink rather than forcing a ~11rem floor that would
+// force a horizontal scrollbar on narrower widths. The three numeric columns stay fixed — they're
+// already narrow, tabular-nums content that never needs to shrink.
+const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
 
 /**
  * Grade — one coherent picture: the radar plots the active rubric's weighted dimensions (6 for v1, 8
  * for v2) with the letter in its center, and the table shows the score × weight → points math behind
  * it. The actionable moves live in the Phase Audit; this is the explainable scorecard. Independence is
- * a gate routed to a human.
+ * a gate routed to a human. Rendered as its own visible section in the main narrative (see App.tsx) —
+ * above the collapsed "Evidence & detail" drawer, since the grade is a verdict, not raw detail.
  */
 export function Assessment() {
   const s = useReport();
@@ -47,7 +65,7 @@ export function Assessment() {
   // the grade is a verdict — premature while the capture is live; settle it only when the run ends
   if (isLiveRecording(report)) {
     return (
-      <Section collapsible name="debrief-details" title="Grade" subtitle="the explainable rubric — settles when the run ends">
+      <Section title="Grade" subtitle="the explainable rubric — settles when the run ends">
         <p className="text-sm text-faint">
           <span className="animate-pulse" style={{ color: "var(--color-loud)" }}>
             ●
@@ -59,9 +77,7 @@ export function Assessment() {
   }
 
   const grade = computeGrade(report);
-  const bundle = minimizedBundle(report, grade);
   const flagged = grade.independence_gate.flagged;
-  const satisfied = bundle.evidence_digests.filter((d) => d.satisfied).length;
 
   // Render exactly the dimensions the ACTIVE grade carries: v1 reports have 6 components (no
   // methodology/focus keys at all — see computeGrade), v2 have 8. Independence is additionally
@@ -75,8 +91,6 @@ export function Assessment() {
 
   return (
     <Section
-      collapsible
-      name="debrief-details"
       title="Grade"
       subtitle="how your score breaks down — the explainable rubric"
       right={
@@ -85,6 +99,8 @@ export function Assessment() {
           <span className="text-faint" title={`Scored against rubric v${grade.version}`}>
             v{grade.version}
           </span>
+          {/* a status chip, not a link — this panel IS the grade, so it never points anywhere; the
+              flagged case still names where the gate sends it (a human review queue) */}
           <span
             className="rounded-full border px-2 py-0.5"
             style={{
@@ -92,14 +108,19 @@ export function Assessment() {
               borderColor: flagged ? "color-mix(in oklch, var(--color-loud) 35%, transparent)" : "color-mix(in oklch, var(--color-match) 35%, transparent)",
             }}
           >
-            {flagged ? "→ integrity queue" : "→ grade"}
+            {flagged ? "Integrity queue" : "Graded"}
           </span>
         </div>
       }
     >
-      <div className="grid gap-8 md:grid-cols-[300px_1fr] md:items-center">
-        {/* the grade radar — the active rubric's weighted dimensions, letter in the center */}
-        <svg viewBox="0 0 240 230" className="mx-auto w-full max-w-[300px]">
+      {/* Always stacked (radar over the rubric table) — a side-by-side split (keyed on viewport width,
+          not column width) would squeeze the table into a sliver at typical desktop widths. */}
+      <div className="grid gap-6">
+        {/* the grade radar — the active rubric's weighted dimensions, letter in the center. Capped at
+            a fixed max width (not `w-full`) so it renders as a normal ~294px radar even at the full
+            width of its section — only the rendered size is capped, the viewBox geometry (cx/cy/r in
+            radar.ts) is untouched. */}
+        <svg viewBox="0 0 240 230" className="mx-auto h-auto w-[294px] max-w-full">
           {[0.25, 0.5, 0.75, 1].map((ring) => (
             <polygon key={ring} points={axes.map((_, i) => point(i, ring, n).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
           ))}
@@ -152,8 +173,19 @@ export function Assessment() {
               const barColor = gate ? "var(--color-loud)" : tierColor(c.raw);
               return (
                 <div key={k} className="grid items-center gap-2 px-1.5 py-1.5 text-sm" style={{ gridTemplateColumns: RUBRIC_COLS }}>
-                  <span className="truncate text-muted">{RUBRIC_LABELS[k]}</span>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-edge">
+                  <span className="group/rubric relative inline-block min-w-0 max-w-full">
+                    <span className="block cursor-help truncate text-muted underline decoration-dotted decoration-faint/60 underline-offset-2 transition-colors group-hover/rubric:text-fg">
+                      {RUBRIC_LABELS[k]}
+                    </span>
+                    <span
+                      role="tooltip"
+                      className="invisible absolute left-0 top-full z-30 mt-2 w-64 rounded-lg border border-edge bg-panel p-3 text-left opacity-0 shadow-xl transition-opacity duration-150 group-hover/rubric:visible group-hover/rubric:opacity-100"
+                    >
+                      <span className="block font-display text-sm font-semibold text-fg">{RUBRIC_LABELS[k]}</span>
+                      <span className="mt-1.5 block text-xs leading-relaxed text-muted">{RUBRIC_DESC[k]}</span>
+                    </span>
+                  </span>
+                  <div className="min-w-0 h-1.5 overflow-hidden rounded-full bg-edge">
                     <div className="h-full rounded-full" style={{ width: `${c.raw}%`, backgroundColor: barColor }} />
                   </div>
                   <span className="mono text-right tabular-nums" style={{ color: barColor }}>
@@ -182,51 +214,6 @@ export function Assessment() {
           ? "Recovery is surfaced as coaching — not yet weighted into the grade."
           : "Methodology, focus, and recovery are surfaced as coaching — not yet weighted into the grade."}
       </p>
-
-      {/* what actually leaves the machine on sync — plain-language consent, not a jargon dump */}
-      <div className="mt-5 rounded-lg border border-edge bg-ink/50 p-4 text-xs">
-        <div className="mb-2.5">
-          <div className="label text-fg">If you sync this to your institution</div>
-          <p className="mt-1 text-muted">
-            Only your <span className="text-fg">grade and scores</span> leave this machine. Your commands, their output,
-            and the live IP never do.
-          </p>
-        </div>
-
-        <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-          {/* what they receive */}
-          <div>
-            <div className="label mb-1.5 flex items-center gap-1.5 text-match">
-              <span>✓</span> They receive
-            </div>
-            <ul className="space-y-1 text-muted">
-              <li>The box: <span className="text-fg">{bundle.session.target_scope}</span> <span className="text-faint">(IP removed)</span></li>
-              <li>Your grade, plus the {axes.length} scores behind it</li>
-              <li>
-                Which objectives you reached — <span className="text-fg">{satisfied} of {bundle.evidence_digests.length}</span>{" "}
-                <span className="text-faint">(just a checkmark per objective, not how you did it)</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* what never leaves */}
-          <div>
-            <div className="label mb-1.5 flex items-center gap-1.5 text-detour">
-              <span>✕</span> They never see
-            </div>
-            <ul className="space-y-1 text-muted">
-              <li>The commands you typed</li>
-              <li>Any command output or files</li>
-              <li>The target's IP address</li>
-            </ul>
-          </div>
-        </div>
-
-        <p className="mt-3 border-t border-edge/60 pt-2.5 text-faint">
-          Signed before it sends, so your institution can confirm the grade is genuinely yours and hasn't been edited
-          after the fact.
-        </p>
-      </div>
 
       {flagged && <p className="mt-3 text-xs text-loud">{grade.rationale[0]}</p>}
     </Section>

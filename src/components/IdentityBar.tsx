@@ -2,7 +2,7 @@ import { useReport } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { tierColor } from "./ui";
 import { DIFFICULTY_COLOR } from "../lib/machine";
-import { targetOf } from "../lib/platform";
+import { targetOf, platformLabel } from "../lib/platform";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
 import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
@@ -58,7 +58,23 @@ function ScoreReadout({ label, value, sub, color }: { label: string; value: Reac
   );
 }
 
-/** The machine "about" header — identity + the headline scores, over the writeup-reference accordion. */
+/** The pills row — difficulty/OS/retired/local, reused by both variants below. */
+function AttributePills({ target, retired }: { target: ReturnType<typeof targetOf>; retired: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {target.difficulty?.label && <Pill text={target.difficulty.label} color={DIFFICULTY_COLOR[target.difficulty.label]} filled />}
+      {target.os && <Pill text={target.os} />}
+      {retired && <Pill text="Retired" />}
+      {target.platform === "local" && <Pill text="Local" />}
+    </div>
+  );
+}
+
+/**
+ * The machine "about" header — identity + the headline scores, over the writeup-reference accordion.
+ * The full-width verdict band: a wide `justify-between` row with an 88px avatar + platform label +
+ * `text-5xl` name on the left, and the two headline `ScoreReadout` cards (Stealth, Grade) on the right.
+ */
 export function IdentityBar() {
   const { report, timeline, metrics } = useReport();
   const target = targetOf(report);
@@ -78,12 +94,11 @@ export function IdentityBar() {
         <div className="flex min-w-0 items-center gap-3.5">
           <MachineAvatar target={target} size={88} />
           <div className="min-w-0">
+            {/* platform attribution — which service this run is from, read before the name itself */}
+            <div className="label text-faint">{platformLabel(target.platform)}</div>
             <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{target.name}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {target.difficulty?.label && <Pill text={target.difficulty.label} color={DIFFICULTY_COLOR[target.difficulty.label]} filled />}
-              {target.os && <Pill text={target.os} />}
-              {retired && <Pill text="Retired" />}
-              {target.platform === "local" && <Pill text="Local" />}
+            <div className="mt-2">
+              <AttributePills target={target} retired={retired} />
             </div>
           </div>
         </div>

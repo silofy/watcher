@@ -29,6 +29,27 @@ describe("report renders end-to-end", () => {
     }
   });
 
+  it("renders the new layout's hero, Findings, and Session window sections", () => {
+    // The hero — the single evidence-backed takeaway, led big above the fold (see HeroLesson).
+    expect(html).toContain("The one lesson");
+    // The Deep dive's Findings and Timeline tabs stay mounted (just visually `hidden`), so their
+    // labels are always in the static markup regardless of which tab is active.
+    expect(html).toContain("Findings");
+    expect(html).toContain("Timeline");
+    // The Session window accordion (SessionFacts + TrimControl), collapsed by default.
+    expect(html).toContain("Session window");
+  });
+
+  // Note (follow-up, not covered here): the bundled htb-easy fixture predates schema v1.4's
+  // `ghost` field, so GhostCard's own render path (report.ghost present, human_wins/time_lost_ms
+  // copy, the per-objective verdict list) never executes in the App render above. Injecting a
+  // ghost via `useReport.setState(...)` before an SSR render doesn't exercise it either: zustand
+  // v5's `useStore` passes `getServerSnapshot: () => selector(api.getInitialState())` to
+  // `useSyncExternalStore`, and `renderToStaticMarkup` is treated as a server render — so it
+  // always reads the store's snapshot frozen at module load, never a runtime `setState`. Testing
+  // GhostCard's populated path needs either a bundled ghost-bearing fixture or a jsdom render
+  // (client snapshot path) rather than `renderToStaticMarkup` against the raw store.
+
   it("renders the machine identity, verdict, and the 23-minute stall", () => {
     expect(html).toContain("Uploadr");
     expect(html).toContain("System flag");

@@ -1,6 +1,7 @@
 import { useReport } from "../store/report";
 import { tierColor } from "./ui";
 import { computeGrade, gradeColor } from "../lib/bridge/grade";
+import { ArrowUpRight } from "./icons";
 
 function goTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -18,7 +19,7 @@ function MetricCard({ c }: { c: Cell }) {
     >
       <div className="flex items-center justify-between">
         <span className="label text-xs">{c.label}</span>
-        <span className="text-xs text-faint transition-colors group-hover:text-signal">↗</span>
+        <ArrowUpRight size={12} className="text-faint transition-colors group-hover:text-signal" />
       </div>
       {/* value + meaning anchored to the bottom of the card */}
       <div>
@@ -63,7 +64,7 @@ export function KpiBar() {
       >
         <div className="flex items-center justify-between">
           <span className="label text-xs">Grade</span>
-          <span className="text-xs text-faint transition-colors group-hover:text-signal">↗</span>
+          <ArrowUpRight size={12} className="text-faint transition-colors group-hover:text-signal" />
         </div>
         <div className="flex w-full items-baseline justify-between gap-2">
           <span className="font-display text-7xl font-bold leading-none" style={{ color: gradeColor(grade.letter) }}>

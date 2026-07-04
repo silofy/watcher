@@ -8,6 +8,7 @@
  */
 import { createHash, createPublicKey, generateKeyPairSync, sign as nodeSign, verify as nodeVerify, type KeyObject } from "node:crypto";
 import type { AttestationContent } from "./bundle";
+import { canonical } from "./canonical";
 
 export interface Attestation {
   content: AttestationContent;
@@ -20,17 +21,6 @@ export interface Attestation {
 export interface DeviceKey {
   privateKey: KeyObject;
   publicKey: KeyObject;
-}
-
-/** Deterministic, key-sorted serialization so the hash is stable across runs. */
-function canonical(v: unknown): string {
-  if (v === null || typeof v !== "object") return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
-  const obj = v as Record<string, unknown>;
-  return `{${Object.keys(obj)
-    .sort()
-    .map((k) => `${JSON.stringify(k)}:${canonical(obj[k])}`)
-    .join(",")}}`;
 }
 
 export function hashOf(content: AttestationContent, prevHash: string | null): string {

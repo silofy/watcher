@@ -21,6 +21,14 @@ export function adapterFor(id: PlatformId): PlatformAdapter | undefined {
   return ADAPTERS.find((a) => a.id === id);
 }
 
+/** The human-readable platform name ("Hack The Box", "TryHackMe", …) for a `platform` id — the
+ *  label every consumer (rail identity, History rows, Progress rows) surfaces so a run's platform
+ *  reads at a glance instead of only living in the raw id. Falls back to the id itself if it's
+ *  ever unrecognized, so a future/unknown id still renders something rather than crashing. */
+export function platformLabel(id: PlatformId): string {
+  return ADAPTERS.find((a) => a.id === id)?.label ?? id;
+}
+
 /** Highest detect() confidence wins; localAdapter's 0.1 floor guarantees a winner. */
 export function resolveAdapter(ctx: DetectContext): PlatformAdapter {
   const enriched: DetectContext = { ...ctx, targetIps: ctx.targetIps ?? ipsInScope(ctx.targetScope) };

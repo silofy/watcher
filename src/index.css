@@ -232,6 +232,16 @@ body {
   scrollbar-color: var(--color-edge) transparent;
 }
 
+/* hides an element's scrollbar chrome while keeping it scrollable — e.g. the sticky debrief rail,
+   where a visible scrollbar track reads as clutter next to the page's own scrollbar. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

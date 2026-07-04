@@ -97,10 +97,9 @@ export function CommandReplay() {
 
   return (
     <Section
-      collapsible
-      name="debrief-details"
       title="Command Log"
       subtitle="DVR · synced to the timeline"
+      srTitle
       right={
         <span className="mono tabular-nums">
           {fmtClock(playheadMs)} / {fmtClock(timeline.totalMs)}

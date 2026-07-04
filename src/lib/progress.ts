@@ -1,7 +1,7 @@
-import type { Target } from "../types/report";
+import type { PlatformId, Target } from "../types/report";
 
 export interface ProgressCard { id: string; ended_at: string; target: Target; grade: number; letter: string; coverage: number; breadth: number; methodology: number | null; rooted: boolean; demo: boolean; }
-export interface ProgressPoint { id: string; date: number; label: string; grade: number; letter: string; coverage: number; breadth: number; methodology: number | null; rooted: boolean; platform: string; demo: boolean; }
+export interface ProgressPoint { id: string; date: number; label: string; grade: number; letter: string; coverage: number; breadth: number; methodology: number | null; rooted: boolean; platform: PlatformId; demo: boolean; }
 export interface ProgressSummary { runs: number; rootedRate: number; bestGrade: number; medianGrade: number; platforms: string[]; }
 
 function median(xs: number[]): number {

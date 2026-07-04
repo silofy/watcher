@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { loadPwnboxConfig, savePwnboxConfig, pullPwnbox, parseSshTarget, formatSshTarget, type PwnboxConfig } from "../lib/pwnbox";
 import { useReport } from "../store/report";
+import { ChevronDown } from "./icons";
 
 type Sync = { kind: "idle" | "ok" | "error"; msg?: string; at?: number };
 
@@ -136,7 +137,7 @@ export function PwnboxSync() {
 
               {cfg.enabled && (
                 <button type="button" onClick={() => setShowConfig((v) => !v)} className="mt-2 label flex items-center gap-1.5 text-faint transition-colors hover:text-muted">
-                  <span className={`transition-transform ${showConfig ? "rotate-90" : ""}`}>▸</span> Connection
+                  <ChevronDown className={`transition-transform ${showConfig ? "rotate-180" : ""}`} /> Connection
                 </button>
               )}
               {cfg.enabled && showConfig && (

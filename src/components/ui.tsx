@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ACTOR_COLORS, ACTOR_LABELS, DETOUR_COLOR } from "../lib/scale";
 import type { ActorMode } from "../types/report";
+import { ChevronDown } from "./icons";
 
 /**
  * A flat console section — a stenciled label over a hairline rule, content flush on the ground. No
@@ -17,6 +18,7 @@ export function Section({
   collapsible = false,
   name,
   defaultOpen = false,
+  srTitle = false,
 }: {
   title?: string;
   subtitle?: string;
@@ -30,8 +32,12 @@ export function Section({
   /** Shared name → only one `<details>` in the group stays open at a time (native accordion). */
   name?: string;
   defaultOpen?: boolean;
+  /** Keep the title in the markup (static export, screen readers) but visually hidden — for a section
+   *  hosted under a tab/label that already shows the same heading (e.g. the Deep dive tabs), so the
+   *  title isn't printed twice. Subtitle/right (often the section's only unique context) stay visible. */
+  srTitle?: boolean;
 }) {
-  const titleEl = title && <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>;
+  const titleEl = title && <h2 className={`font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted ${srTitle ? "sr-only" : ""}`}>{title}</h2>;
   const subEl = subtitle && <span className="text-xs text-faint">{subtitle}</span>;
   const rightEl = right && <div className="text-xs text-muted">{right}</div>;
 
@@ -45,7 +51,7 @@ export function Section({
       >
         <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 py-1 [&::-webkit-details-marker]:hidden">
           <div className="flex items-baseline gap-2.5">
-            <span className="text-faint transition-transform duration-200 group-open/sec:rotate-90">▸</span>
+            <ChevronDown className="text-faint transition-transform duration-200 group-open/sec:rotate-180" />
             {titleEl}
             {subEl}
           </div>
@@ -78,12 +84,19 @@ export function Section({
 }
 
 /** A generic one-at-a-time disclosure for content that isn't already a Section (shares the native
- *  `name` accordion group). The title row is the click target; the body shows when open. */
+ *  `name` accordion group). The title row is the click target; the body shows when open.
+ *
+ *  Open state is uncontrolled by default (`defaultOpen`, native <details> toggling). Pass `open` to
+ *  drive it from the parent instead — e.g. force the drawer open on a deep-link reveal — while still
+ *  letting the user manually toggle it via `onToggle`. Existing callers that only pass `defaultOpen`
+ *  are unaffected. */
 export function Collapse({
   title,
   subtitle,
   name,
   defaultOpen = false,
+  open,
+  onToggle,
   className = "",
   children,
 }: {
@@ -91,13 +104,23 @@ export function Collapse({
   subtitle?: string;
   name?: string;
   defaultOpen?: boolean;
+  /** Controlled open state. When provided, this drives whether the drawer is open instead of `defaultOpen`. */
+  open?: boolean;
+  /** Fired when the user toggles a controlled drawer (click, keyboard), so the parent can stay in sync. */
+  onToggle?: (open: boolean) => void;
   className?: string;
   children: ReactNode;
 }) {
+  const controlled = open !== undefined;
   return (
-    <details name={name} open={defaultOpen} className={`group/sec relative ${className}`}>
+    <details
+      name={name}
+      open={controlled ? open : defaultOpen}
+      className={`group/sec relative ${className}`}
+      onToggle={controlled ? (e) => onToggle?.((e.currentTarget as HTMLDetailsElement).open) : undefined}
+    >
       <summary className="flex cursor-pointer list-none items-baseline gap-2.5 py-1 [&::-webkit-details-marker]:hidden">
-        <span className="text-faint transition-transform duration-200 group-open/sec:rotate-90">▸</span>
+        <ChevronDown className="text-faint transition-transform duration-200 group-open/sec:rotate-180" />
         <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>
         {subtitle && <span className="text-xs text-faint">{subtitle}</span>}
       </summary>

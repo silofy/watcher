@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useReport } from "../store/report";
 import { progressSeries, progressSummary, progressPath, progressDots, type ProgressPoint } from "../lib/progress";
+import { platformLabel } from "../lib/platform";
 import { Section, tierColor } from "./ui";
 
 // chart geometry — a fixed logical size, scaled to the container by the responsive <svg>
@@ -44,6 +45,7 @@ function RunButton({ p, onOpen }: { p: ProgressPoint; onOpen: () => void }) {
       title={`Open ${p.label}`}
       className="flex shrink-0 flex-col items-center gap-0.5 rounded-lg border border-edge bg-panel px-2.5 py-2 text-center transition-colors hover:border-edge-bright"
     >
+      <span className="label text-[10px] text-faint">{platformLabel(p.platform)}</span>
       <span className="max-w-[10ch] truncate text-xs text-muted">{p.label}</span>
       <span className="font-display text-sm font-bold" style={{ color: tierColor(p.grade) }}>
         {p.letter}

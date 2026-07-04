@@ -2,8 +2,9 @@ import { useRef, useState } from "react";
 import { useReport, type SessionCard } from "../store/report";
 import { MachineAvatar } from "./MachineAvatar";
 import { DIFFICULTY_COLOR } from "../lib/machine";
-import { targetOf } from "../lib/platform";
+import { targetOf, platformLabel } from "../lib/platform";
 import type { WatcherReport } from "../types/report";
+import { Check } from "./icons";
 
 function gradeColor(letter: string): string {
   if (letter === "A" || letter === "B") return "var(--color-match)";
@@ -52,6 +53,8 @@ function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
           )}
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+          {/* which platform this run is from — read at a glance, before difficulty/OS */}
+          <span className="label text-faint">{platformLabel(t.platform)}</span>
           {t.difficulty?.label && (
             <span className="label" style={{ color: DIFFICULTY_COLOR[t.difficulty.label] }}>
               {t.difficulty.label}
@@ -59,8 +62,14 @@ function Row({ c, onOpen }: { c: SessionCard; onOpen: () => void }) {
           )}
           {t.os && <span className="text-faint">{t.os}</span>}
           {/* result of the run — a static outcome, not a live state */}
-          <span style={{ color: c.rooted ? "var(--color-match)" : "var(--color-faint)" }}>
-            {c.rooted ? "✓ Rooted" : "Foothold only"}
+          <span className="flex items-center gap-1" style={{ color: c.rooted ? "var(--color-match)" : "var(--color-faint)" }}>
+            {c.rooted ? (
+              <>
+                <Check size={12} /> Rooted
+              </>
+            ) : (
+              "Foothold only"
+            )}
           </span>
         </div>
       </div>

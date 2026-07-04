@@ -6,40 +6,17 @@ import { buildPhaseAudits, type AuditItem, type PhaseAudit as PhaseAuditT } from
 import { cweLabel } from "../lib/pipeline/frameworks";
 import { TechniqueChip } from "./TechniqueChip";
 import { fmtDuration, fmtMinutes } from "../lib/format";
+import { ArrowUpRight, Check, ChevronDown, Circle, Crosshair, Terminal, Zap } from "./icons";
 
 const MD = "[&_code]:mono [&_code]:rounded [&_code]:bg-panel-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-fg [&_p]:m-0 [&_strong]:text-fg";
 
 /** Small inline glyphs for the phase context line — a bolt (efficiency), a terminal (commands), and
  *  a crosshair (ATT&CK techniques). Stroke icons in currentColor; no emoji. */
 function Icon({ name }: { name: "efficiency" | "commands" | "techniques" }) {
-  const attrs = {
-    width: 13,
-    height: 13,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    className: "shrink-0 opacity-70",
-  };
-  if (name === "efficiency") return <svg {...attrs}><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" /></svg>;
-  if (name === "commands")
-    return (
-      <svg {...attrs}>
-        <polyline points="4 17 10 11 4 5" />
-        <line x1="12" y1="19" x2="20" y2="19" />
-      </svg>
-    );
-  return (
-    <svg {...attrs}>
-      <circle cx="12" cy="12" r="9" />
-      <line x1="12" y1="2" x2="12" y2="6" />
-      <line x1="12" y1="18" x2="12" y2="22" />
-      <line x1="2" y1="12" x2="6" y2="12" />
-      <line x1="18" y1="12" x2="22" y2="12" />
-    </svg>
-  );
+  const props = { size: 13, className: "shrink-0 opacity-70" };
+  if (name === "efficiency") return <Zap {...props} />;
+  if (name === "commands") return <Terminal {...props} />;
+  return <Crosshair {...props} />;
 }
 
 /** A small Lighthouse-style score ring (efficiency 0–100), colored by tier. */
@@ -120,7 +97,11 @@ function InsightRow({ item }: { item: AuditItem }) {
             ~{fmtMinutes(item.savings_ms)} saved
           </span>
         )}
-        {linked && <span className="label ml-auto text-faint">step {item.evidence_seq} ↗</span>}
+        {linked && (
+          <span className="label ml-auto flex items-center gap-0.5 text-faint">
+            step {item.evidence_seq} <ArrowUpRight size={12} />
+          </span>
+        )}
       </div>
       <div className={`text-sm font-semibold leading-snug text-fg ${MD}`}>
         <ReactMarkdown>{item.title}</ReactMarkdown>
@@ -141,7 +122,7 @@ function Group({ title, items, dot, defaultOpen = false }: { title: string; item
   return (
     <details className="group mt-2 rounded-lg border border-edge bg-panel-2/20" open={defaultOpen}>
       <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
-        <span className="text-faint transition-transform group-open:rotate-90">▸</span>
+        <ChevronDown className="text-faint transition-transform group-open:rotate-180" />
         <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: dot }} />
         <span className="label text-muted">{title}</span>
         <span className="text-xs text-faint">· {items.length}</span>
@@ -159,7 +140,11 @@ function Group({ title, items, dot, defaultOpen = false }: { title: string; item
             >
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-sm text-fg">{it.title}</span>
-                {linked && <span className="label shrink-0 text-faint">step {it.evidence_seq} ↗</span>}
+                {linked && (
+                  <span className="label flex shrink-0 items-center gap-0.5 text-faint">
+                    step {it.evidence_seq} <ArrowUpRight size={12} />
+                  </span>
+                )}
               </div>
               {it.detail && <div className="mt-0.5 text-xs leading-relaxed text-faint">{it.detail}</div>}
             </li>
@@ -190,7 +175,7 @@ function Objectives({ items }: { items: PhaseAuditT["objectives"] }) {
             onClick={() => o.reached && o.seq != null && s.reveal(o.seq)}
           >
             <span className="shrink-0" style={{ color: o.proven ? "var(--color-flag)" : o.reached ? "var(--color-match)" : "var(--color-skipped)" }}>
-              {o.reached ? "✓" : "○"}
+              {o.reached ? <Check size={14} /> : <Circle size={14} />}
             </span>
             <span className={o.reached ? "text-fg" : "text-muted"}>{o.label}</span>
             {o.proven && (
@@ -199,7 +184,9 @@ function Objectives({ items }: { items: PhaseAuditT["objectives"] }) {
               </span>
             )}
             {o.reached ? (
-              <span className="label ml-auto shrink-0 text-faint">step {o.seq} ↗</span>
+              <span className="label ml-auto flex shrink-0 items-center gap-0.5 text-faint">
+                step {o.seq} <ArrowUpRight size={12} />
+              </span>
             ) : (
               <span className="ml-auto shrink-0 text-xs text-faint">not reached — try {o.satisfied_by[0]}</span>
             )}
@@ -225,7 +212,9 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
           {clean ? (
-            <span className="text-xs text-match">✓ clean</span>
+            <span className="flex items-center gap-1 text-xs text-match">
+              <Check size={12} /> clean
+            </span>
           ) : p.insights.length > 0 ? (
             <span className="rounded-full px-2 py-0.5 text-xs" style={{ color: "var(--color-signal)", backgroundColor: "color-mix(in oklch, var(--color-signal) 14%, transparent)" }}>
               {p.insights.length} to improve
@@ -237,7 +226,7 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
           ) : (
             <span className="text-xs text-faint">{p.manual.length} to check</span>
           )}
-          <span className="text-faint transition-transform [details[open]_&]:rotate-90">▸</span>
+          <ChevronDown className="text-faint transition-transform [details[open]_&]:rotate-180" />
         </div>
       </summary>
 
@@ -329,7 +318,7 @@ function GeneralCard({ items }: { items: AuditItem[] }) {
           <span className="rounded-full px-2 py-0.5 text-xs" style={{ color: "var(--color-signal)", backgroundColor: "color-mix(in oklch, var(--color-signal) 14%, transparent)" }}>
             {items.length} to improve
           </span>
-          <span className="text-faint transition-transform [details[open]_&]:rotate-90">▸</span>
+          <ChevronDown className="text-faint transition-transform [details[open]_&]:rotate-180" />
         </div>
       </summary>
       <div className="border-t border-edge px-4 py-3">
@@ -349,7 +338,7 @@ function GeneralCard({ items }: { items: AuditItem[] }) {
  * directly under the KPI stats: scannable, text-first, actionable. Complements (does not replace) the
  * timeline/graph sections below.
  */
-export function PhaseAudit() {
+export function PhaseAudit({ hideTakeaway = false }: { hideTakeaway?: boolean } = {}) {
   const s = useReport();
   const { phases, general } = buildPhaseAudits(s.report);
   if (phases.length === 0 && general.length === 0) return null;
@@ -359,9 +348,10 @@ export function PhaseAudit() {
   // keep the focus reactive so deep-links from here highlight elsewhere (and vice-versa)
   void activeSeq(s);
 
-  // the single most important lesson — the top-ranked coaching step, led here as the audit's headline
+  // the single most important lesson — the top-ranked coaching step, led here as the audit's headline.
+  // Suppressed when a caller (the debrief's hero card) already shows it, so it isn't shown twice.
   const lead = normalizeCoaching(s.report.coaching?.next_steps)[0];
-  const takeaway = lead ? stepText(lead) : undefined;
+  const takeaway = !hideTakeaway && lead ? stepText(lead) : undefined;
 
   return (
     <Section title="Phase audit" subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}>

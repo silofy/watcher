@@ -9,6 +9,7 @@ import { resolveProvider } from "../lib/llm";
 import { refineCoaching, type CoachStep } from "../lib/llm/coach";
 import { fmtDuration, fmtClock } from "../lib/format";
 import type { Episode, GoldenObjective } from "../types/report";
+import { Check, Flag } from "./icons";
 
 /**
  * "Where you deviated" — the honest, self-relative timeline (Layer 1). No write-up needed: it reads
@@ -162,14 +163,14 @@ export function DeviationTimeline() {
         stall
       </span>
       <span className="flex items-center gap-1.5 text-faint">
-        <span className="inline-block h-2.5 w-1 rounded-[1px]" style={{ background: "var(--color-flag)" }} />
-        ⚑ flag
+        <Flag size={12} style={{ color: "var(--color-flag)" }} />
+        flag
       </span>
     </div>
   );
 
   return (
-    <Section collapsible name="debrief-details" title="Where you deviated" subtitle="measured against your own run — not an optimal path" right={legend}>
+    <Section title="Where you deviated" subtitle="measured against your own run — not an optimal path" right={legend} srTitle>
       {/* glance readouts — align tops so the numbers sit on one row and any sub-caption hangs below */}
       <div className="mb-3 flex flex-wrap items-start gap-x-8 gap-y-3">
         <Readout
@@ -273,7 +274,7 @@ export function DeviationTimeline() {
                 className="absolute inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-semibold shadow-sm"
                 style={{ left: `${pct}%`, top: 18, transform: right ? "translateX(-100%)" : undefined, color: "var(--color-ink)", background: "var(--color-flag)" }}
               >
-                ⚑ {fe.label} · {fmtClock(fe.atMs)}
+                <Flag size={12} /> {fe.label} · {fmtClock(fe.atMs)}
               </span>
             );
           })}
@@ -326,8 +327,14 @@ export function DeviationTimeline() {
                   {/* the coach's call */}
                   <div className="mt-2.5 rounded-md bg-signal/10 px-2.5 py-2">
                     <div className="flex items-center gap-2">
-                      <span className="label" style={{ color: isGood ? "var(--color-match)" : "var(--color-signal)" }}>
-                        {isGood ? "✓ Good move" : "Coach"}
+                      <span className="label flex items-center gap-1" style={{ color: isGood ? "var(--color-match)" : "var(--color-signal)" }}>
+                        {isGood ? (
+                          <>
+                            <Check size={12} /> Good move
+                          </>
+                        ) : (
+                          "Coach"
+                        )}
                       </span>
                       {refined && <span className="label rounded bg-signal/20 px-1.5 text-xs text-signal">ai</span>}
                     </div>
