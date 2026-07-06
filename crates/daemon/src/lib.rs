@@ -11,7 +11,7 @@
 use std::sync::mpsc::Receiver;
 
 use serde::Deserialize;
-use watcher_core::{redact, redact_headers, EndReason, SessionConfig, SessionController, SessionEvent};
+use watcher_core::{redact, redact_body, redact_headers, EndReason, SessionConfig, SessionController, SessionEvent};
 use watcher_store::{ingest, parse_ndjson, RawEvent, SqlConnection};
 
 // ---- Plugin capability handshake (brief §5.4) ----
@@ -150,21 +150,21 @@ impl StreamProcessor {
                 *h = r;
             }
             if let Some(u) = ev.payload.url.as_mut() {
-                let r = redact(u);
+                let r = redact_body(u);
                 if &r != u {
                     redacted = true;
                 }
                 *u = r;
             }
             if let Some(b) = ev.payload.req_body.as_mut() {
-                let r = redact(b);
+                let r = redact_body(b);
                 if &r != b {
                     redacted = true;
                 }
                 *b = r;
             }
             if let Some(b) = ev.payload.resp_body.as_mut() {
-                let r = redact(b);
+                let r = redact_body(b);
                 if &r != b {
                     redacted = true;
                 }
@@ -340,7 +340,7 @@ mod tests {
     }
 
     const HTTP_STREAM: &str = r#"{"source":"plugin","session_uuid":"ext-1","seq":0,"ts_utc_us":1000,"kind":"session_start","payload":{"text":"HTB :: web"}}
-{"source":"plugin","session_uuid":"ext-1","seq":1,"ts_utc_us":2000,"kind":"http_request","payload":{"method":"GET","url":"http://10.10.10.8/login","pair_id":"p1","req_headers":"Host: t\r\nAuthorization: Bearer sk-abc123\r\nCookie: session=deadbeef; a=b\r\nAccept: */*","req_body":"none"}}"#;
+{"source":"plugin","session_uuid":"ext-1","seq":1,"ts_utc_us":2000,"kind":"http_request","payload":{"method":"GET","url":"http://10.10.10.8/login","pair_id":"p1","req_headers":"Host: t\r\nAuthorization: Bearer sk-abc123\r\nCookie: session=deadbeef; a=b\r\nAccept: */*","req_body":"token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig"}}"#;
 
     #[test]
     fn http_secrets_never_reach_the_store() {
@@ -359,11 +359,11 @@ mod tests {
 
         // reopen and confirm the redacted http exchange landed — never the raw secrets.
         let conn = open(p, "k").unwrap();
-        let (req_headers, url): (String, String) = conn
+        let (req_headers, url, req_body): (String, String, String) = conn
             .query_row(
-                "SELECT req_headers, url FROM http_exchanges WHERE pair_id = 'p1'",
+                "SELECT req_headers, url, req_body FROM http_exchanges WHERE pair_id = 'p1'",
                 [],
-                |r| Ok((r.get(0)?, r.get(1)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
             )
             .unwrap();
         assert!(!req_headers.contains("sk-abc123"));
@@ -372,6 +372,8 @@ mod tests {
         assert!(req_headers.contains("Cookie: [redacted]"));
         assert!(req_headers.contains("Host: t"));
         assert!(!url.contains("10.10.10.8"));
+        assert!(!req_body.contains("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig"));
+        assert!(req_body.contains("token="));
     }
 
     const HANDSHAKE: &str = r#"{"watcher_handshake":"1.0","plugin":"aws-cloudshell","class":"source","capabilities":{"has_exit_codes":false,"has_stdin":true,"boundary_confidence":"inferred","redaction":"none"},"context_template":"cloud:aws:cloudshell"}"#;

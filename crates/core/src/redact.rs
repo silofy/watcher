@@ -17,6 +17,18 @@ fn secret() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| Regex::new(r"(?i)\b(password|passwd|pass|secret|token|api[_-]?key)\b\s*[:=]\s*\S+").unwrap())
 }
+fn bearer() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+").unwrap())
+}
+fn jwt() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b").unwrap())
+}
+fn api_key() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"\b(?:sk|pk|ghp|xox[baprs])[_-][A-Za-z0-9_-]{10,}\b").unwrap())
+}
 
 /// Mask IPv4 addresses, 32-hex flags, and credential tokens.
 pub fn redact(s: &str) -> String {
@@ -24,6 +36,20 @@ pub fn redact(s: &str) -> String {
     let b = flag().replace_all(&a, "[redacted-flag]");
     let c = secret().replace_all(&b, |caps: &Captures| format!("{}=[redacted]", &caps[1]));
     c.into_owned()
+}
+
+/// Mask bearer tokens, JWTs, and common API-key shapes in free text (bodies, query strings,
+/// urls), preserving surrounding structure (param names, the literal "Bearer " prefix).
+pub fn redact_tokens(s: &str) -> String {
+    let a = bearer().replace_all(s, "Bearer [redacted]");
+    let b = jwt().replace_all(&a, "[redacted-jwt]");
+    let c = api_key().replace_all(&b, "[redacted-key]");
+    c.into_owned()
+}
+
+/// Full redaction for HTTP url/body values: existing rules plus token shapes.
+pub fn redact_body(s: &str) -> String {
+    redact_tokens(&redact(s))
 }
 
 /// Mask credential-bearing HTTP header values, preserving header names and structure.
@@ -34,13 +60,16 @@ pub fn redact_headers(headers: &str) -> String {
             || n == "x-api-key" || n == "x-auth-token" || n.ends_with("-api-key")
     };
     headers
-        .split("\r\n")
-        .map(|line| match line.split_once(':') {
-            Some((name, _)) if sensitive(name) => format!("{}: [redacted]", name),
-            _ => line.to_string(),
+        .split('\n')
+        .map(|raw| {
+            let line = raw.strip_suffix('\r').unwrap_or(raw);
+            match line.split_once(':') {
+                Some((name, _)) if sensitive(name) => format!("{}: [redacted]", name),
+                _ => line.to_string(),
+            }
         })
         .collect::<Vec<_>>()
-        .join("\r\n")
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -62,7 +91,7 @@ mod tests {
 
     #[test]
     fn masks_auth_headers_and_cookies() {
-        let h = "Host: t\r\nAuthorization: Bearer sk-abc123\r\nCookie: session=deadbeef; a=b\r\nAccept: */*";
+        let h = "Host: t\r\nAuthorization: Bearer sk-abc123\r\nCookie: session=deadbeef; a=b\r\nAccept: */*\r\nSet-Cookie: sid=abc123\r\nX-API-Key: k-123456\r\nX-Auth-Token: tok-abcdef";
         let out = redact_headers(h);
         assert!(out.contains("Host: t"));
         assert!(out.contains("Accept: */*"));
@@ -70,5 +99,35 @@ mod tests {
         assert!(!out.contains("deadbeef"));
         assert!(out.contains("Authorization: [redacted]"));
         assert!(out.contains("Cookie: [redacted]"));
+        assert!(!out.contains("sid=abc123"));
+        assert!(!out.contains("k-123456"));
+        assert!(!out.contains("tok-abcdef"));
+        assert!(out.contains("Set-Cookie: [redacted]"));
+        assert!(out.contains("X-API-Key: [redacted]"));
+        assert!(out.contains("X-Auth-Token: [redacted]"));
+    }
+
+    #[test]
+    fn masks_headers_joined_with_bare_newlines() {
+        let h = "Host: t\nAuthorization: Bearer secret123\nCookie: session=deadbeef";
+        let out = redact_headers(h);
+        assert!(!out.contains("secret123"));
+        assert!(!out.contains("deadbeef"));
+        assert!(out.contains("Authorization: [redacted]"));
+        assert!(out.contains("Cookie: [redacted]"));
+        assert!(out.contains("Host: t"));
+    }
+
+    #[test]
+    fn masks_token_shapes_but_keeps_param_names() {
+        // JWT value masked, param name survives (shape preserved)
+        let out = redact_body("access=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc-_123&user=admin");
+        assert!(!out.contains("eyJhbGciOiJIUzI1NiJ9"));
+        assert!(out.contains("access="));
+        assert!(out.contains("user=admin"));
+        // bearer + sk- key masked
+        let b = redact_body("Authorization was Bearer sk-live-abcdef0123456789 here");
+        assert!(!b.contains("sk-live-abcdef0123456789"));
+        assert!(b.contains("Bearer [redacted]") || b.contains("[redacted-key]"));
     }
 }

@@ -4,5 +4,5 @@
 pub mod redact;
 pub mod session;
 
-pub use redact::{redact, redact_headers};
+pub use redact::{redact, redact_body, redact_headers};
 pub use session::{EndReason, SessionConfig, SessionController, SessionEvent};
