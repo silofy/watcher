@@ -741,17 +741,31 @@ fn burp_mcp_reachable(port: u16) -> bool {
 }
 
 /// Spawn the python bridge as a detached child so it joins this run's active session over the
-/// daemon socket. Fire-and-forget and best-effort: a missing `python`/`mcp`/Burp never aborts
-/// terminal capture — the bridge process itself degrades (prints its own actionable message,
-/// exits 0) if it can't proceed. See plugins/burp-bridge/bridge.py's `main()`.
+/// daemon socket. Fire-and-forget and best-effort: a missing `python3`/`python`/`mcp`/Burp never
+/// aborts terminal capture — the bridge process itself degrades (prints its own actionable
+/// message, exits 0) if it can't proceed. See plugins/burp-bridge/bridge.py's `main()`.
+///
+/// Tries `python3` first, then falls back to `python`: macOS/Linux (the primary pentest
+/// platforms) frequently only have `python3` on PATH, so a `python`-only spawn silently never
+/// activates `--web` there.
 fn spawn_web_bridge(platform: &str) {
     let bridge = std::path::Path::new("plugins").join("burp-bridge").join("bridge.py");
-    match std::process::Command::new("python").arg(&bridge).arg("--platform").arg(platform).spawn() {
-        Ok(_) => eprintln!("[watcher-capture] web capture: spawned burp-bridge (platform={platform})"),
-        Err(e) => eprintln!(
-            "[watcher-capture] web capture: could not spawn burp-bridge ({e}) — continuing without web capture."
-        ),
+    let mut last_err = None;
+    for interpreter in ["python3", "python"] {
+        match std::process::Command::new(interpreter).arg(&bridge).arg("--platform").arg(platform).spawn() {
+            Ok(_) => {
+                eprintln!(
+                    "[watcher-capture] web capture: spawned burp-bridge via {interpreter} (platform={platform})"
+                );
+                return;
+            }
+            Err(e) => last_err = Some(e),
+        }
     }
+    eprintln!(
+        "[watcher-capture] web capture: could not spawn burp-bridge ({}) — continuing without web capture.",
+        last_err.expect("loop always sets last_err before exiting without returning")
+    );
 }
 
 /// Wire `--web` enablement (brief §8): the bare flag joins the bridge to this run; when Burp's MCP

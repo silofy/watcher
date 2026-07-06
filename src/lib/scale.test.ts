@@ -115,13 +115,16 @@ describe("isWebEpisode (--web capture, brief §8)", () => {
   it("flags episodes tagged web:burp by the ingest pipeline", () => {
     expect(isWebEpisode(mk({ context_path: "web:burp", cmd: "id" }))).toBe(true);
   });
-  it("falls back to detecting an HTTP method as the command", () => {
-    expect(isWebEpisode(mk({ cmd: "GET /login" }))).toBe(true);
-    expect(isWebEpisode(mk({ cmd: "post /api/users" }))).toBe(true); // case-insensitive
-  });
   it("leaves ordinary shell episodes alone", () => {
     expect(isWebEpisode(mk({ cmd: "nmap -sV 10.10.10.5" }))).toBe(false);
     expect(isWebEpisode(mk({ context_path: "host", cmd: "id" }))).toBe(false);
+  });
+  it("does not misclassify a 'head' command as a web episode", () => {
+    expect(isWebEpisode(mk({ cmd: "head -n 20 /etc/passwd", context_path: "host" }))).toBe(false);
+    expect(isWebEpisode(mk({ cmd: "PUT the file back", context_path: undefined }))).toBe(false);
+  });
+  it("classifies a web:burp episode as web regardless of cmd", () => {
+    expect(isWebEpisode(mk({ cmd: "GET /admin", context_path: "web:burp" }))).toBe(true);
   });
 });
 

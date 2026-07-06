@@ -36,9 +36,12 @@ export const WEB_COLOR = "oklch(0.75 0.14 230)";
 const HTTP_METHODS = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b/i;
 
 /** An HTTP exchange captured via Burp (§8 web capture) — tagged `context_path: "web:burp"` by the
- *  ingest pipeline, or (defensively) any episode whose command line is itself a request line. */
+ *  ingest pipeline. Keyed on the `web:` prefix (not just the literal `web:burp`) so future web
+ *  sources stay classified correctly. Relies SOLELY on this authoritative context signal — no
+ *  `cmd`-prefix fallback, since ordinary shell commands (`head`, `put`, ...) collide with HTTP
+ *  method names and would otherwise be misclassified as web traffic. */
 export function isWebEpisode(ep: Episode): boolean {
-  return ep.context_path === "web:burp" || HTTP_METHODS.test(ep.cmd ?? "");
+  return (ep.context_path ?? "").startsWith("web:");
 }
 
 /** Split a web episode's `cmd` ("GET /login?x=1") into its method and path for compact display. */
