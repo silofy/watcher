@@ -89,10 +89,18 @@ CREATE TABLE IF NOT EXISTS phases (
   id INTEGER PRIMARY KEY, session_id INTEGER REFERENCES sessions(id),
   mitre_tactic TEXT, label TEXT, started_at INTEGER, ended_at INTEGER );
 
+CREATE TABLE IF NOT EXISTS http_exchanges (
+  id INTEGER PRIMARY KEY, session_id INTEGER REFERENCES sessions(id),
+  pair_id TEXT, method TEXT, url TEXT, req_headers TEXT, req_body TEXT,
+  status INTEGER, resp_headers TEXT, resp_body TEXT, mime TEXT,
+  started_at INTEGER, ended_at INTEGER, context_path TEXT,
+  UNIQUE(session_id, pair_id) );
+
 CREATE INDEX IF NOT EXISTS idx_cmd_session ON commands(session_id, seq);
 CREATE INDEX IF NOT EXISTS idx_cmd_binary  ON commands(binary);
 CREATE INDEX IF NOT EXISTS idx_out_cmd     ON output_blocks(command_id);
 CREATE INDEX IF NOT EXISTS idx_art_kind    ON artifacts(kind, value);
+CREATE INDEX IF NOT EXISTS idx_http_session ON http_exchanges(session_id);
 "#;
 
 /// Open (or create) an encrypted DB and ensure the schema exists. The key must be set
@@ -185,6 +193,28 @@ pub fn ingest(conn: &mut Connection, events: &[RawEvent]) -> rusqlite::Result<(u
                     )?;
                     outs += 1;
                 }
+            }
+            "http_request" => {
+                tx.execute(
+                    "INSERT OR IGNORE INTO http_exchanges
+                       (session_id, pair_id, method, url, req_headers, req_body, started_at, context_path)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    rusqlite::params![
+                        session_id, e.payload.pair_id, e.payload.method, e.payload.url,
+                        e.payload.req_headers, e.payload.req_body, e.ts_utc_us,
+                        e.provenance.context_path,
+                    ],
+                )?;
+            }
+            "http_response" => {
+                tx.execute(
+                    "UPDATE http_exchanges SET status=?1, resp_headers=?2, resp_body=?3, mime=?4, ended_at=?5
+                     WHERE session_id=?6 AND pair_id=?7",
+                    rusqlite::params![
+                        e.payload.status, e.payload.resp_headers, e.payload.resp_body,
+                        e.payload.mime, e.ts_utc_us, session_id, e.payload.pair_id,
+                    ],
+                )?;
             }
             _ => {}
         }
@@ -298,5 +328,21 @@ mod tests {
         assert_eq!(evs[0].kind, "http_request");
         assert_eq!(evs[0].payload.method.as_deref(), Some("POST"));
         assert_eq!(evs[0].payload.pair_id.as_deref(), Some("p1"));
+    }
+
+    #[test]
+    fn ingests_http_exchange_pair() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("t.db"); let p = p.to_str().unwrap();
+        let mut conn = open(p, "k").unwrap();
+        let stream = r#"{"source":"plugin","session_uuid":"s1","seq":1,"ts_utc_us":100,"kind":"http_request","payload":{"method":"POST","url":"http://t/login","pair_id":"p1","req_body":"u=a"}}
+{"source":"plugin","session_uuid":"s1","seq":2,"ts_utc_us":200,"kind":"http_response","payload":{"status":200,"pair_id":"p1","resp_body":"welcome","mime":"text/html"}}"#;
+        ingest(&mut conn, &parse_ndjson(stream)).unwrap();
+        let (method, status, body): (String, i64, String) = conn.query_row(
+            "SELECT method, status, resp_body FROM http_exchanges WHERE pair_id='p1'", [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).unwrap();
+        assert_eq!(method, "POST");
+        assert_eq!(status, 200);
+        assert_eq!(body, "welcome");
     }
 }
