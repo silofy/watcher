@@ -1,9 +1,10 @@
 # The Watcher
 
 A local-first **flight-data-recorder for offensive-security practice**. It records the commands you
-run against a target on **any training platform** — Hack The Box, TryHackMe, OffSec, Immersive Labs,
-or a local/CTF box — and turns them into a graded debrief — a Lighthouse-style audit per phase: what
-you achieved, where you wasted time, and what to do better next time.
+run — and, optionally, the web attacks you drive through Burp — against a target on **any training
+platform** — Hack The Box, TryHackMe, OffSec, Immersive Labs, or a local/CTF box — and turns them into
+a graded debrief — a Lighthouse-style audit per phase: what you achieved, where you wasted time, and
+what to do better next time.
 
 Your run is read through three frameworks at once: **MITRE ATT&CK** for *what* you did, the **Unified
 Kill Chain** for the *order* it should happen in (so backtracking and clean progression are
@@ -183,6 +184,24 @@ capture declares which platform it belongs to without hardcoding HTB. In-app **I
 through both capture paths (your own VM over VPN, or in Pwnbox). Full guide:
 **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
 
+## Record your web traffic (optional)
+
+Half of many boxes happens in a browser — a login form, a tampered parameter, a file upload. With
+**Burp Suite** running and its **MCP Server** extension enabled, add `--web` to any capture and The
+Watcher folds those HTTP exchanges into the *same* run as your terminal commands, graded on the same
+timeline: a UNION-tampered parameter counts as SQLi (**CWE-89**), an IDOR as **CWE-639**, a `../`
+traversal as **CWE-22**. A small `plugins/burp-bridge/` process reads Burp's proxy history over MCP and
+streams the exchanges in; they land on the attack timeline and Live Ops right alongside `sqlmap`.
+
+It's **off by default** and does nothing until you pass `--web`. When on, it only ingests traffic for
+Burp's in-scope target, and auth headers, cookies, and bearer/JWT/API-key tokens are stripped before
+anything is stored or rendered. If Burp or its MCP server isn't reachable, the flag prints a one-line
+hint and your terminal capture runs exactly as before — the web path never blocks a run. Full setup:
+**[docs/web-capture.md](docs/web-capture.md)**.
+
+> Phase 1 reads from Burp via MCP. A transparent/inline proxy and Burp/Caido/ZAP project-file import
+> are planned as later, additive sources into the same grading pipeline.
+
 ## Adding a platform
 
 The Watcher grades any run the same way; a "platform" is just a **detect + identify** seam over that
@@ -217,7 +236,7 @@ crates/         the Rust side:
   core/           shared session lifecycle + redaction
   daemon/         optional: single-owner store daemon
   store/          optional: encrypted SQLCipher store
-plugins/        optional plugin API (SDK + conformance kit)
+plugins/        optional plugin API (SDK + conformance kit)  ·  burp-bridge/ (Burp→MCP web capture)
 schema/         the versioned JSON contracts
 fixtures/       sample sessions   ·   scripts/ tests/   tooling & tests
 ```
