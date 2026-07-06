@@ -305,7 +305,8 @@ pub fn export_envelopes(conn: &Connection, session: Option<&str>) -> rusqlite::R
 
     let mut os = conn.prepare(
         "SELECT c.seq, o.content, o.line_count, o.started_at, o.fidelity
-         FROM output_blocks o JOIN commands c ON o.command_id = c.id WHERE c.session_id = ?1")?;
+         FROM output_blocks o JOIN commands c ON o.command_id = c.id WHERE c.session_id = ?1
+         ORDER BY o.started_at, c.seq")?;
     for row in os.query_map([session_id], |r| Ok((
         r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<i64>>(2)?,
         r.get::<_, i64>(3)?, r.get::<_, Option<String>>(4)?,
@@ -315,14 +316,15 @@ pub fn export_envelopes(conn: &Connection, session: Option<&str>) -> rusqlite::R
         events.push(RawEvent {
             source: src.clone(), session_uuid: uuid.clone(), seq, ts_utc_us: ts,
             kind: if masked { "stdin_masked".into() } else { "output".into() },
-            payload: Payload { stream: Some("stdout".into()), text: Some(content), line_count: lc, ..Default::default() },
+            payload: Payload { text: Some(content), line_count: lc, ..Default::default() },
             provenance: Provenance { boundary_confidence: None, context_path: None, platform: Some(platform.clone()) },
         });
     }
 
     let mut hs = conn.prepare(
         "SELECT pair_id, method, url, req_headers, req_body, status, resp_headers, resp_body, mime, started_at, ended_at, context_path
-         FROM http_exchanges WHERE session_id = ?1")?;
+         FROM http_exchanges WHERE session_id = ?1
+         ORDER BY started_at, pair_id")?;
     for row in hs.query_map([session_id], |r| Ok((
         r.get::<_, Option<String>>(0)?, r.get::<_, Option<String>>(1)?, r.get::<_, Option<String>>(2)?,
         r.get::<_, Option<String>>(3)?, r.get::<_, Option<String>>(4)?, r.get::<_, Option<i64>>(5)?,
@@ -343,7 +345,8 @@ pub fn export_envelopes(conn: &Connection, session: Option<&str>) -> rusqlite::R
         });
     }
 
-    events.sort_by(|a, b| a.ts_utc_us.cmp(&b.ts_utc_us).then(a.seq.cmp(&b.seq)));
+    events.sort_by(|a, b| a.ts_utc_us.cmp(&b.ts_utc_us).then(a.seq.cmp(&b.seq))
+        .then_with(|| a.kind.cmp(&b.kind)).then_with(|| a.payload.pair_id.cmp(&b.payload.pair_id)));
     Ok(events)
 }
 
@@ -488,5 +491,9 @@ mod tests {
         let nd = export_ndjson(&conn, None).unwrap();
         assert_eq!(nd.lines().count(), 4);
         assert!(!nd.contains("\"cmd\":null"));
+
+        // stream was never populated at ingest, so the reconstructed output envelope must not fabricate it
+        let out_line = nd.lines().find(|l| l.contains("\"kind\":\"output\"")).unwrap();
+        assert!(!out_line.contains("\"stream\""));
     }
 }
