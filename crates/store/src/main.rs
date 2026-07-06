@@ -4,7 +4,7 @@
 
 use std::io::Read;
 
-use watcher_store::{dump, ingest, open, parse_ndjson};
+use watcher_store::{dump, export_ndjson, ingest, open, parse_ndjson};
 
 fn arg(name: &str) -> Option<String> {
     let a: Vec<String> = std::env::args().collect();
@@ -14,10 +14,17 @@ fn arg(name: &str) -> Option<String> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = arg("--db").ok_or("missing --db <path>")?;
     let key = arg("--key").unwrap_or_else(|| "watcher-dev-key".to_string());
+    let mut conn = open(&db, &key)?;
+
+    // export mode: reconstruct the §3.3 NDJSON stream from the store and print it
+    if std::env::args().any(|a| a == "--export") {
+        let session = arg("--session");
+        print!("{}", export_ndjson(&conn, session.as_deref())?);
+        return Ok(());
+    }
 
     // read-back mode: decrypt and print the stored sessions/commands
     if std::env::args().any(|a| a == "--dump") {
-        let conn = open(&db, &key)?;
         print!("{}", dump(&conn)?);
         return Ok(());
     }
@@ -32,7 +39,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let events = parse_ndjson(&ndjson);
-    let mut conn = open(&db, &key)?;
     let (cmds, outs) = ingest(&mut conn, &events)?;
 
     eprintln!("[watcher-store] {db}: ingested {cmds} commands, {outs} output blocks (AES-256, SQLCipher)");
