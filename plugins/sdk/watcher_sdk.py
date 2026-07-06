@@ -59,6 +59,14 @@ class Watcher:
     def output(self, text, stream="stdout"):
         self._event("output", {"stream": stream, "text": text, "line_count": text.count("\n") + 1})
 
+    def http_request(self, pair_id, method, url, req_headers="", req_body=""):
+        self._event("http_request", {"pair_id": pair_id, "method": method, "url": url,
+                                     "req_headers": req_headers, "req_body": req_body})
+
+    def http_response(self, pair_id, status, resp_headers="", resp_body="", mime=""):
+        self._event("http_response", {"pair_id": pair_id, "status": status,
+                                      "resp_headers": resp_headers, "resp_body": resp_body, "mime": mime})
+
     def session_start(self, label):
         self._send({"source": "plugin", "session_uuid": self.session, "ts_utc_us": self._now(),
                     "kind": "session_start", "payload": {"text": label}})
