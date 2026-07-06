@@ -717,6 +717,9 @@ fn prompt_start_new(machine: &str) -> bool {
 // stdout/stderr, since preflight.ts can't be imported from Rust).
 
 const BURP_MCP_PORT: u16 = 9876;
+/// Standard sink the bridge tees its web envelopes into (WATCHER_WEB_NDJSON) — read by
+/// `scripts/ingest-capture.tsx` alongside `events.ndjson` so live `--web` traffic renders.
+const WEB_NDJSON_PATH: &str = "crates/capture/web-events.ndjson";
 
 /// Copied verbatim from `preflightMessage("unreachable", { port })` in src/lib/preflight.ts.
 fn preflight_unreachable(port: u16) -> String {
@@ -763,7 +766,13 @@ fn spawn_web_bridge(platform: &str) {
     }
     let mut last_err = None;
     for interpreter in ["python3", "python"] {
-        match std::process::Command::new(interpreter).arg(&bridge).arg("--platform").arg(platform).spawn() {
+        match std::process::Command::new(interpreter)
+            .arg(&bridge)
+            .arg("--platform")
+            .arg(platform)
+            .env("WATCHER_WEB_NDJSON", WEB_NDJSON_PATH)
+            .spawn()
+        {
             Ok(_) => {
                 eprintln!(
                     "[watcher-capture] web capture: spawned burp-bridge via {interpreter} (platform={platform})"

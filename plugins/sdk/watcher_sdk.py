@@ -19,10 +19,11 @@ import uuid
 class Watcher:
     def __init__(self, plugin, *, host="127.0.0.1", port=8799, klass="source",
                  has_exit_codes=False, has_stdin=False, boundary_confidence="inferred",
-                 redaction="none", context_template=None):
+                 redaction="none", context_template=None, ndjson_path=None):
         self.plugin = plugin
         self.session = str(uuid.uuid4())
         self.seq = 0
+        self.ndjson_path = ndjson_path
         self.sock = socket.create_connection((host, port))
         hs = {
             "watcher_handshake": "1.0",
@@ -45,10 +46,21 @@ class Watcher:
     def _send(self, obj):
         self.sock.sendall((json.dumps(obj) + "\n").encode("utf-8"))
 
+    def _tee(self, obj):
+        """Append `obj` as a JSON line to `self.ndjson_path`, if set — additive: the socket send
+        this always accompanies is unaffected. Never call this for the capability handshake
+        (that's sent directly via `_send` in `__init__`, before any tee wiring exists)."""
+        if not self.ndjson_path:
+            return
+        with open(self.ndjson_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(obj) + "\n")
+
     def _event(self, kind, payload):
         self.seq += 1
-        self._send({"source": "plugin", "session_uuid": self.session, "seq": self.seq,
-                    "ts_utc_us": self._now(), "kind": kind, "payload": payload})
+        event = {"source": "plugin", "session_uuid": self.session, "seq": self.seq,
+                 "ts_utc_us": self._now(), "kind": kind, "payload": payload}
+        self._send(event)
+        self._tee(event)
 
     def command(self, cmd, exit_code=None):
         payload = {"cmd": cmd}
@@ -68,12 +80,16 @@ class Watcher:
                                       "resp_headers": resp_headers, "resp_body": resp_body, "mime": mime})
 
     def session_start(self, label):
-        self._send({"source": "plugin", "session_uuid": self.session, "ts_utc_us": self._now(),
-                    "kind": "session_start", "payload": {"text": label}})
+        event = {"source": "plugin", "session_uuid": self.session, "ts_utc_us": self._now(),
+                 "kind": "session_start", "payload": {"text": label}}
+        self._send(event)
+        self._tee(event)
 
     def session_end(self, reason="manual"):
-        self._send({"source": "plugin", "session_uuid": self.session, "ts_utc_us": self._now(),
-                    "kind": "session_end", "payload": {"text": reason}})
+        event = {"source": "plugin", "session_uuid": self.session, "ts_utc_us": self._now(),
+                 "kind": "session_end", "payload": {"text": reason}}
+        self._send(event)
+        self._tee(event)
 
     def close(self):
         self.sock.close()

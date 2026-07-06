@@ -31,6 +31,7 @@ function arg(name: string, fallback: string): string {
 }
 
 const ndjsonPath = resolve(arg("ndjson", "crates/capture/events.ndjson"));
+const webNdjsonPath = resolve(arg("web-ndjson", "crates/capture/web-events.ndjson"));
 const goldenPath = arg("golden", "");
 const outPath = resolve(arg("out", "dist/report-from-capture.json"));
 
@@ -46,7 +47,19 @@ const golden: GoldenObjective[] = goldenPath
   ? (JSON.parse(readFileSync(resolve(goldenPath), "utf8")) as GoldenObjective[])
   : DEFAULT_GOLDEN;
 
-const events = parseEnvelopes(readFileSync(ndjsonPath, "utf8"));
+// Web capture streams to a separate sink (crates/capture/web-events.ndjson, teed there by the
+// Burp bridge — see plugins/sdk/watcher_sdk.py's ndjson_path) rather than into the terminal
+// capture's stdout-redirected NDJSON. Fold it in here so live --web traffic renders in the report;
+// absent (no --web this run, or bridge never reached Burp), behavior is identical to today.
+let ndjsonText = readFileSync(ndjsonPath, "utf8");
+if (existsSync(webNdjsonPath)) {
+  const webText = readFileSync(webNdjsonPath, "utf8");
+  const webLineCount = webText.split("\n").filter((l) => l.trim().length > 0).length;
+  console.error(`[ingest] merging ${webLineCount} web envelope(s) from ${webNdjsonPath}`);
+  ndjsonText = ndjsonText.replace(/\n?$/, "\n") + webText;
+}
+
+const events = parseEnvelopes(ndjsonText);
 const raw = envelopesToRawCommands(events);
 if (raw.length === 0) throw new Error(`no command envelopes in ${ndjsonPath}`);
 

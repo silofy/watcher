@@ -161,6 +161,10 @@ def main(argv=None) -> int:
     platform = _arg_or_env(argv, "--platform", "WATCHER_PLATFORM", "local")
     scope = _parse_scope(_arg_or_env(argv, "--scope", "WATCHER_SCOPE", ""))
     port = int(_arg_or_env(argv, "--port", "WATCHER_BURP_MCP_PORT", str(DEFAULT_PORT)))
+    # NDJSON tee sink — lets ingest-capture.tsx fold live --web traffic into the rendered report
+    # (the daemon socket/SQLCipher path below is unaffected; this is purely additive).
+    ndjson_out = _arg_or_env(argv, "--ndjson-out", "WATCHER_WEB_NDJSON",
+                              os.path.join("crates", "capture", "web-events.ndjson"))
 
     try:
         import mcp  # noqa: F401 — presence check; the real API is used in _connect_session
@@ -179,7 +183,8 @@ def main(argv=None) -> int:
     try:
         client = _connect_session(port)
         from watcher_sdk import Watcher  # plugins/sdk — see cloudshell_plugin.py for the pattern
-        watcher = Watcher("burp-bridge", context_template="web:burp", has_stdin=False)
+        watcher = Watcher("burp-bridge", context_template="web:burp", has_stdin=False,
+                          ndjson_path=ndjson_out)
         run(client, watcher, scope)
     except Exception as e:  # any setup/session failure — degrade, never crash the caller
         print(f"[burp-bridge] {_msg_unreachable(port)} ({e})")
