@@ -25,6 +25,16 @@ export interface RawCommand {
   volume?: number;
 }
 
+/** A joined HTTP request/response, the web analogue of RawCommand's shell hook. */
+export interface WebExchange {
+  method: string;
+  url: string;
+  req_body?: string;
+  status?: number;
+  resp_body?: string;
+  mime?: string;
+}
+
 export interface SegmentConfig {
   /** Gap above which the operator is assumed to have walked away — excluded from analytics. */
   idleGapMs: number;
