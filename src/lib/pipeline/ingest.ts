@@ -21,13 +21,22 @@ export interface TelemetryEvent {
   session_uuid: string;
   seq: number;
   ts_utc_us: number;
-  kind: "command" | "output" | "stdin_masked";
+  kind: "command" | "output" | "stdin_masked" | "http_request" | "http_response";
   payload: {
     cmd?: string;
     exit_code?: number | null;
     stream?: string;
     text?: string;
     line_count?: number;
+    method?: string;
+    url?: string;
+    status?: number;
+    req_headers?: string;
+    req_body?: string;
+    resp_headers?: string;
+    resp_body?: string;
+    mime?: string;
+    pair_id?: string;
   };
   provenance?: { context_path?: string; platform?: string };
 }
@@ -55,10 +64,10 @@ export function envelopesToRawCommands(events: TelemetryEvent[]): RawCommand[] {
   const outs = new Map<number, TelemetryEvent>();
   for (const e of events) {
     if (e.kind === "command") cmds.set(e.seq, e);
-    else outs.set(e.seq, e); // output | stdin_masked
+    else if (e.kind === "output" || e.kind === "stdin_masked") outs.set(e.seq, e);
   }
 
-  return [...cmds.keys()]
+  const commandRaw: RawCommand[] = [...cmds.keys()]
     .sort((a, b) => a - b)
     .map((seq) => {
       const c = cmds.get(seq)!;
@@ -78,6 +87,42 @@ export function envelopesToRawCommands(events: TelemetryEvent[]): RawCommand[] {
         context_path: c.provenance?.context_path,
       } satisfies RawCommand;
     });
+
+  // join http exchanges by pair_id
+  const reqs = new Map<string, TelemetryEvent>();
+  const resps = new Map<string, TelemetryEvent>();
+  for (const e of events) {
+    const pid = e.payload.pair_id;
+    if (!pid) continue;
+    if (e.kind === "http_request") reqs.set(pid, e);
+    else if (e.kind === "http_response") resps.set(pid, e);
+  }
+  const webCmds: RawCommand[] = [...reqs.keys()].map((pid) => {
+    const q = reqs.get(pid)!;
+    const r = resps.get(pid);
+    const startMs = Math.floor(q.ts_utc_us / 1000);
+    const endMs = r ? Math.floor(r.ts_utc_us / 1000) : startMs;
+    const url = redactText(q.payload.url ?? "");
+    const path = (() => { try { const u = new URL(url); return u.pathname + u.search; } catch { return url; } })();
+    return {
+      cmd: `${q.payload.method ?? "GET"} ${path}`,
+      started_at_ms: startMs,
+      ended_at_ms: Math.max(startMs, endMs),
+      exit_code: null,
+      output_line_count: 0,
+      context_path: q.provenance?.context_path ?? "web:burp",
+      web: {
+        method: q.payload.method ?? "GET",
+        url,
+        req_body: q.payload.req_body != null ? redactText(q.payload.req_body) : undefined,
+        status: r?.payload.status,
+        resp_body: r?.payload.resp_body != null ? redactText(r.payload.resp_body) : undefined,
+        mime: r?.payload.mime,
+      },
+    } satisfies RawCommand;
+  });
+
+  return [...commandRaw, ...webCmds].sort((a, b) => a.started_at_ms - b.started_at_ms);
 }
 
 function deriveCoaching(

@@ -7,6 +7,8 @@ import {
   phaseWindows,
   episodeColor,
   episodeLane,
+  isWebEpisode,
+  httpParts,
   ACTOR_COLORS,
   DETOUR_COLOR,
 } from "./scale";
@@ -106,6 +108,52 @@ describe("phaseWindows", () => {
       expect(w.t1).toBeGreaterThan(w.t0);
       expect(w.t1).toBeLessThanOrEqual(tl.totalMs);
     }
+  });
+});
+
+describe("isWebEpisode (--web capture, brief §8)", () => {
+  it("flags episodes tagged web:burp by the ingest pipeline", () => {
+    expect(isWebEpisode(mk({ context_path: "web:burp", cmd: "id" }))).toBe(true);
+  });
+  it("leaves ordinary shell episodes alone", () => {
+    expect(isWebEpisode(mk({ cmd: "nmap -sV 10.10.10.5" }))).toBe(false);
+    expect(isWebEpisode(mk({ context_path: "host", cmd: "id" }))).toBe(false);
+  });
+  it("does not misclassify a 'head' command as a web episode", () => {
+    expect(isWebEpisode(mk({ cmd: "head -n 20 /etc/passwd", context_path: "host" }))).toBe(false);
+    expect(isWebEpisode(mk({ cmd: "PUT the file back", context_path: undefined }))).toBe(false);
+  });
+  it("classifies a web:burp episode as web regardless of cmd", () => {
+    expect(isWebEpisode(mk({ cmd: "GET /admin", context_path: "web:burp" }))).toBe(true);
+  });
+});
+
+describe("command tally excludes web episodes (LiveDashboard's `cmds` filter)", () => {
+  // web episodes carry `binary` "GET"/"POST" (an HTTP method, not a shell command) — the
+  // `e.binary && !isWebEpisode(e)` filter LiveDashboard/IdentityBar use for the "N cmds" tally
+  // and the newest-command feed must exclude them so web traffic never inflates the count.
+  const episodes: Episode[] = [
+    mk({ seq: 1, binary: "nmap", context_path: "host" }),
+    mk({ seq: 2, binary: "GET", cmd: "GET /login", context_path: "web:burp" }),
+    mk({ seq: 3, binary: "POST", cmd: "POST /submit", context_path: "web:burp" }),
+    mk({ seq: 4, binary: "", cmd: "", actor: "think_pause" }), // no binary — a pause, not a command
+    mk({ seq: 5, binary: "sudo", context_path: "host" }),
+  ];
+
+  it("counts only real shell commands, not web exchanges", () => {
+    const cmds = episodes.filter((e) => e.binary && !isWebEpisode(e));
+    expect(cmds).toHaveLength(2);
+    expect(cmds.map((e) => e.binary)).toEqual(["nmap", "sudo"]);
+  });
+});
+
+describe("httpParts", () => {
+  it("splits a request-line cmd into method and path", () => {
+    expect(httpParts("GET /login?x=1")).toEqual({ method: "GET", path: "/login?x=1" });
+    expect(httpParts("POST /api/users")).toEqual({ method: "POST", path: "/api/users" });
+  });
+  it("defaults to GET when no method prefix is present", () => {
+    expect(httpParts("/login")).toEqual({ method: "GET", path: "/login" });
   });
 });
 

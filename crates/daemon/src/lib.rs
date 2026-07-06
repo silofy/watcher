@@ -11,7 +11,7 @@
 use std::sync::mpsc::Receiver;
 
 use serde::Deserialize;
-use watcher_core::{redact, EndReason, SessionConfig, SessionController, SessionEvent};
+use watcher_core::{redact, redact_body, redact_headers, EndReason, SessionConfig, SessionController, SessionEvent};
 use watcher_store::{ingest, parse_ndjson, RawEvent, SqlConnection};
 
 // ---- Plugin capability handshake (brief §5.4) ----
@@ -134,10 +134,47 @@ impl StreamProcessor {
             }
             *c = r;
         }
+        if matches!(kind.as_str(), "http_request" | "http_response") {
+            if let Some(h) = ev.payload.req_headers.as_mut() {
+                let r = redact_headers(h);
+                if &r != h {
+                    redacted = true;
+                }
+                *h = r;
+            }
+            if let Some(h) = ev.payload.resp_headers.as_mut() {
+                let r = redact_headers(h);
+                if &r != h {
+                    redacted = true;
+                }
+                *h = r;
+            }
+            if let Some(u) = ev.payload.url.as_mut() {
+                let r = redact_body(u);
+                if &r != u {
+                    redacted = true;
+                }
+                *u = r;
+            }
+            if let Some(b) = ev.payload.req_body.as_mut() {
+                let r = redact_body(b);
+                if &r != b {
+                    redacted = true;
+                }
+                *b = r;
+            }
+            if let Some(b) = ev.payload.resp_body.as_mut() {
+                let r = redact_body(b);
+                if &r != b {
+                    redacted = true;
+                }
+                *b = r;
+            }
+        }
 
-        // 3) stamp command/output with the active session and hand off for persistence.
+        // 3) stamp command/output/http exchanges with the active session and hand off for persistence.
         let mut store = None;
-        if matches!(kind.as_str(), "command" | "output" | "stdin_masked") {
+        if matches!(kind.as_str(), "command" | "output" | "stdin_masked" | "http_request" | "http_response") {
             if let Some(u) = self.ctrl.active_uuid() {
                 ev.session_uuid = u.to_string();
                 store = Some(ev);
@@ -300,6 +337,44 @@ mod tests {
         assert_eq!(stored, 1);
         let sid: String = conn.query_row("SELECT uuid FROM sessions LIMIT 1", [], |r| r.get(0)).unwrap();
         assert_eq!(sid, "ext-1");
+    }
+
+    const HTTP_STREAM: &str = r#"{"source":"plugin","session_uuid":"ext-1","seq":0,"ts_utc_us":1000,"kind":"session_start","payload":{"text":"HTB :: web"}}
+{"source":"plugin","session_uuid":"ext-1","seq":1,"ts_utc_us":2000,"kind":"http_request","payload":{"method":"GET","url":"http://10.10.10.8/login","pair_id":"p1","req_headers":"Host: t\r\nAuthorization: Bearer sk-abc123\r\nCookie: session=deadbeef; a=b\r\nAccept: */*","req_body":"auth=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig&user=admin"}}"#;
+
+    #[test]
+    fn http_secrets_never_reach_the_store() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("http.db");
+        let p = path.to_str().unwrap();
+
+        let (tx, rx) = mpsc::channel();
+        for ev in parse_ndjson(HTTP_STREAM) {
+            tx.send(ev).unwrap();
+        }
+        drop(tx); // close the channel so the consumer returns
+
+        let conn = open(p, "k").unwrap();
+        run_consumer(rx, conn, SessionConfig { auto_start: true, ..Default::default() }, counter());
+
+        // reopen and confirm the redacted http exchange landed — never the raw secrets.
+        let conn = open(p, "k").unwrap();
+        let (req_headers, url, req_body): (String, String, String) = conn
+            .query_row(
+                "SELECT req_headers, url, req_body FROM http_exchanges WHERE pair_id = 'p1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert!(!req_headers.contains("sk-abc123"));
+        assert!(!req_headers.contains("deadbeef"));
+        assert!(req_headers.contains("Authorization: [redacted]"));
+        assert!(req_headers.contains("Cookie: [redacted]"));
+        assert!(req_headers.contains("Host: t"));
+        assert!(!url.contains("10.10.10.8"));
+        assert!(!req_body.contains("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig"));
+        assert!(req_body.contains("auth="));
+        assert!(req_body.contains("user=admin")); // trailing param survives — shape preserved
     }
 
     const HANDSHAKE: &str = r#"{"watcher_handshake":"1.0","plugin":"aws-cloudshell","class":"source","capabilities":{"has_exit_codes":false,"has_stdin":true,"boundary_confidence":"inferred","redaction":"none"},"context_template":"cloud:aws:cloudshell"}"#;

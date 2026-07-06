@@ -5,7 +5,7 @@ import { topUnmetCheck } from "../lib/analysis/methodology";
 import { fmtDuration } from "../lib/format";
 import { tierColor, Chip } from "./ui";
 import { episodeNoise, NOISE_BASELINE } from "../lib/metrics";
-import { episodeColor, ALIGNMENT_COLORS } from "../lib/scale";
+import { episodeColor, ALIGNMENT_COLORS, isWebEpisode, WEB_COLOR } from "../lib/scale";
 import { SHORT_TACTIC } from "../lib/audits";
 import { ukcOf, ukcLabel } from "../lib/pipeline/frameworks";
 import { detectFlags } from "../lib/flags";
@@ -245,7 +245,9 @@ export function LiveDashboard() {
   const findingsCount = report.findings?.length ?? 0;
 
   const focus = activeSeq(s);
-  const cmds = report.episodes.filter((e) => e.binary);
+  // web episodes carry `binary` "GET"/"POST" too (an HTTP method, not a shell command) — exclude
+  // them so the tally/feed count only actual commands; the `web ●` indicator above covers web.
+  const cmds = report.episodes.filter((e) => e.binary && !isWebEpisode(e));
   const feed = [...cmds].reverse().slice(0, 8); // newest first — the quick glance
   const loudSeq = new Set(metrics.loud_moments?.map((l) => l.seq) ?? []);
   const stealth = Math.round(metrics.stealth_score);
@@ -253,6 +255,7 @@ export function LiveDashboard() {
   const lostPct = Math.round(((tw.detour_ms + tw.stuck_ms + tw.loop_ms) / Math.max(1, tw.t_active_ms)) * 100);
   const loudestSeq = metrics.loud_moments?.[0]?.seq ?? null;
   const loudestBinary = loudestSeq != null ? report.episodes.find((e) => e.seq === loudestSeq)?.binary ?? null : null;
+  const hasWeb = report.episodes.some(isWebEpisode);
 
   return (
     <div
@@ -274,8 +277,14 @@ export function LiveDashboard() {
             <span className="text-faint">· the run at a glance · details below</span>
           </span>
         )}
-        <span className="mono text-xs tabular-nums text-faint">
+        <span className="mono flex items-center gap-2 text-xs tabular-nums text-faint">
           {cmds.length} cmd{cmds.length === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)} · {metrics.technique_breadth} technique{metrics.technique_breadth === 1 ? "" : "s"}
+          {/* the one status signal for web capture (brief §8) — no separate tab/mode, just this dot */}
+          {hasWeb && (
+            <span className="label flex items-center gap-1" style={{ color: WEB_COLOR }} title="Web traffic (Burp) captured in this run">
+              web <span aria-hidden>●</span>
+            </span>
+          )}
         </span>
       </div>
 

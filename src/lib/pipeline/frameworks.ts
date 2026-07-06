@@ -136,11 +136,21 @@ export function deriveFrameworks(ep: Pick<Episode, "tactic" | "binary">): Episod
   return out.ukc || out.cwe ? out : undefined;
 }
 
-/** Stamp `frameworks` onto each episode (returns a new array; pure). */
+/**
+ * Stamp `frameworks` onto each episode (returns a new array; pure).
+ *
+ * A `cwe` set upstream of this stage (e.g. by web-exchange segmentation, which knows
+ * the weakness a payload probed even when the episode's `binary` doesn't) must survive:
+ * `deriveFrameworks` only *adds* `ukc`/`cwe` derived from tactic/binary, it never has
+ * grounds to erase a more specific cwe someone else already attached.
+ */
 export function enrichFrameworks(episodes: Episode[]): Episode[] {
   return episodes.map((ep) => {
-    const frameworks = deriveFrameworks(ep);
-    return frameworks ? { ...ep, frameworks } : ep;
+    const derived = deriveFrameworks(ep);
+    const cwe = ep.frameworks?.cwe ?? derived?.cwe;
+    if (!derived && !cwe) return ep;
+    const frameworks: EpisodeFrameworks = { ...derived, ...(cwe ? { cwe } : {}) };
+    return { ...ep, frameworks };
   });
 }
 

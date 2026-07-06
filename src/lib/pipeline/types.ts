@@ -23,6 +23,18 @@ export interface RawCommand {
   context_path?: string;
   /** request/volume count for the noise metric, when known (e.g. gobuster reqs). */
   volume?: number;
+  /** present when this record is an HTTP exchange rather than a shell command. */
+  web?: WebExchange;
+}
+
+/** A joined HTTP request/response, the web analogue of RawCommand's shell hook. */
+export interface WebExchange {
+  method: string;
+  url: string;
+  req_body?: string;
+  status?: number;
+  resp_body?: string;
+  mime?: string;
 }
 
 export interface SegmentConfig {

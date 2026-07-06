@@ -65,7 +65,7 @@ No Rust, just want the UI in a browser?
 npm run dev              # http://localhost:5173  (capture + local-AI are desktop-only)
 ```
 
-Sanity-check it does what it claims: `npm test` (180 tests) · `cd crates/capture && cargo test`.
+Sanity-check it does what it claims: `npm test` (411 tests) · `cd crates/capture && cargo test`.
 
 ---
 
@@ -93,6 +93,12 @@ without Ollama). Everything else (deviations, time waste, stealth, techniques, g
 Playing in **Pwnbox**? See
 [`crates/capture/CAPTURE.md`](crates/capture/CAPTURE.md) and the in-app **Install** tab.
 
+Drive the box through a browser too? If you run **Burp** with its **MCP Server** extension, add `--web`
+to fold your HTTP attacks into the same graded run. It's **off by default**, only ingests Burp's
+in-scope target, strips auth headers/cookies/tokens before anything is stored, and never blocks a
+capture if Burp isn't up. The bridge talks only to a **local** Burp (MCP on `127.0.0.1`) — no new
+outbound egress. Setup: [`docs/web-capture.md`](docs/web-capture.md).
+
 ---
 
 ## What I want from you
@@ -104,7 +110,8 @@ Playing in **Pwnbox**? See
 
 ## What it does NOT do (threat model, short)
 
-- No outbound traffic except the optional public write-up fetch.
+- No outbound traffic except the optional public write-up fetch. (The optional `--web` capture adds no
+  new egress — its bridge talks only to a local Burp MCP endpoint on `127.0.0.1`.)
 - No persistence, no privilege escalation, no AV-evasion, no kernel/EDR hooks.
 - The AES-256 SQLCipher store is an *optional* daemon path; this tester flow never starts it and writes
   only plain session JSON under `~/.watcher/sessions/`.
