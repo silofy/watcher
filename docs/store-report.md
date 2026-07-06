@@ -44,7 +44,7 @@ Reads an NDJSON stream from a file and stores it in the encrypted database.
 watcher-store --db <path> --key <passphrase> --export [--session <uuid>]
 ```
 
-Writes the stored events back as §3.3 NDJSON to stdout. If `--session` is omitted, all sessions in the database are exported (in order). If `--session <uuid>` is provided, only events for that session are exported.
+Writes the stored events back as §3.3 NDJSON to stdout. If `--session` is omitted, the most-recently-started session is exported. Pass `--session <uuid>` to export a specific session.
 
 On Windows, the binary is named `watcher-store.exe`.
 
@@ -88,9 +88,9 @@ This is the same pipeline the npm script wraps — you're running the commands d
 
 ## Round-trip fidelity
 
-**The report built from the store matches the report built from the original capture.** This is the round-trip property: a run stored and then exported produces an identical graded report. The Rust test suite asserts this for a variety of captures, including those with HTTP exchanges.
+**The store round-trip produces the same graded report (episodes, phases, grade, CWE, findings) as the original capture.** This is the round-trip property: a run stored and then exported produces the same graded content. The Rust test suite asserts this for a variety of captures, including those with HTTP exchanges. Note that the session header/identity and the platform badge are not reproduced from the store today — `session_start` metadata (the machine/target) isn't persisted at ingest, so a store-sourced report shows a generic "Live capture" target with no machine, even though the graded content is identical. (The persisted `platform` column is a foundation for a future single-owner switch, not yet consumed by report rendering.)
 
-You can verify this yourself: ingest the same capture into the store, export it, and generate a report from the export — the result is identical to the report built from the original NDJSON stream.
+You can verify this yourself: ingest the same capture into the store, export it, and generate a report from the export — the graded content is identical to the report built from the original NDJSON stream.
 
 ---
 
@@ -158,6 +158,6 @@ This confirms that the round-trip works: the store preserved the events, the exp
 ## Notes
 
 - **Encryption:** The store uses SQLCipher with the key you provide. The same key is required to export.
-- **Session selection:** If your store contains multiple runs, use `--session <uuid>` to export a specific one.
+- **Session selection:** If `--session` is omitted, the most-recently-started session is exported. Pass `--session <uuid>` to export a specific session.
 - **Windows:** The binary is `watcher-store.exe`; all commands above work as-is on Windows (PowerShell and Bash via Git Bash).
 - **Errors:** If the key is wrong, the export will fail with a decryption error. If the database is corrupted or the path doesn't exist, you'll see a clear error message.

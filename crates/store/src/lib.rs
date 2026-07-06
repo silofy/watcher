@@ -306,7 +306,7 @@ pub fn export_envelopes(conn: &Connection, session: Option<&str>) -> rusqlite::R
     let mut os = conn.prepare(
         "SELECT c.seq, o.content, o.line_count, o.started_at, o.fidelity
          FROM output_blocks o JOIN commands c ON o.command_id = c.id WHERE c.session_id = ?1
-         ORDER BY o.started_at, c.seq")?;
+         ORDER BY o.started_at, c.seq, o.id")?;
     for row in os.query_map([session_id], |r| Ok((
         r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<i64>>(2)?,
         r.get::<_, i64>(3)?, r.get::<_, Option<String>>(4)?,
@@ -472,24 +472,55 @@ mod tests {
         let mut conn = open(p, "k").unwrap();
         let stream = r#"{"source":"local_pty","session_uuid":"s1","seq":1,"ts_utc_us":100,"kind":"command","payload":{"cmd":"id","exit_code":0},"provenance":{"platform":"htb","context_path":"host","boundary_confidence":1.0}}
 {"source":"local_pty","session_uuid":"s1","seq":1,"ts_utc_us":150,"kind":"output","payload":{"stream":"stdout","text":"uid=0","line_count":1}}
-{"source":"plugin","session_uuid":"s1","seq":2,"ts_utc_us":200,"kind":"http_request","payload":{"method":"GET","url":"http://t/a","pair_id":"p1"},"provenance":{"context_path":"web:burp"}}
-{"source":"plugin","session_uuid":"s1","seq":3,"ts_utc_us":250,"kind":"http_response","payload":{"status":200,"resp_body":"ok","pair_id":"p1"}}"#;
+{"source":"local_pty","session_uuid":"s1","seq":2,"ts_utc_us":175,"kind":"command","payload":{"cmd":"cat /etc/shadow","exit_code":0},"provenance":{"platform":"htb","context_path":"host","boundary_confidence":0.5}}
+{"source":"local_pty","session_uuid":"s1","seq":2,"ts_utc_us":180,"kind":"stdin_masked","payload":{"text":"[MASKED]","line_count":1}}
+{"source":"plugin","session_uuid":"s1","seq":3,"ts_utc_us":200,"kind":"http_request","payload":{"method":"GET","url":"http://t/a","pair_id":"p1"},"provenance":{"context_path":"web:burp"}}
+{"source":"plugin","session_uuid":"s1","seq":4,"ts_utc_us":250,"kind":"http_response","payload":{"status":200,"resp_body":"ok","pair_id":"p1"}}"#;
         ingest(&mut conn, &parse_ndjson(stream)).unwrap();
 
         let evs = export_envelopes(&conn, None).unwrap(); // None => latest session
         let kinds: Vec<&str> = evs.iter().map(|e| e.kind.as_str()).collect();
-        assert_eq!(kinds, vec!["command", "output", "http_request", "http_response"]); // ts-ordered
-        let cmd = evs.iter().find(|e| e.kind == "command").unwrap();
+        assert_eq!(
+            kinds,
+            vec!["command", "output", "command", "stdin_masked", "http_request", "http_response"]
+        ); // ts-ordered
+
+        // command #1 ("id"): every grading-relevant field round-trips
+        let cmd = evs.iter().find(|e| e.payload.cmd.as_deref() == Some("id")).unwrap();
         assert_eq!(cmd.payload.cmd.as_deref(), Some("id"));
-        assert_eq!(cmd.provenance.platform.as_deref(), Some("htb")); // platform round-trips
+        assert_eq!(cmd.payload.exit_code, Some(0));
+        assert_eq!(cmd.ts_utc_us, 100);
+        assert_eq!(cmd.provenance.context_path.as_deref(), Some("host"));
+        assert_eq!(cmd.provenance.boundary_confidence, Some(1.0));
+        assert_eq!(cmd.provenance.platform.as_deref(), Some("htb"));
+
+        // output for command #1: same seq as its command, text and line_count preserved
+        let out = evs.iter().find(|e| e.kind == "output").unwrap();
+        assert_eq!(out.seq, cmd.seq);
+        assert_eq!(out.payload.text.as_deref(), Some("uid=0"));
+        assert_eq!(out.payload.line_count, Some(1));
+
+        // masked stdin block re-exports as stdin_masked, not output, and only one true "output" exists
+        assert_eq!(evs.iter().filter(|e| e.kind == "output").count(), 1);
+        let masked = evs.iter().find(|e| e.kind == "stdin_masked").unwrap();
+        let cmd2 = evs.iter().find(|e| e.payload.cmd.as_deref() == Some("cat /etc/shadow")).unwrap();
+        assert_eq!(masked.seq, cmd2.seq);
+        assert_eq!(masked.payload.text.as_deref(), Some("[MASKED]"));
+        assert_eq!(masked.payload.line_count, Some(1));
+
+        // http_request/http_response rejoin by pair_id with method/url/status/resp_body preserved
         let req = evs.iter().find(|e| e.kind == "http_request").unwrap();
         assert_eq!(req.payload.pair_id.as_deref(), Some("p1"));
+        assert_eq!(req.payload.method.as_deref(), Some("GET"));
+        assert_eq!(req.payload.url.as_deref(), Some("http://t/a"));
         let resp = evs.iter().find(|e| e.kind == "http_response").unwrap();
+        assert_eq!(resp.payload.pair_id.as_deref(), Some("p1"));
         assert_eq!(resp.payload.status, Some(200));
+        assert_eq!(resp.payload.resp_body.as_deref(), Some("ok"));
 
         // NDJSON serialization is parseable and omits None fields
         let nd = export_ndjson(&conn, None).unwrap();
-        assert_eq!(nd.lines().count(), 4);
+        assert_eq!(nd.lines().count(), 6);
         assert!(!nd.contains("\"cmd\":null"));
 
         // stream was never populated at ingest, so the reconstructed output envelope must not fabricate it
