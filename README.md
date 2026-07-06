@@ -42,6 +42,9 @@ command lands in the feed and the run ribbon.*
   npm run dev           # report UI in a browser → http://localhost:5173  (append ?demo=live to auto-play)
   ```
 
+- **Record your web traffic too (optional):** if you drive the target through Burp, add `--web` to fold
+  graded HTTP attacks into the same run. Setup: [docs/web-capture.md](docs/web-capture.md).
+
 ## Progress — across runs
 
 Once you've logged a couple of runs, the **Progress** tab (alongside History) plots grade, coverage,
