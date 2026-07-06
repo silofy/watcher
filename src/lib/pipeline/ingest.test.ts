@@ -62,6 +62,30 @@ describe("envelope → RawCommand join (§3.3)", () => {
     expect(web!.web!.status).toBe(500);
     expect(web!.cmd).toContain("GET");
   });
+
+  it("does not let colliding http seq numbers corrupt a same-seq command's output", () => {
+    // `seq` is assigned per source: local_pty commands/output and plugin http events each start
+    // their own counter at 1. A mixed session — the exact case web capture exists for — can have
+    // a command's output and an unrelated http exchange sharing the same seq. The http envelopes
+    // must never land in `outs`, or they clobber the real output (last-write-wins on the Map).
+    const nd = [
+      `{"source":"local_pty","session_uuid":"s","seq":1,"ts_utc_us":1000,"kind":"command","payload":{"cmd":"whoami"}}`,
+      `{"source":"local_pty","session_uuid":"s","seq":1,"ts_utc_us":1500,"kind":"output","payload":{"stream":"stdout","text":"root","line_count":1}}`,
+      `{"source":"plugin","session_uuid":"s","seq":1,"ts_utc_us":2000,"kind":"http_request","payload":{"method":"GET","url":"http://t/a","pair_id":"p1"}}`,
+      `{"source":"plugin","session_uuid":"s","seq":2,"ts_utc_us":2500,"kind":"http_response","payload":{"status":200,"resp_body":"ok","pair_id":"p1"}}`,
+    ].join("\n");
+    const raw = envelopesToRawCommands(parseEnvelopes(nd));
+
+    const whoami = raw.find((r) => r.cmd === "whoami");
+    expect(whoami).toBeDefined();
+    // If an http envelope leaked into `outs` keyed by the same seq, this would be undefined/0.
+    expect(whoami!.output_digest).toContain("root");
+    expect(whoami!.output_line_count).toBe(1);
+
+    const web = raw.find((r) => r.web);
+    expect(web).toBeDefined();
+    expect(web!.web!.method).toBe("GET");
+  });
 });
 
 describe("assembleReport — full capture → report", () => {

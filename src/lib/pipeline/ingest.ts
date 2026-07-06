@@ -64,7 +64,7 @@ export function envelopesToRawCommands(events: TelemetryEvent[]): RawCommand[] {
   const outs = new Map<number, TelemetryEvent>();
   for (const e of events) {
     if (e.kind === "command") cmds.set(e.seq, e);
-    else outs.set(e.seq, e); // output | stdin_masked
+    else if (e.kind === "output" || e.kind === "stdin_masked") outs.set(e.seq, e);
   }
 
   const commandRaw: RawCommand[] = [...cmds.keys()]
@@ -103,7 +103,7 @@ export function envelopesToRawCommands(events: TelemetryEvent[]): RawCommand[] {
     const startMs = Math.floor(q.ts_utc_us / 1000);
     const endMs = r ? Math.floor(r.ts_utc_us / 1000) : startMs;
     const url = redactText(q.payload.url ?? "");
-    const path = (() => { try { return new URL(url).pathname + new URL(url).search; } catch { return url; } })();
+    const path = (() => { try { const u = new URL(url); return u.pathname + u.search; } catch { return url; } })();
     return {
       cmd: `${q.payload.method ?? "GET"} ${path}`,
       started_at_ms: startMs,
