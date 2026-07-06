@@ -15,7 +15,7 @@ fn flag() -> &'static Regex {
 }
 fn secret() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| Regex::new(r"(?i)\b(password|passwd|pass|secret|token|api[_-]?key)\b\s*[:=]\s*\S+").unwrap())
+    R.get_or_init(|| Regex::new(r"(?i)\b(password|passwd|pass|secret|token|api[_-]?key)\b\s*[:=]\s*[^\s&]+").unwrap())
 }
 fn bearer() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
@@ -82,6 +82,14 @@ mod tests {
         assert_eq!(redact("flag 0123456789abcdef0123456789abcdef done"), "flag [redacted-flag] done");
         assert_eq!(redact("PASSWORD=hunter2"), "PASSWORD=[redacted]");
         assert_eq!(redact("api_key: sk-abc123"), "api_key=[redacted]");
+    }
+
+    #[test]
+    fn keyword_secret_stops_at_param_delimiter() {
+        let out = redact_body("token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig&user=admin&id=7");
+        assert!(!out.contains("eyJhbGciOiJIUzI1NiJ9"));
+        assert!(out.contains("user=admin"));   // trailing params must survive
+        assert!(out.contains("id=7"));
     }
 
     #[test]

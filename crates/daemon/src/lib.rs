@@ -340,7 +340,7 @@ mod tests {
     }
 
     const HTTP_STREAM: &str = r#"{"source":"plugin","session_uuid":"ext-1","seq":0,"ts_utc_us":1000,"kind":"session_start","payload":{"text":"HTB :: web"}}
-{"source":"plugin","session_uuid":"ext-1","seq":1,"ts_utc_us":2000,"kind":"http_request","payload":{"method":"GET","url":"http://10.10.10.8/login","pair_id":"p1","req_headers":"Host: t\r\nAuthorization: Bearer sk-abc123\r\nCookie: session=deadbeef; a=b\r\nAccept: */*","req_body":"token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig"}}"#;
+{"source":"plugin","session_uuid":"ext-1","seq":1,"ts_utc_us":2000,"kind":"http_request","payload":{"method":"GET","url":"http://10.10.10.8/login","pair_id":"p1","req_headers":"Host: t\r\nAuthorization: Bearer sk-abc123\r\nCookie: session=deadbeef; a=b\r\nAccept: */*","req_body":"auth=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig&user=admin"}}"#;
 
     #[test]
     fn http_secrets_never_reach_the_store() {
@@ -373,7 +373,8 @@ mod tests {
         assert!(req_headers.contains("Host: t"));
         assert!(!url.contains("10.10.10.8"));
         assert!(!req_body.contains("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig"));
-        assert!(req_body.contains("token="));
+        assert!(req_body.contains("auth="));
+        assert!(req_body.contains("user=admin")); // trailing param survives — shape preserved
     }
 
     const HANDSHAKE: &str = r#"{"watcher_handshake":"1.0","plugin":"aws-cloudshell","class":"source","capabilities":{"has_exit_codes":false,"has_stdin":true,"boundary_confidence":"inferred","redaction":"none"},"context_template":"cloud:aws:cloudshell"}"#;
