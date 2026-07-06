@@ -61,7 +61,7 @@ PRAGMA journal_mode = WAL;
 CREATE TABLE IF NOT EXISTS sessions (
   id INTEGER PRIMARY KEY, uuid TEXT UNIQUE, started_at INTEGER, ended_at INTEGER,
   shell TEXT, hostname TEXT, initial_cwd TEXT, target_scope TEXT,
-  source TEXT, origin_meta TEXT, schema_ver INTEGER );
+  source TEXT, origin_meta TEXT, platform TEXT, schema_ver INTEGER );
 
 CREATE TABLE IF NOT EXISTS commands (
   id INTEGER PRIMARY KEY, session_id INTEGER REFERENCES sessions(id),
@@ -112,6 +112,9 @@ pub fn open(path: &str, key: &str) -> rusqlite::Result<Connection> {
     // Force a read so a wrong key fails immediately rather than later.
     conn.query_row("SELECT count(*) FROM sqlite_master", [], |r| r.get::<_, i64>(0))?;
     conn.execute_batch(SCHEMA)?;
+    // Additive migration for stores created before platform existed. A fresh DB already has the
+    // column (from SCHEMA) so this errors with "duplicate column" — intentionally ignored.
+    let _ = conn.execute("ALTER TABLE sessions ADD COLUMN platform TEXT", []);
     Ok(conn)
 }
 
@@ -136,8 +139,8 @@ pub fn ingest(conn: &mut Connection, events: &[RawEvent]) -> rusqlite::Result<(u
                 Some(id) => id,
                 None => {
                     tx.execute(
-                        "INSERT INTO sessions (uuid, started_at, source, schema_ver) VALUES (?1, ?2, ?3, 1)",
-                        rusqlite::params![e.session_uuid, e.ts_utc_us, e.source],
+                        "INSERT INTO sessions (uuid, started_at, source, platform, schema_ver) VALUES (?1, ?2, ?3, ?4, 2)",
+                        rusqlite::params![e.session_uuid, e.ts_utc_us, e.source, e.provenance.platform],
                     )?;
                     tx.last_insert_rowid()
                 }
@@ -344,5 +347,17 @@ mod tests {
         assert_eq!(method, "POST");
         assert_eq!(status, 200);
         assert_eq!(body, "welcome");
+    }
+
+    #[test]
+    fn persists_platform_on_session() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("t.db"); let p = p.to_str().unwrap();
+        let mut conn = open(p, "k").unwrap();
+        let line = r#"{"source":"local_pty","session_uuid":"s1","seq":1,"ts_utc_us":100,"kind":"command","payload":{"cmd":"id"},"provenance":{"platform":"htb","context_path":"host"}}"#;
+        ingest(&mut conn, &parse_ndjson(line)).unwrap();
+        let plat: Option<String> = conn.query_row(
+            "SELECT platform FROM sessions WHERE uuid='s1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(plat.as_deref(), Some("htb"));
     }
 }
