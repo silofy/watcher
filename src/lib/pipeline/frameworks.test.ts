@@ -81,6 +81,14 @@ describe("deriveFrameworks / enrichFrameworks", () => {
     expect(out[0].frameworks).toEqual({ ukc: "exploitation", cwe: ["CWE-89"] });
     expect(eps[0].frameworks).toBeUndefined();
   });
+
+  it("preserves a pre-set cwe (e.g. from web-exchange segmentation) instead of overwriting it with the binary-derived one", () => {
+    // binary "curl" implies no CWE of its own, so a naive re-derive would wipe the
+    // web prior's CWE-89 the moment it merges in the tactic's UKC phase.
+    const webEp: Episode = { ...ep("TA0001", "curl"), frameworks: { cwe: ["CWE-89"] } };
+    const out = enrichFrameworks([webEp]);
+    expect(out[0].frameworks).toEqual({ ukc: "exploitation", cwe: ["CWE-89"] });
+  });
 });
 
 describe("ukcCoverage", () => {

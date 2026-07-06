@@ -10,6 +10,7 @@
 import type { Episode } from "../../types/report";
 import { DEFAULT_SEGMENT_CONFIG, extractBinary, type RawCommand, type SegmentConfig } from "./types";
 import { classifyCommand, isOnTarget } from "./mitre";
+import { classifyExchange } from "./web";
 
 /** Which lane a command runs in — the attacker host, or on a compromised target (ssh-tap). */
 function laneOf(contextPath?: string): "host" | "target" {
@@ -56,7 +57,10 @@ export function segmentEpisodes(
 
     const duration = Math.max(0, r.ended_at_ms - r.started_at_ms);
     const binary = extractBinary(r.cmd);
-    const prior = classifyCommand(r.cmd, lastTactic, r.context_path);
+    const webPrior = r.web ? classifyExchange(r.web) : null;
+    const prior = webPrior
+      ? { tactic: webPrior.tactic, technique: webPrior.technique, confidence: webPrior.confidence }
+      : classifyCommand(r.cmd, lastTactic, r.context_path);
 
     // Break a long pause into its own episode (think_pause, or idle if very long).
     // The gap-before belongs to the action it precedes, so the pause carries the
@@ -107,6 +111,7 @@ export function segmentEpisodes(
       volume: r.volume ?? 1,
       context_path: r.context_path,
       alignment: null,
+      ...(webPrior?.cwe ? { frameworks: { cwe: [webPrior.cwe] } } : {}),
     });
 
     lastTactic = prior.tactic;

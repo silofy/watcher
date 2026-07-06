@@ -61,6 +61,31 @@ describe("segmentEpisodes (§4.1)", () => {
   });
 });
 
+describe("segmentEpisodes — web exchanges (Task 6)", () => {
+  it("classifies a web exchange episode with CWE", () => {
+    const eps = segmentEpisodes([{
+      cmd: "GET /item?id=1'", started_at_ms: 0, ended_at_ms: 50, exit_code: null,
+      output_line_count: 0, context_path: "web:burp",
+      web: { method: "GET", url: "http://t/item?id=1'", status: 500, resp_body: "SQL syntax error" },
+    }]);
+    expect(eps[0].technique).toBe("T1190");
+    expect(eps[0].frameworks?.cwe).toContain("CWE-89");
+  });
+
+  it("classifies a reflected-XSS web exchange episode with CWE-79", () => {
+    const eps = segmentEpisodes([{
+      cmd: "GET /search?q=<script>alert(1)</script>", started_at_ms: 0, ended_at_ms: 50, exit_code: null,
+      output_line_count: 0, context_path: "web:burp",
+      web: {
+        method: "GET",
+        url: "http://t/s?q=<script>alert(1)</script>",
+        resp_body: "<script>alert(1)</script>",
+      },
+    }]);
+    expect(eps[0].frameworks?.cwe).toContain("CWE-79");
+  });
+});
+
 describe("segmentEpisodes — lanes (host vs on-target)", () => {
   // Enumerate on the host, then 6.5 min later drop into an ssh shell and run `id`. The gap is
   // host-side think-time, not a pause before the *first* on-target command — lanes are independent.
