@@ -29,6 +29,24 @@ export const ACTOR_LABELS: Record<ActorMode, string> = {
 /** Detour gets its own deep coral since it is the headline waste class. */
 export const DETOUR_COLOR = "oklch(0.66 0.16 29)";
 
+/** Web/HTTP capture accent (Burp exchanges) — a hue distinct from every actor/alignment color so
+ *  a request stands out in the ribbon without competing with the actor-mode legend. */
+export const WEB_COLOR = "oklch(0.75 0.14 230)";
+
+const HTTP_METHODS = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b/i;
+
+/** An HTTP exchange captured via Burp (§8 web capture) — tagged `context_path: "web:burp"` by the
+ *  ingest pipeline, or (defensively) any episode whose command line is itself a request line. */
+export function isWebEpisode(ep: Episode): boolean {
+  return ep.context_path === "web:burp" || HTTP_METHODS.test(ep.cmd ?? "");
+}
+
+/** Split a web episode's `cmd` ("GET /login?x=1") into its method and path for compact display. */
+export function httpParts(cmd: string): { method: string; path: string } {
+  const m = HTTP_METHODS.exec(cmd);
+  return { method: m ? m[0].toUpperCase() : "GET", path: m ? cmd.slice(m[0].length).trim() : cmd };
+}
+
 export const ALIGNMENT_COLORS: Record<NonNullable<Alignment>, string> = {
   match: "oklch(0.76 0.139 179)", // on the golden path — teal
   alternative: "oklch(0.85 0.13 201)", // alternative method — cyan

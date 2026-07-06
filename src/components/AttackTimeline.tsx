@@ -1,5 +1,5 @@
 import { useReport, activeSeq } from "../store/report";
-import { AXIS_W, episodeColor, episodeLane, ACTOR_COLORS, ALIGNMENT_COLORS } from "../lib/scale";
+import { AXIS_W, episodeColor, episodeLane, isWebEpisode, httpParts, WEB_COLOR, ACTOR_COLORS, ALIGNMENT_COLORS } from "../lib/scale";
 import { Section, ActorLegend, Chip } from "./ui";
 import { useAxisZoom } from "./useAxisZoom";
 import { ZoomControls } from "./ZoomControls";
@@ -126,24 +126,34 @@ export function AttackTimeline() {
             const onTarget = twoLane && episodeLane(ep) === "target";
             const y = onTarget ? RIB_H / 2 : 0;
             const h = twoLane ? RIB_H / 2 : RIB_H;
+            const web = isWebEpisode(ep);
+            const title = web
+              ? `#${ep.seq} HTTP ${ep.cmd || ep.binary} — ${fmtDuration(ep.duration_ms + ep.gap_before_ms)}`
+              : `#${ep.seq} ${ep.binary} · ${onTarget ? "on-target" : "host"} — ${fmtDuration(ep.duration_ms + ep.gap_before_ms)}`;
             return (
-              <rect
-                key={ep.seq}
-                x={x}
-                y={y}
-                width={w}
-                height={h}
-                fill={episodeColor(ep)}
-                opacity={dim ? 0.22 : 0.9}
-                stroke={focus === ep.seq ? "var(--color-fg)" : "none"}
-                strokeWidth={focus === ep.seq ? 2 : 0}
-                className="cursor-pointer transition-opacity"
-                onMouseEnter={() => s.hover(ep.seq)}
-                onMouseLeave={() => s.hover(null)}
-                onClick={() => s.select(s.selectedSeq === ep.seq ? null : ep.seq)}
-              >
-                <title>{`#${ep.seq} ${ep.binary} · ${onTarget ? "on-target" : "host"} — ${fmtDuration(ep.duration_ms + ep.gap_before_ms)}`}</title>
-              </rect>
+              <g key={ep.seq}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={w}
+                  height={h}
+                  fill={episodeColor(ep)}
+                  opacity={dim ? 0.22 : 0.9}
+                  stroke={focus === ep.seq ? "var(--color-fg)" : "none"}
+                  strokeWidth={focus === ep.seq ? 2 : 0}
+                  className="cursor-pointer transition-opacity"
+                  onMouseEnter={() => s.hover(ep.seq)}
+                  onMouseLeave={() => s.hover(null)}
+                  onClick={() => s.select(s.selectedSeq === ep.seq ? null : ep.seq)}
+                >
+                  <title>{title}</title>
+                </rect>
+                {/* a request-line accent, interleaved with the ordinary command blocks — the one
+                    glanceable "this segment is web traffic" cue, no separate lane or mode */}
+                {web && (
+                  <rect x={x} y={y + h - 2} width={w} height={2} fill={WEB_COLOR} opacity={dim ? 0.35 : 1} pointerEvents="none" />
+                )}
+              </g>
             );
           })}
 
@@ -242,7 +252,7 @@ export function AttackTimeline() {
         {hovered ? (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="text-faint">#{hovered.ep.seq}</span>
-            <span className="mono text-fg">{hovered.ep.binary}</span>
+            {isWebEpisode(hovered.ep) ? <Chip color={WEB_COLOR}>web</Chip> : <span className="mono text-fg">{hovered.ep.binary}</span>}
             {hovered.ep.alignment && <Chip color={ALIGNMENT_COLORS[hovered.ep.alignment]}>{hovered.ep.alignment.replace(/_/g, "-")}</Chip>}
             <span className="text-xs" style={{ color: ACTOR_COLORS[hovered.ep.actor] }}>
               {hovered.ep.actor.replace("_", " ")}
@@ -261,7 +271,21 @@ export function AttackTimeline() {
             {!!hovered.ep.frameworks?.cwe?.length && (
               <span className="mono text-xs text-muted">{hovered.ep.frameworks.cwe.join(" ")}</span>
             )}
-            <span className="mono w-full truncate text-xs text-muted">$ {hovered.ep.cmd || "— (thinking)"}</span>
+            {isWebEpisode(hovered.ep) ? (
+              (() => {
+                const { method, path } = httpParts(hovered.ep.cmd || "");
+                return (
+                  <span className="mono w-full truncate text-xs">
+                    <span className="rounded bg-edge/60 px-1 py-0.5 font-semibold" style={{ color: WEB_COLOR }}>
+                      {method}
+                    </span>
+                    <span className="ml-1.5 text-muted">{path || "/"}</span>
+                  </span>
+                );
+              })()
+            ) : (
+              <span className="mono w-full truncate text-xs text-muted">$ {hovered.ep.cmd || "— (thinking)"}</span>
+            )}
           </div>
         ) : (
           <p className="flex h-full items-center text-xs text-faint">Hover or click a block to inspect — the command log and replay follow.</p>

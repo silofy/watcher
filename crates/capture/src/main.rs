@@ -707,6 +707,70 @@ fn prompt_start_new(machine: &str) -> bool {
     matches!(line.trim().to_ascii_lowercase().as_str(), "n" | "no" | "new")
 }
 
+// ---- Web capture (Burp via MCP): enablement + preflight (brief §8) ----
+//
+// A bare `--web` flag joins this run to plugins/burp-bridge/bridge.py, which polls Burp's MCP
+// server and streams HTTP exchanges into the same active session over the daemon socket. OFF by
+// default; strictly additive — every check here is best-effort and NEVER blocks or alters the
+// terminal capture path. The wording below MUST match src/lib/preflight.ts verbatim (that TS file
+// is the single source; its test pins the strings — this just copies them for the CLI's own
+// stdout/stderr, since preflight.ts can't be imported from Rust).
+
+const BURP_MCP_PORT: u16 = 9876;
+
+/// Copied verbatim from `preflightMessage("unreachable", { port })` in src/lib/preflight.ts.
+fn preflight_unreachable(port: u16) -> String {
+    format!(
+        "Can't reach Burp's MCP server at 127.0.0.1:{port}. Is Burp running with the MCP Server extension enabled? Setup: docs/web-capture.md"
+    )
+}
+
+/// Copied verbatim from `preflightMessage("detected")` in src/lib/preflight.ts.
+fn preflight_detected() -> &'static str {
+    "Burp MCP detected; add --web to record web traffic"
+}
+
+/// Best-effort TCP probe for Burp's MCP server — a short timeout so a closed/absent Burp never
+/// stalls capture startup (this runs on every invocation, --web or not, to power the nudge).
+fn burp_mcp_reachable(port: u16) -> bool {
+    let addr = match format!("127.0.0.1:{port}").parse() {
+        Ok(a) => a,
+        Err(_) => return false,
+    };
+    TcpStream::connect_timeout(&addr, Duration::from_millis(250)).is_ok()
+}
+
+/// Spawn the python bridge as a detached child so it joins this run's active session over the
+/// daemon socket. Fire-and-forget and best-effort: a missing `python`/`mcp`/Burp never aborts
+/// terminal capture — the bridge process itself degrades (prints its own actionable message,
+/// exits 0) if it can't proceed. See plugins/burp-bridge/bridge.py's `main()`.
+fn spawn_web_bridge(platform: &str) {
+    let bridge = std::path::Path::new("plugins").join("burp-bridge").join("bridge.py");
+    match std::process::Command::new("python").arg(&bridge).arg("--platform").arg(platform).spawn() {
+        Ok(_) => eprintln!("[watcher-capture] web capture: spawned burp-bridge (platform={platform})"),
+        Err(e) => eprintln!(
+            "[watcher-capture] web capture: could not spawn burp-bridge ({e}) — continuing without web capture."
+        ),
+    }
+}
+
+/// Wire `--web` enablement (brief §8): the bare flag joins the bridge to this run; when Burp's MCP
+/// server can't be reached the `unreachable` message prints and the terminal run continues
+/// unaffected. When `--web` is absent but Burp MCP is reachable, print the `detected` nudge once.
+/// Detect-and-nudge NEVER auto-enables — capturing web traffic always requires the explicit flag.
+fn handle_web_capture(args: &[String], platform: &str) {
+    let web = args.iter().any(|a| a == "--web");
+    if web {
+        if burp_mcp_reachable(BURP_MCP_PORT) {
+            spawn_web_bridge(platform);
+        } else {
+            eprintln!("[watcher-capture] {}", preflight_unreachable(BURP_MCP_PORT));
+        }
+    } else if burp_mcp_reachable(BURP_MCP_PORT) {
+        eprintln!("[watcher-capture] {}", preflight_detected());
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
 
@@ -718,6 +782,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let session = Uuid::new_v4().to_string();
     let surface = profile.platform_tag(); // conpty | unix-pty — PTY backend, used only for the startup log line
     let platform = platform_arg(&args); // htb | thm | offsec | immersive | local — neutral CTF/lab platform id
+
+    // `--web` (bare, off by default): join Burp's proxy traffic into this run via the python
+    // bridge, or nudge that it's available. Best-effort and non-blocking — see handle_web_capture.
+    handle_web_capture(&args, &platform);
 
     // Standalone capture (the in-Pwnbox agent): record with our own identity, write a complete
     // report to a file the user downloads and imports.
@@ -962,5 +1030,54 @@ mod tests {
         let v = build_base_report("u2", Value::Null, "Pwnbox session", "cloud:htb:pwnbox", "in_vm_daemon");
         assert_eq!(v["session"]["source"], "in_vm_daemon");
         assert!(v["coaching"]["next_steps"][0]["action"].as_str().unwrap().contains("Pwnbox"));
+    }
+
+    // ---- Web capture (--web) enablement: string parity + never-blocks (brief §8) ----
+
+    #[test]
+    fn preflight_unreachable_matches_preflight_ts_verbatim() {
+        // Must read identically to preflightMessage("unreachable", { port: 9876 }) in
+        // src/lib/preflight.ts — that TS file is the single source of the wording, pinned by
+        // src/lib/preflight.test.ts; this asserts the Rust copy hasn't drifted.
+        let m = preflight_unreachable(9876);
+        assert_eq!(
+            m,
+            "Can't reach Burp's MCP server at 127.0.0.1:9876. Is Burp running with the MCP Server extension enabled? Setup: docs/web-capture.md"
+        );
+        assert!(m.contains("9876"));
+        assert!(m.contains("MCP Server extension"));
+        assert!(m.contains("docs/web-capture.md"));
+    }
+
+    #[test]
+    fn preflight_detected_matches_preflight_ts_verbatim() {
+        assert_eq!(preflight_detected(), "Burp MCP detected; add --web to record web traffic");
+        assert!(preflight_detected().contains("--web"));
+    }
+
+    #[test]
+    fn burp_mcp_unreachable_on_a_closed_port() {
+        // Nothing listens on this high port in the test sandbox — the probe must fail fast
+        // (bounded by its own short timeout) rather than block the caller.
+        assert!(!burp_mcp_reachable(1));
+    }
+
+    #[test]
+    fn web_flag_absent_and_unreachable_is_a_no_op() {
+        // Without --web, and with Burp unreachable, handle_web_capture must do nothing observable
+        // beyond stderr — it never spawns a process or touches capture's control flow. This is a
+        // smoke test that the function returns normally (doesn't panic) in the common "no Burp,
+        // no --web" case, which is the overwhelming majority of runs.
+        let args: Vec<String> = vec!["watcher-capture".into()];
+        handle_web_capture(&args, "local");
+    }
+
+    #[test]
+    fn web_flag_present_and_unreachable_is_still_a_no_op() {
+        // --web with no Burp running must print the unreachable message and return — never
+        // panic, never abort the caller. (The reachability probe here targets the real default
+        // port, which is expected to be closed in CI/sandboxes.)
+        let args: Vec<String> = vec!["watcher-capture".into(), "--web".into()];
+        handle_web_capture(&args, "local");
     }
 }

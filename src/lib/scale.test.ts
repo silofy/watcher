@@ -7,6 +7,8 @@ import {
   phaseWindows,
   episodeColor,
   episodeLane,
+  isWebEpisode,
+  httpParts,
   ACTOR_COLORS,
   DETOUR_COLOR,
 } from "./scale";
@@ -106,6 +108,30 @@ describe("phaseWindows", () => {
       expect(w.t1).toBeGreaterThan(w.t0);
       expect(w.t1).toBeLessThanOrEqual(tl.totalMs);
     }
+  });
+});
+
+describe("isWebEpisode (--web capture, brief §8)", () => {
+  it("flags episodes tagged web:burp by the ingest pipeline", () => {
+    expect(isWebEpisode(mk({ context_path: "web:burp", cmd: "id" }))).toBe(true);
+  });
+  it("falls back to detecting an HTTP method as the command", () => {
+    expect(isWebEpisode(mk({ cmd: "GET /login" }))).toBe(true);
+    expect(isWebEpisode(mk({ cmd: "post /api/users" }))).toBe(true); // case-insensitive
+  });
+  it("leaves ordinary shell episodes alone", () => {
+    expect(isWebEpisode(mk({ cmd: "nmap -sV 10.10.10.5" }))).toBe(false);
+    expect(isWebEpisode(mk({ context_path: "host", cmd: "id" }))).toBe(false);
+  });
+});
+
+describe("httpParts", () => {
+  it("splits a request-line cmd into method and path", () => {
+    expect(httpParts("GET /login?x=1")).toEqual({ method: "GET", path: "/login?x=1" });
+    expect(httpParts("POST /api/users")).toEqual({ method: "POST", path: "/api/users" });
+  });
+  it("defaults to GET when no method prefix is present", () => {
+    expect(httpParts("/login")).toEqual({ method: "GET", path: "/login" });
   });
 });
 

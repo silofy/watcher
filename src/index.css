@@ -39,6 +39,7 @@
   --color-skipped: oklch(0.6 0.045 250); /* missed objective — cool slate (absence) */
   --color-loud: oklch(0.7 0.16 30); /* noise / stealth cost — bright coral */
   --color-flag: oklch(0.83 0.143 85); /* flag captured — milestone gold, outside the path palette */
+  --color-web: oklch(0.75 0.14 230); /* HTTP/web capture (Burp) — a blue outside every other accent */
 
   /* motion */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
