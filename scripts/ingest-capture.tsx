@@ -6,6 +6,7 @@
  *   vite-node scripts/ingest-capture.tsx [--ndjson <path>] [--golden <path>] [--out <path>]
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { resolve, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import Ajv from "ajv/dist/2020";
@@ -47,16 +48,48 @@ const golden: GoldenObjective[] = goldenPath
   ? (JSON.parse(readFileSync(resolve(goldenPath), "utf8")) as GoldenObjective[])
   : DEFAULT_GOLDEN;
 
+/** Spawn the built `watcher-store --export` and capture its §3.3 NDJSON stdout. */
+function ndjsonFromStore(): string {
+  const db = arg("db", "");
+  if (!db) { console.error("--from-store requires --db <path>"); process.exit(1); }
+  const key = arg("key", "watcher-dev-key");
+  const session = arg("session", "");
+  const candidates = [
+    resolve("crates/store/target/release/watcher-store"),
+    resolve("crates/store/target/debug/watcher-store"),
+    resolve("target/release/watcher-store"),
+    resolve("target/debug/watcher-store"),
+  ];
+  // cargo names the binary watcher-store.exe on Windows; check both forms.
+  const bin = candidates
+    .flatMap((c) => (process.platform === "win32" ? [c, `${c}.exe`] : [c]))
+    .find((c) => existsSync(c));
+  if (!bin) { console.error("watcher-store not built. Run: cargo build -p watcher-store --release"); process.exit(1); }
+  const a = ["--db", db, "--key", key, "--export"];
+  if (session) a.push("--session", session);
+  try {
+    return execFileSync(bin, a, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  } catch (e) {
+    console.error(`watcher-store --export failed (bad db/key?):\n${(e as Error).message}`);
+    process.exit(1);
+  }
+}
+
 // Web capture streams to a separate sink (crates/capture/web-events.ndjson, teed there by the
 // Burp bridge — see plugins/sdk/watcher_sdk.py's ndjson_path) rather than into the terminal
 // capture's stdout-redirected NDJSON. Fold it in here so live --web traffic renders in the report;
 // absent (no --web this run, or bridge never reached Burp), behavior is identical to today.
-let ndjsonText = readFileSync(ndjsonPath, "utf8");
-if (existsSync(webNdjsonPath)) {
-  const webText = readFileSync(webNdjsonPath, "utf8");
-  const webLineCount = webText.split("\n").filter((l) => l.trim().length > 0).length;
-  console.error(`[ingest] merging ${webLineCount} web envelope(s) from ${webNdjsonPath}`);
-  ndjsonText = ndjsonText.replace(/\n?$/, "\n") + webText;
+let ndjsonText: string;
+if (process.argv.includes("--from-store")) {
+  ndjsonText = ndjsonFromStore();
+} else {
+  ndjsonText = readFileSync(ndjsonPath, "utf8");
+  if (existsSync(webNdjsonPath)) {
+    const webText = readFileSync(webNdjsonPath, "utf8");
+    const webLineCount = webText.split("\n").filter((l) => l.trim().length > 0).length;
+    console.error(`[ingest] merging ${webLineCount} web envelope(s) from ${webNdjsonPath}`);
+    ndjsonText = ndjsonText.replace(/\n?$/, "\n") + webText;
+  }
 }
 
 const events = parseEnvelopes(ndjsonText);

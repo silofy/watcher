@@ -8,14 +8,14 @@
 //! Argon2id — so the file alone is worthless if exfiltrated.
 
 use rusqlite::{Connection, OptionalExtension};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Re-exported so downstream crates (the daemon) can name the connection type without taking
 /// their own rusqlite dependency (which would link SQLCipher twice).
 pub use rusqlite::Connection as SqlConnection;
 
 /// The unified telemetry envelope (§3.3), as received from any capture agent.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RawEvent {
     pub source: String,
     pub session_uuid: String,
@@ -29,29 +29,46 @@ pub struct RawEvent {
     pub provenance: Provenance,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Payload {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cmd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub line_count: Option<i64>,
     // --- web fields (http_request / http_response) ---
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub method: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub req_headers: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub req_body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub resp_headers: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub resp_body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mime: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pair_id: Option<String>,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Provenance {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub boundary_confidence: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub context_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub platform: Option<String>,
 }
 
@@ -61,7 +78,7 @@ PRAGMA journal_mode = WAL;
 CREATE TABLE IF NOT EXISTS sessions (
   id INTEGER PRIMARY KEY, uuid TEXT UNIQUE, started_at INTEGER, ended_at INTEGER,
   shell TEXT, hostname TEXT, initial_cwd TEXT, target_scope TEXT,
-  source TEXT, origin_meta TEXT, schema_ver INTEGER );
+  source TEXT, origin_meta TEXT, platform TEXT, schema_ver INTEGER );
 
 CREATE TABLE IF NOT EXISTS commands (
   id INTEGER PRIMARY KEY, session_id INTEGER REFERENCES sessions(id),
@@ -112,6 +129,9 @@ pub fn open(path: &str, key: &str) -> rusqlite::Result<Connection> {
     // Force a read so a wrong key fails immediately rather than later.
     conn.query_row("SELECT count(*) FROM sqlite_master", [], |r| r.get::<_, i64>(0))?;
     conn.execute_batch(SCHEMA)?;
+    // Additive migration for stores created before platform existed. A fresh DB already has the
+    // column (from SCHEMA) so this errors with "duplicate column" — intentionally ignored.
+    let _ = conn.execute("ALTER TABLE sessions ADD COLUMN platform TEXT", []);
     Ok(conn)
 }
 
@@ -136,8 +156,8 @@ pub fn ingest(conn: &mut Connection, events: &[RawEvent]) -> rusqlite::Result<(u
                 Some(id) => id,
                 None => {
                     tx.execute(
-                        "INSERT INTO sessions (uuid, started_at, source, schema_ver) VALUES (?1, ?2, ?3, 1)",
-                        rusqlite::params![e.session_uuid, e.ts_utc_us, e.source],
+                        "INSERT INTO sessions (uuid, started_at, source, platform, schema_ver) VALUES (?1, ?2, ?3, ?4, 2)",
+                        rusqlite::params![e.session_uuid, e.ts_utc_us, e.source, e.provenance.platform],
                     )?;
                     tx.last_insert_rowid()
                 }
@@ -253,6 +273,93 @@ pub fn parse_ndjson(s: &str) -> Vec<RawEvent> {
         .collect()
 }
 
+/// Reconstruct the §3.3 envelope stream for one session (explicit uuid, or the most-recently-started
+/// session when `None`), time-ordered. Rows were redacted at ingest, so this does not re-redact.
+pub fn export_envelopes(conn: &Connection, session: Option<&str>) -> rusqlite::Result<Vec<RawEvent>> {
+    let (session_id, uuid, source, platform): (i64, String, Option<String>, Option<String>) = match session {
+        Some(u) => conn.query_row(
+            "SELECT id, uuid, source, platform FROM sessions WHERE uuid = ?1",
+            [u], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?,
+        None => conn.query_row(
+            "SELECT id, uuid, source, platform FROM sessions ORDER BY started_at DESC, id DESC LIMIT 1",
+            [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?,
+    };
+    let platform = platform.unwrap_or_else(|| "local".into());
+    let src = source.unwrap_or_else(|| "local_pty".into());
+    let mut events: Vec<RawEvent> = Vec::new();
+
+    let mut cs = conn.prepare(
+        "SELECT seq, raw_command, started_at, exit_code, boundary_confidence, context_path
+         FROM commands WHERE session_id = ?1 ORDER BY started_at, seq")?;
+    for row in cs.query_map([session_id], |r| Ok((
+        r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, i64>(2)?,
+        r.get::<_, Option<i64>>(3)?, r.get::<_, Option<f64>>(4)?, r.get::<_, Option<String>>(5)?,
+    )))? {
+        let (seq, cmd, ts, exit, conf, ctx) = row?;
+        events.push(RawEvent {
+            source: src.clone(), session_uuid: uuid.clone(), seq, ts_utc_us: ts, kind: "command".into(),
+            payload: Payload { cmd: Some(cmd), exit_code: exit, ..Default::default() },
+            provenance: Provenance { boundary_confidence: conf, context_path: ctx, platform: Some(platform.clone()) },
+        });
+    }
+
+    let mut os = conn.prepare(
+        "SELECT c.seq, o.content, o.line_count, o.started_at, o.fidelity
+         FROM output_blocks o JOIN commands c ON o.command_id = c.id WHERE c.session_id = ?1
+         ORDER BY o.started_at, c.seq, o.id")?;
+    for row in os.query_map([session_id], |r| Ok((
+        r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<i64>>(2)?,
+        r.get::<_, i64>(3)?, r.get::<_, Option<String>>(4)?,
+    )))? {
+        let (seq, content, lc, ts, fidelity) = row?;
+        let masked = fidelity.as_deref() == Some("masked");
+        events.push(RawEvent {
+            source: src.clone(), session_uuid: uuid.clone(), seq, ts_utc_us: ts,
+            kind: if masked { "stdin_masked".into() } else { "output".into() },
+            payload: Payload { text: Some(content), line_count: lc, ..Default::default() },
+            provenance: Provenance { boundary_confidence: None, context_path: None, platform: Some(platform.clone()) },
+        });
+    }
+
+    let mut hs = conn.prepare(
+        "SELECT pair_id, method, url, req_headers, req_body, status, resp_headers, resp_body, mime, started_at, ended_at, context_path
+         FROM http_exchanges WHERE session_id = ?1
+         ORDER BY started_at, pair_id")?;
+    for row in hs.query_map([session_id], |r| Ok((
+        r.get::<_, Option<String>>(0)?, r.get::<_, Option<String>>(1)?, r.get::<_, Option<String>>(2)?,
+        r.get::<_, Option<String>>(3)?, r.get::<_, Option<String>>(4)?, r.get::<_, Option<i64>>(5)?,
+        r.get::<_, Option<String>>(6)?, r.get::<_, Option<String>>(7)?, r.get::<_, Option<String>>(8)?,
+        r.get::<_, Option<i64>>(9)?, r.get::<_, Option<i64>>(10)?, r.get::<_, Option<String>>(11)?,
+    )))? {
+        let (pair_id, method, url, req_h, req_b, status, resp_h, resp_b, mime, started, ended, ctx) = row?;
+        let start = started.unwrap_or(0);
+        events.push(RawEvent {
+            source: "plugin".into(), session_uuid: uuid.clone(), seq: 0, ts_utc_us: start, kind: "http_request".into(),
+            payload: Payload { pair_id: pair_id.clone(), method, url, req_headers: req_h, req_body: req_b, ..Default::default() },
+            provenance: Provenance { boundary_confidence: Some(1.0), context_path: ctx.clone(), platform: Some(platform.clone()) },
+        });
+        events.push(RawEvent {
+            source: "plugin".into(), session_uuid: uuid.clone(), seq: 0, ts_utc_us: ended.unwrap_or(start), kind: "http_response".into(),
+            payload: Payload { pair_id, status, resp_headers: resp_h, resp_body: resp_b, mime, ..Default::default() },
+            provenance: Provenance { boundary_confidence: Some(1.0), context_path: ctx, platform: Some(platform.clone()) },
+        });
+    }
+
+    events.sort_by(|a, b| a.ts_utc_us.cmp(&b.ts_utc_us).then(a.seq.cmp(&b.seq))
+        .then_with(|| a.kind.cmp(&b.kind)).then_with(|| a.payload.pair_id.cmp(&b.payload.pair_id)));
+    Ok(events)
+}
+
+/// Serialize the exported stream as NDJSON (one §3.3 envelope per line).
+pub fn export_ndjson(conn: &Connection, session: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+    let mut out = String::new();
+    for e in export_envelopes(conn, session)? {
+        out.push_str(&serde_json::to_string(&e)?);
+        out.push('\n');
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -344,5 +451,80 @@ mod tests {
         assert_eq!(method, "POST");
         assert_eq!(status, 200);
         assert_eq!(body, "welcome");
+    }
+
+    #[test]
+    fn persists_platform_on_session() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("t.db"); let p = p.to_str().unwrap();
+        let mut conn = open(p, "k").unwrap();
+        let line = r#"{"source":"local_pty","session_uuid":"s1","seq":1,"ts_utc_us":100,"kind":"command","payload":{"cmd":"id"},"provenance":{"platform":"htb","context_path":"host"}}"#;
+        ingest(&mut conn, &parse_ndjson(line)).unwrap();
+        let plat: Option<String> = conn.query_row(
+            "SELECT platform FROM sessions WHERE uuid='s1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(plat.as_deref(), Some("htb"));
+    }
+
+    #[test]
+    fn export_roundtrips_commands_output_and_http() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("t.db"); let p = p.to_str().unwrap();
+        let mut conn = open(p, "k").unwrap();
+        let stream = r#"{"source":"local_pty","session_uuid":"s1","seq":1,"ts_utc_us":100,"kind":"command","payload":{"cmd":"id","exit_code":0},"provenance":{"platform":"htb","context_path":"host","boundary_confidence":1.0}}
+{"source":"local_pty","session_uuid":"s1","seq":1,"ts_utc_us":150,"kind":"output","payload":{"stream":"stdout","text":"uid=0","line_count":1}}
+{"source":"local_pty","session_uuid":"s1","seq":2,"ts_utc_us":175,"kind":"command","payload":{"cmd":"cat /etc/shadow","exit_code":0},"provenance":{"platform":"htb","context_path":"host","boundary_confidence":0.5}}
+{"source":"local_pty","session_uuid":"s1","seq":2,"ts_utc_us":180,"kind":"stdin_masked","payload":{"text":"[MASKED]","line_count":1}}
+{"source":"plugin","session_uuid":"s1","seq":3,"ts_utc_us":200,"kind":"http_request","payload":{"method":"GET","url":"http://t/a","pair_id":"p1"},"provenance":{"context_path":"web:burp"}}
+{"source":"plugin","session_uuid":"s1","seq":4,"ts_utc_us":250,"kind":"http_response","payload":{"status":200,"resp_body":"ok","pair_id":"p1"}}"#;
+        ingest(&mut conn, &parse_ndjson(stream)).unwrap();
+
+        let evs = export_envelopes(&conn, None).unwrap(); // None => latest session
+        let kinds: Vec<&str> = evs.iter().map(|e| e.kind.as_str()).collect();
+        assert_eq!(
+            kinds,
+            vec!["command", "output", "command", "stdin_masked", "http_request", "http_response"]
+        ); // ts-ordered
+
+        // command #1 ("id"): every grading-relevant field round-trips
+        let cmd = evs.iter().find(|e| e.payload.cmd.as_deref() == Some("id")).unwrap();
+        assert_eq!(cmd.payload.cmd.as_deref(), Some("id"));
+        assert_eq!(cmd.payload.exit_code, Some(0));
+        assert_eq!(cmd.ts_utc_us, 100);
+        assert_eq!(cmd.provenance.context_path.as_deref(), Some("host"));
+        assert_eq!(cmd.provenance.boundary_confidence, Some(1.0));
+        assert_eq!(cmd.provenance.platform.as_deref(), Some("htb"));
+
+        // output for command #1: same seq as its command, text and line_count preserved
+        let out = evs.iter().find(|e| e.kind == "output").unwrap();
+        assert_eq!(out.seq, cmd.seq);
+        assert_eq!(out.payload.text.as_deref(), Some("uid=0"));
+        assert_eq!(out.payload.line_count, Some(1));
+
+        // masked stdin block re-exports as stdin_masked, not output, and only one true "output" exists
+        assert_eq!(evs.iter().filter(|e| e.kind == "output").count(), 1);
+        let masked = evs.iter().find(|e| e.kind == "stdin_masked").unwrap();
+        let cmd2 = evs.iter().find(|e| e.payload.cmd.as_deref() == Some("cat /etc/shadow")).unwrap();
+        assert_eq!(masked.seq, cmd2.seq);
+        assert_eq!(masked.payload.text.as_deref(), Some("[MASKED]"));
+        assert_eq!(masked.payload.line_count, Some(1));
+
+        // http_request/http_response rejoin by pair_id with method/url/status/resp_body preserved
+        let req = evs.iter().find(|e| e.kind == "http_request").unwrap();
+        assert_eq!(req.payload.pair_id.as_deref(), Some("p1"));
+        assert_eq!(req.payload.method.as_deref(), Some("GET"));
+        assert_eq!(req.payload.url.as_deref(), Some("http://t/a"));
+        let resp = evs.iter().find(|e| e.kind == "http_response").unwrap();
+        assert_eq!(resp.payload.pair_id.as_deref(), Some("p1"));
+        assert_eq!(resp.payload.status, Some(200));
+        assert_eq!(resp.payload.resp_body.as_deref(), Some("ok"));
+
+        // NDJSON serialization is parseable and omits None fields
+        let nd = export_ndjson(&conn, None).unwrap();
+        assert_eq!(nd.lines().count(), 6);
+        assert!(!nd.contains("\"cmd\":null"));
+
+        // stream was never populated at ingest, so the reconstructed output envelope must not fabricate it
+        let out_line = nd.lines().find(|l| l.contains("\"kind\":\"output\"")).unwrap();
+        assert!(!out_line.contains("\"stream\""));
     }
 }

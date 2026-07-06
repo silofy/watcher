@@ -226,6 +226,9 @@ tagging, golden-path diff, metrics) into one versioned JSON report
 (`schema/watcher-report.schema.json`) that the UI renders. An optional model — local Ollama, or an
 opt-in cloud model — only sharpens the coaching text; it never changes the numbers.
 
+A run persisted to the optional encrypted store can be rebuilt into the same graded report straight
+from the store — see [docs/store-report.md](docs/store-report.md).
+
 ## Layout
 
 ```
