@@ -750,6 +750,17 @@ fn burp_mcp_reachable(port: u16) -> bool {
 /// activates `--web` there.
 fn spawn_web_bridge(platform: &str) {
     let bridge = std::path::Path::new("plugins").join("burp-bridge").join("bridge.py");
+    if !bridge.exists() {
+        // CWD-relative path didn't resolve — spawning anyway would let python spawn then die
+        // "can't open file", while this function still logged success. Check first so a run
+        // outside the repo root gets an honest, actionable message instead of a silently dead
+        // web path.
+        eprintln!(
+            "[watcher-capture] web capture: bridge.py not found at {} — run from the repo root, or see docs/web-capture.md — continuing without web capture.",
+            bridge.display()
+        );
+        return;
+    }
     let mut last_err = None;
     for interpreter in ["python3", "python"] {
         match std::process::Command::new(interpreter).arg(&bridge).arg("--platform").arg(platform).spawn() {

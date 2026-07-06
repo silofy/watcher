@@ -245,7 +245,9 @@ export function LiveDashboard() {
   const findingsCount = report.findings?.length ?? 0;
 
   const focus = activeSeq(s);
-  const cmds = report.episodes.filter((e) => e.binary);
+  // web episodes carry `binary` "GET"/"POST" too (an HTTP method, not a shell command) — exclude
+  // them so the tally/feed count only actual commands; the `web ●` indicator above covers web.
+  const cmds = report.episodes.filter((e) => e.binary && !isWebEpisode(e));
   const feed = [...cmds].reverse().slice(0, 8); // newest first — the quick glance
   const loudSeq = new Set(metrics.loud_moments?.map((l) => l.seq) ?? []);
   const stealth = Math.round(metrics.stealth_score);

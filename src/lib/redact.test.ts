@@ -12,10 +12,34 @@ describe("redactText", () => {
   it("masks flag hashes", () => {
     expect(redactText("flag: 0123456789abcdef0123456789abcdef")).toBe("flag: [redacted-flag]");
   });
-  it("masks key=value credentials (mirrors watcher_core::redact)", () => {
+  it("masks key=value credentials (mirrors watcher_core::redact_body)", () => {
     expect(redactText("mysql config: password=Winter2023!")).toBe("mysql config: password=[redacted]");
     expect(redactText("api_key: sk-live-abc123")).toBe("api_key=[redacted]");
     expect(redactText("token=eyJhbGciOi")).toBe("token=[redacted]");
+  });
+
+  it("bounds the keyword-secret capture at the param delimiter", () => {
+    const out = redactText("token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig&user=admin");
+    expect(out).not.toContain("eyJhbGciOiJIUzI1NiJ9");
+    expect(out).toContain("user=admin"); // trailing params must survive
+  });
+
+  it("masks JWT-shaped access tokens while preserving the param name", () => {
+    const out = redactText("access=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc-_123&user=admin");
+    expect(out).not.toContain("eyJhbGciOiJIUzI1NiJ9");
+    expect(out).toContain("access=");
+    expect(out).toContain("user=admin");
+  });
+
+  it("masks Bearer tokens", () => {
+    const out = redactText("Authorization was Bearer sk-live-abcdef0123456789 here");
+    expect(out).not.toContain("sk-live-abcdef0123456789");
+    expect(out).toMatch(/Bearer \[redacted\]|\[redacted-key\]/);
+  });
+
+  it("masks bare api-key shapes (sk-/pk-/ghp-/xox*-)", () => {
+    expect(redactText("key is ghp_abcdefghij0123456789")).not.toContain("ghp_abcdefghij0123456789");
+    expect(redactText("key is ghp_abcdefghij0123456789")).toContain("[redacted-key]");
   });
 });
 

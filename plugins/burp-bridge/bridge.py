@@ -52,16 +52,36 @@ def poll_once(history, watcher, scope, seen):
                               mime=ex.get("mime", ""))
 
 
-def run(client, watcher, scope, interval=2.0):
+DEFAULT_MAX_CONSECUTIVE_FAILURES = 5
+
+
+def run(client, watcher, scope, interval=2.0, max_consecutive_failures=None):
+    """Poll until the daemon or Burp goes away, then let `finally` clean up.
+
+    A dead daemon socket (this run's session already ended) or an unreachable Burp both manifest
+    as repeated poll failures, not a single one-off blip — so this only stops on N CONSECUTIVE
+    failures, configurable via `max_consecutive_failures` or the WATCHER_BRIDGE_MAX_FAILURES env
+    var, defaulting to DEFAULT_MAX_CONSECUTIVE_FAILURES. A successful poll resets the counter. A
+    failure of the SDK send itself (watcher.http_request/http_response raising — the daemon socket
+    closed) counts the same as a Burp-side failure: both are "this run is over" signals.
+    """
+    if max_consecutive_failures is None:
+        max_consecutive_failures = int(os.environ.get("WATCHER_BRIDGE_MAX_FAILURES", DEFAULT_MAX_CONSECUTIVE_FAILURES))
     seen, cursor = set(), 0
+    consecutive_failures = 0
     watcher.session_start("Burp web capture")
     try:
         while True:
             try:
                 history, cursor = client.history_since(cursor)
                 poll_once(history, watcher, scope, seen)
-            except Exception as e:  # never crash the run — degrade
-                print(f"[burp-bridge] poll failed: {e}")
+                consecutive_failures = 0
+            except Exception as e:  # never crash the run — degrade, but track for the stop condition
+                consecutive_failures += 1
+                print(f"[burp-bridge] poll failed ({consecutive_failures}/{max_consecutive_failures}): {e}")
+                if consecutive_failures >= max_consecutive_failures:
+                    print("[burp-bridge] too many consecutive failures — stopping.")
+                    break
             time.sleep(interval)
     finally:
         watcher.session_end(); watcher.close()
