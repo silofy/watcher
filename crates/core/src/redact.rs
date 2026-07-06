@@ -26,6 +26,23 @@ pub fn redact(s: &str) -> String {
     c.into_owned()
 }
 
+/// Mask credential-bearing HTTP header values, preserving header names and structure.
+pub fn redact_headers(headers: &str) -> String {
+    let sensitive = |name: &str| {
+        let n = name.trim().to_ascii_lowercase();
+        n == "authorization" || n == "cookie" || n == "set-cookie"
+            || n == "x-api-key" || n == "x-auth-token" || n.ends_with("-api-key")
+    };
+    headers
+        .split("\r\n")
+        .map(|line| match line.split_once(':') {
+            Some((name, _)) if sensitive(name) => format!("{}: [redacted]", name),
+            _ => line.to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join("\r\n")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,5 +58,17 @@ mod tests {
     #[test]
     fn leaves_clean_text_untouched() {
         assert_eq!(redact("uid=0(root) gid=0(root)"), "uid=0(root) gid=0(root)");
+    }
+
+    #[test]
+    fn masks_auth_headers_and_cookies() {
+        let h = "Host: t\r\nAuthorization: Bearer sk-abc123\r\nCookie: session=deadbeef; a=b\r\nAccept: */*";
+        let out = redact_headers(h);
+        assert!(out.contains("Host: t"));
+        assert!(out.contains("Accept: */*"));
+        assert!(!out.contains("sk-abc123"));
+        assert!(!out.contains("deadbeef"));
+        assert!(out.contains("Authorization: [redacted]"));
+        assert!(out.contains("Cookie: [redacted]"));
     }
 }
