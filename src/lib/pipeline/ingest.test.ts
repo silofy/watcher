@@ -49,6 +49,19 @@ describe("envelope → RawCommand join (§3.3)", () => {
     // 1_060_000_000µs - 1_000_000_000µs = 60_000_000µs = 60_000ms
     expect(raw[0].ended_at_ms - raw[0].started_at_ms).toBe(60_000);
   });
+
+  it("joins http_request+http_response into a web RawCommand", () => {
+    const nd = [
+      `{"source":"plugin","session_uuid":"s","seq":1,"ts_utc_us":1000,"kind":"http_request","payload":{"method":"GET","url":"http://t/item?id=1'","pair_id":"p1"}}`,
+      `{"source":"plugin","session_uuid":"s","seq":2,"ts_utc_us":2000,"kind":"http_response","payload":{"status":500,"resp_body":"SQL syntax error","pair_id":"p1"}}`,
+    ].join("\n");
+    const raw = envelopesToRawCommands(parseEnvelopes(nd));
+    const web = raw.find((r) => r.web);
+    expect(web).toBeDefined();
+    expect(web!.web!.method).toBe("GET");
+    expect(web!.web!.status).toBe(500);
+    expect(web!.cmd).toContain("GET");
+  });
 });
 
 describe("assembleReport — full capture → report", () => {
