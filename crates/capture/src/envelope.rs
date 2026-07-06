@@ -30,6 +30,25 @@ pub struct Payload {
     /// number of output lines after VT cleaning — a machine-bound signal downstream.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub line_count: Option<u64>,
+    // --- web fields (http_request / http_response) ---
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub method: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub req_headers: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub req_body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resp_headers: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resp_body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pair_id: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -118,5 +137,71 @@ impl TelemetryEvent {
                 platform: platform.into(),
             },
         }
+    }
+
+    pub fn http_request(session: &str, seq: u64, ts: u64, pair_id: &str,
+        method: &str, url: &str, req_headers: &str, req_body: &str, platform: &str) -> Self {
+        TelemetryEvent {
+            source: "plugin".into(), session_uuid: session.into(), seq, ts_utc_us: ts,
+            kind: "http_request".into(),
+            payload: Payload {
+                pair_id: Some(pair_id.into()), method: Some(method.into()), url: Some(url.into()),
+                req_headers: Some(req_headers.into()), req_body: Some(req_body.into()),
+                ..Default::default()
+            },
+            provenance: Provenance {
+                boundary_confidence: 1.0, redaction_method: "none".into(),
+                context_path: "web:burp".into(), platform: platform.into(),
+            },
+        }
+    }
+
+    pub fn http_response(session: &str, seq: u64, ts: u64, pair_id: &str,
+        status: i64, resp_headers: &str, resp_body: &str, mime: &str, platform: &str) -> Self {
+        TelemetryEvent {
+            source: "plugin".into(), session_uuid: session.into(), seq, ts_utc_us: ts,
+            kind: "http_response".into(),
+            payload: Payload {
+                pair_id: Some(pair_id.into()), status: Some(status),
+                resp_headers: Some(resp_headers.into()), resp_body: Some(resp_body.into()),
+                mime: Some(mime.into()),
+                ..Default::default()
+            },
+            provenance: Provenance {
+                boundary_confidence: 1.0, redaction_method: "none".into(),
+                context_path: "web:burp".into(), platform: platform.into(),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn constructs_http_request_envelope() {
+        let req = TelemetryEvent::http_request(
+            "session1", 1, 1000, "pair1",
+            "POST", "http://example.com/api", "header1: value1", "body content", "htb"
+        );
+        assert_eq!(req.kind, "http_request");
+        assert_eq!(req.source, "plugin");
+        assert_eq!(req.payload.method.as_deref(), Some("POST"));
+        assert_eq!(req.payload.url.as_deref(), Some("http://example.com/api"));
+        assert_eq!(req.payload.pair_id.as_deref(), Some("pair1"));
+    }
+
+    #[test]
+    fn constructs_http_response_envelope() {
+        let resp = TelemetryEvent::http_response(
+            "session1", 2, 2000, "pair1",
+            200, "content-type: application/json", "{\"status\": \"ok\"}", "application/json", "htb"
+        );
+        assert_eq!(resp.kind, "http_response");
+        assert_eq!(resp.source, "plugin");
+        assert_eq!(resp.payload.status, Some(200));
+        assert_eq!(resp.payload.mime.as_deref(), Some("application/json"));
+        assert_eq!(resp.payload.pair_id.as_deref(), Some("pair1"));
     }
 }

@@ -36,6 +36,16 @@ pub struct Payload {
     pub stream: Option<String>,
     pub text: Option<String>,
     pub line_count: Option<i64>,
+    // --- web fields (http_request / http_response) ---
+    pub method: Option<String>,
+    pub url: Option<String>,
+    pub status: Option<i64>,
+    pub req_headers: Option<String>,
+    pub req_body: Option<String>,
+    pub resp_headers: Option<String>,
+    pub resp_body: Option<String>,
+    pub mime: Option<String>,
+    pub pair_id: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -278,5 +288,15 @@ mod tests {
             ingest(&mut conn, &parse_ndjson(SAMPLE)).unwrap();
         }
         assert!(open(p, "wrong-key").is_err());
+    }
+
+    #[test]
+    fn parses_http_envelope_fields() {
+        let line = r#"{"source":"plugin","session_uuid":"s1","seq":5,"ts_utc_us":10,"kind":"http_request","payload":{"method":"POST","url":"http://t/login?id=1","pair_id":"p1","req_body":"u=a&p=b"}}"#;
+        let evs = parse_ndjson(line);
+        assert_eq!(evs.len(), 1);
+        assert_eq!(evs[0].kind, "http_request");
+        assert_eq!(evs[0].payload.method.as_deref(), Some("POST"));
+        assert_eq!(evs[0].payload.pair_id.as_deref(), Some("p1"));
     }
 }
