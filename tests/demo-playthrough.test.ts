@@ -1,21 +1,22 @@
 import { describe, it, expect } from "vitest";
 import { assembleReport } from "../src/lib/pipeline/ingest";
-import { DEMO_RAW, DEMO_SESSION, DEMO_GOLDEN } from "../src/lib/demo/playthrough";
+import { ABDUCTED, ABDUCTED_GOLDEN, ABDUCTED_SESSION } from "../src/lib/demo/abducted";
 import { detectFlags } from "../src/lib/flags";
 import { finalizeLiveReport } from "../src/lib/finalize";
-import { DEMO_ID } from "../src/lib/demo/playthrough";
 import { useReport } from "../src/store/report";
 
 /**
  * The scripted demo doubles as a validation harness for the live branch: it exercises assembleReport →
  * finalizeLiveReport with a realistic kill chain and asserts the pipeline resolves it the way the demo
- * narrative promises (both flags land, the foothold is Execution, coverage is 9/10 with the cron check
- * the only skip). If the classifier or alignment drifts, this fails before the demo misleads a viewer.
+ * narrative promises (both flags land, the foothold is Execution, coverage is 20/21 with the share-
+ * permission audit the only skip). If the classifier or alignment drifts, this fails before the demo
+ * misleads a viewer.
  */
-describe("demo playthrough", () => {
-  const report = assembleReport(DEMO_RAW, { session: DEMO_SESSION, golden: DEMO_GOLDEN });
+describe("demo playthrough (Abducted)", () => {
+  const DEMO_RAW = ABDUCTED.raw;
+  const report = assembleReport(DEMO_RAW, { session: ABDUCTED_SESSION, golden: ABDUCTED_GOLDEN });
 
-  it("classifies the reverse-shell one-liner as Execution (the foothold)", () => {
+  it("classifies the reverse-shell payload as Execution (the print-injection foothold)", () => {
     const shell = report.episodes.find((e) => e.cmd.includes("/dev/tcp/"));
     expect(shell?.tactic).toBe("TA0002");
   });
@@ -26,24 +27,24 @@ describe("demo playthrough", () => {
     expect(flags.system).not.toBeNull();
   });
 
-  it("resolves to 9/10 objective coverage with only the cron check skipped", () => {
+  it("resolves to 20/21 objective coverage with only the share-permission audit skipped", () => {
     const satisfied = report.golden_dag.filter((o) => o.user_satisfied_by_seq != null);
     const skipped = report.golden_dag.filter((o) => o.user_satisfied_by_seq == null);
-    expect(satisfied).toHaveLength(9);
-    expect(skipped.map((o) => o.objective)).toEqual(["check_cron_jobs"]);
-    expect(Math.round(report.metrics.objective_coverage_pct)).toBe(90);
+    expect(satisfied).toHaveLength(20);
+    expect(skipped.map((o) => o.objective)).toEqual(["audit_share_permissions"]);
+    expect(Math.round(report.metrics.objective_coverage_pct)).toBe(95);
   });
 
   it("registers a demo card in History without becoming the default session", () => {
     const s = useReport.getState();
-    const card = s.sessionCards.find((c) => c.id === DEMO_ID);
+    const card = s.sessionCards.find((c) => c.id === ABDUCTED.id);
     expect(card?.demo).toBe(true);
-    expect(card?.machine.name).toBe("Forge");
-    expect(s.activeId).not.toBe(DEMO_ID); // never the session the app lands on
+    expect(card?.machine.name).toBe("Abducted");
+    expect(s.activeId).not.toBe(ABDUCTED.id); // never the session the app lands on
   });
 
   it("marks a live snapshot as recording and resolves when it ends", () => {
-    const partial = assembleReport(DEMO_RAW.slice(0, 4), { session: DEMO_SESSION, golden: [] });
+    const partial = assembleReport(DEMO_RAW.slice(0, 4), { session: ABDUCTED_SESSION, golden: [] });
     const live = finalizeLiveReport({ ...partial, recording: true });
     expect(live.recording).toBe(true);
     const done = finalizeLiveReport({ ...report, recording: false });

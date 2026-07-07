@@ -1,7 +1,7 @@
 import type { DemoDef } from "./build";
-import { FORGE } from "./playthrough";
+import { ABDUCTED } from "./abducted";
 
-export const DEMOS: DemoDef[] = [FORGE];
+export const DEMOS: DemoDef[] = [ABDUCTED];
 export const LEGACY_DEMO_ID = DEMOS[0].id;
 
 const BY_ID = new Map(DEMOS.map((d) => [d.id, d]));

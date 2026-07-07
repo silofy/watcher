@@ -5,7 +5,7 @@ import { Check } from "./icons";
 
 /**
  * The live-demo surface. The streaming itself lives in the store (startLiveDemo) so it can be launched
- * two ways: automatically on `?demo=live`, or by opening the "Forge" card in History. This component
+ * two ways: automatically on `?demo=live`, or by opening the "Abducted" card in History. This component
  * just kicks off the URL case and renders the floating progress pill from store state.
  */
 export function DemoDriver() {
@@ -44,7 +44,7 @@ export function DemoDriver() {
     >
       <span className={recording ? "animate-pulse" : ""}>{recording ? "●" : <Check size={12} />}</span>
       <span className="font-medium">{text}</span>
-      <span className="text-faint">Forge · demo</span>
+      <span className="text-faint">Abducted · demo</span>
     </div>
   );
 }
