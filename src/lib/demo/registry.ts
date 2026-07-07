@@ -1,7 +1,8 @@
 import type { DemoDef } from "./build";
 import { ABDUCTED } from "./abducted";
+import { ROOTME } from "./rootme";
 
-export const DEMOS: DemoDef[] = [ABDUCTED];
+export const DEMOS: DemoDef[] = [ABDUCTED, ROOTME];
 export const LEGACY_DEMO_ID = DEMOS[0].id;
 
 const BY_ID = new Map(DEMOS.map((d) => [d.id, d]));
