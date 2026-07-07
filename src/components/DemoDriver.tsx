@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useReport } from "../store/report";
+import { isDemoId } from "../lib/demo/registry";
 import { Check } from "./icons";
 
 /**
@@ -15,7 +16,9 @@ export function DemoDriver() {
   useEffect(() => {
     if (auto.current) return;
     auto.current = true;
-    if (new URLSearchParams(window.location.search).get("demo") === "live") startLiveDemo();
+    const p = new URLSearchParams(window.location.search).get("demo");
+    if (p === "live") startLiveDemo(); // legacy → first demo
+    else if (p && isDemoId(p)) startLiveDemo(p); // ?demo=<id>
   }, [startLiveDemo]);
 
   if (!demo) return null;
