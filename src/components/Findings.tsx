@@ -4,7 +4,10 @@ import { groupFindingsByKind } from "../lib/findings-view";
 /** Evidence extracted from the run (schema v1.2) — grouped by kind, deep-linking back to the
  *  command that produced each one. */
 export function Findings() {
-  const findings = useReport((s) => s.report.findings ?? []);
+  // Default *outside* the selector: `?? []` inside would allocate a fresh array every render, so
+  // zustand's snapshot never compares equal → infinite re-render (max update depth) on any report
+  // whose schema predates `findings`. Return the stored reference (or undefined) and default here.
+  const findings = useReport((s) => s.report.findings) ?? [];
   const reveal = useReport((s) => s.reveal);
   if (!findings.length) return null;
 
