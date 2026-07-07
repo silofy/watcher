@@ -8,20 +8,10 @@
  * time-compressed replay. Tactics follow the real classifier, and the golden path is authored so the
  * alignment resolves to 9/10 objectives (one skipped — the cron check) for a believable comparison.
  */
-import type { GoldenObjective, Session, WatcherReport } from "../../types/report";
-import type { RawCommand } from "../pipeline/types";
-import { assembleReport } from "../pipeline/ingest";
+import type { GoldenObjective, Session } from "../../types/report";
+import { buildRaw, makeDemo, type Step } from "./build";
 
 const START = Date.parse("2026-06-01T20:00:00Z");
-
-interface Step {
-  cmd: string;
-  gap: number; // think-time before (ms)
-  dur: number; // machine time (ms)
-  out: string;
-  lines: number;
-  volume?: number; // request/line count → noise scaling
-}
 
 const STEPS: Step[] = [
   { cmd: "nmap -sV -sC -oN scan 10.10.11.42", gap: 2_000, dur: 45_000, lines: 42, volume: 1000, out: "22/tcp ssh OpenSSH 8.2 · 80/tcp http Apache 2.4.41 (forge.htb)" },
@@ -43,27 +33,7 @@ const STEPS: Step[] = [
   { cmd: "cat /root/root.txt", gap: 18_000, dur: 400, lines: 1, out: "f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1" },
 ];
 
-/** The scripted commands as RawCommands with cumulative, realistic timestamps. */
-export const DEMO_RAW: RawCommand[] = (() => {
-  let t = START;
-  return STEPS.map((s) => {
-    t += s.gap;
-    const started = t;
-    t += s.dur;
-    return {
-      cmd: s.cmd,
-      started_at_ms: started,
-      ended_at_ms: t,
-      exit_code: 0,
-      output_line_count: s.lines,
-      output_digest: s.out,
-      context_path: "host",
-      ...(s.volume ? { volume: s.volume } : {}),
-    } satisfies RawCommand;
-  });
-})();
-
-const DEMO_END = DEMO_RAW[DEMO_RAW.length - 1].ended_at_ms;
+const DEMO_END = buildRaw(STEPS, START).at(-1)!.ended_at_ms;
 
 export const DEMO_SESSION: Session = {
   uuid: "demo-forge-0001-0001-000000000001",
@@ -75,9 +45,6 @@ export const DEMO_SESSION: Session = {
   source: "local_pty",
   machine: { name: "Forge", os: "Linux", difficulty: "Medium", retired: true },
 };
-
-/** Stable store id for the demo session (matches what the live driver streams into). */
-export const DEMO_ID = `htb:${DEMO_SESSION.uuid}`;
 
 /** The intended path from the (pretend) write-up. Authored so alignment resolves to 9/10 — the cron
  *  check (pspy) is never run, so it stays skipped and shows up in "What you'd do differently". */
@@ -95,10 +62,17 @@ export const DEMO_GOLDEN: GoldenObjective[] = [
 ];
 
 /**
- * The fully-resolved demo report — the whole playthrough graded against the intended path. Pre-registered
+ * The fully-resolved demo, built through the shared registry pipeline (build.ts): raw commands,
+ * graded report, and stable id all derive from the same STEPS/session/golden above. Pre-registered
  * in the store so a "Forge" card always shows in History; opening it replays the run live (see runLiveDemo).
  */
-export const DEMO_REPORT: WatcherReport = {
-  ...assembleReport(DEMO_RAW, { session: DEMO_SESSION, golden: DEMO_GOLDEN }),
-  recording: false,
-};
+export const FORGE = makeDemo({ platform: "htb", session: DEMO_SESSION, steps: STEPS, golden: DEMO_GOLDEN, startMs: START });
+
+/** The scripted commands as RawCommands with cumulative, realistic timestamps. */
+export const DEMO_RAW = FORGE.raw;
+
+/** The fully-resolved demo report — the whole playthrough graded against the intended path. */
+export const DEMO_REPORT = FORGE.report;
+
+/** Stable store id for the demo session (matches what the live driver streams into). */
+export const DEMO_ID = FORGE.id;
