@@ -15,6 +15,34 @@ Everything runs on your machine. No account, no telemetry, no cloud.
 
 > **Testing this?** Start with **[TESTING.md](TESTING.md)**.
 
+## Getting started
+
+Two ways in, depending on what you need.
+
+**A · Just see the graded report** — no toolchain, runs in your browser:
+
+```sh
+npm install && npm run dev        # → http://localhost:5173
+```
+
+**B · Run the full desktop app** (live capture + local AI) — this builds from source, so it needs a
+toolchain. Check what you're missing first; it prints the exact install command for your OS:
+
+```sh
+npm run doctor
+npm run tauri dev                 # (also runs the check automatically first)
+```
+
+| You need | Linux | macOS | Windows |
+|---|---|---|---|
+| **Node 20+** | ✓ | ✓ | ✓ |
+| **Rust** (`rustup`) | ✓ | ✓ | ✓ |
+| **Desktop libs** | `libwebkit2gtk-4.1-dev` + friends | Xcode Command Line Tools | MS C++ Build Tools + WebView2 (preinstalled on Win11) |
+
+Quick Rust install (Linux/macOS): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`.
+`npm run doctor` gives you the full copy-paste command for whatever's absent. First desktop build is
+slow (~5–15 min), then fast. Full walkthrough (Pwnbox, capture, redaction): **[TESTING.md](TESTING.md)**.
+
 ## See it live
 
 While you're on the box, the **Live Ops** panel is a companion you glance at — where you are in the
