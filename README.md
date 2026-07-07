@@ -1,62 +1,81 @@
+<div align="center">
+
 # The Watcher
 
-A local-first **flight-data-recorder for offensive-security practice.** It records the commands you run against a target (and, optionally, the web attacks you drive through Burp), then turns the run into a graded debrief: a Lighthouse-style audit per phase covering what you achieved, where you wasted time, and what to do better next time.
+**A local-first flight-data-recorder for offensive-security practice.**
 
-It works on any training platform, whether that's Hack The Box, TryHackMe, OffSec, Immersive Labs, or a local CTF box. Every run is read through three frameworks at once: **MITRE ATT&CK** for *what* you did, the **Unified Kill Chain** for the *order* it should happen in (so backtracking and clean progression become measurable), and **CWE** for the *weakness class* you exploited (so SQLi and XXE count as two skills, not one technique).
+Record your run against any box, then get a graded debrief: a Lighthouse-style audit of what you achieved, where you wasted time, and what to fix next.
+
+[Features](#features) · [Install](#install) · [How it works](#how-it-works) · [Testing](TESTING.md)
+
+</div>
+
+<p align="center">
+  <img src="docs/screenshots/live-ops.gif" alt="Live Ops: the run building in real time" width="820">
+</p>
+
+---
+
+The Watcher records the commands you run against a target (and, optionally, the web attacks you drive through Burp), then turns the run into a graded debrief. It works on any training platform: Hack The Box, TryHackMe, OffSec, Immersive Labs, or a local CTF box.
+
+Every run is read through three frameworks at once:
+
+- **MITRE ATT&CK** for *what* you did.
+- **Unified Kill Chain** for the *order* it should happen in, so backtracking and clean progression become measurable.
+- **CWE** for the *weakness class* you exploited, so SQLi and XXE count as two skills, not one technique.
 
 Everything runs on your machine. No account, no telemetry, no cloud.
 
 ## Features
 
-- **Graded debrief, per phase.** A Lighthouse-style audit read through ATT&CK (*what*), the Unified Kill Chain (*order*), and CWE (*weakness class*), ending in an explainable letter grade you can hover to see the math behind.
+- **Graded debrief, per phase.** A Lighthouse-style audit across ATT&CK, the Unified Kill Chain, and CWE, ending in an explainable letter grade you can hover to see the math behind.
 - **The one lesson.** The single highest-value thing to fix next time, chosen deterministically and deep-linked to the exact step.
 - **Live Ops as you work.** Where you are in the kill chain, how loud you're getting, and a next-move nudge, all streaming in real time.
-- **The Ghost.** The optimal line derived from *your own* findings, showing where you went ahead, off-path, or pivoted too late (needs a write-up).
-- **Where you lost time.** Dead-ends, loops, and stalls, measured against your own pace and pinned to the phase they happened in ("12 min on gobuster during privesc").
+- **The Ghost.** The optimal line derived from *your own* findings, showing where you went ahead, off-path, or pivoted too late.
+- **Where you lost time.** Dead-ends, loops, and stalls, measured against your own pace and pinned to the phase they happened in.
 - **Compared to the write-up.** How much of the intended path you retraced: matched steps, alternatives, out-of-order moves, and skips.
-- **Terminal capture, any platform.** A userspace PTY agent with no eBPF, ptrace, or kernel hooks. HTB, TryHackMe, OffSec, Immersive, or a local CTF box.
+- **Terminal capture, any platform.** A userspace PTY agent with no eBPF, ptrace, or kernel hooks.
 - **Optional web capture.** Drive the target through Burp and `--web` folds graded HTTP attacks (SQLi, IDOR, traversal) onto the same timeline.
 - **Progress across runs.** Grade, coverage, and methodology charted over your history.
 - **Local-first.** Deterministic scoring. An optional local (Ollama) or opt-in cloud model only sharpens the wording, never the numbers.
 
 ## Install
 
-Two ways in, depending on what you need.
+### 1. See a report in your browser
 
-**A. See the graded report** (no toolchain, runs in your browser):
-
-```sh
-npm install && npm run dev        # → http://localhost:5173  (append ?demo=live to auto-play)
-```
-
-Or open a prebuilt `report.html`, or generate one with `npm run export` → `dist/report.html`. Inside the app, **History → ▶ Watch live demo** streams a full Forge run end to end, then settles into the report.
-
-**B. Run the full desktop app** (live capture + local AI). This one builds from source, so it needs a toolchain. Check what you're missing first; it prints the exact install command for your OS:
+No toolchain required.
 
 ```sh
-npm run doctor
-npm run tauri dev                 # (also runs the check automatically first)
+npm install
+npm run dev
 ```
 
-| You need | Linux | macOS | Windows |
-|---|---|---|---|
+Open **http://localhost:5173**. Append `?demo=live` to auto-play a full run start to finish. You can also open a prebuilt `report.html`, or generate one with `npm run export` → `dist/report.html`.
+
+### 2. Run the full desktop app
+
+Adds live capture and local AI. This one builds from source, so it needs a toolchain.
+
+```sh
+npm run doctor        # checks Rust + platform libraries, and prints the fix for anything missing
+npm run tauri dev
+```
+
+**Requirements**
+
+| Component | Linux | macOS | Windows |
+| :-- | :-- | :-- | :-- |
 | **Node 20+** | ✓ | ✓ | ✓ |
-| **Rust** (`rustup`) | ✓ | ✓ | ✓ |
-| **Desktop libs** | `libwebkit2gtk-4.1-dev` + friends | Xcode Command Line Tools | MS C++ Build Tools + WebView2 (preinstalled on Win11) |
+| **Rust** (via `rustup`) | ✓ | ✓ | ✓ |
+| **Desktop libraries** | `libwebkit2gtk-4.1-dev` + friends | Xcode Command Line Tools | MS C++ Build Tools + WebView2 (preinstalled on Win11) |
 
-Quick Rust install (Linux/macOS): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`. The first desktop build is slow (roughly 5 to 15 minutes), then fast. New here? Start with **[TESTING.md](TESTING.md)**.
+The first desktop build takes a few minutes; after that it's fast. Install Rust in one line on Linux or macOS:
 
-## See it live
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
 
-While you're on the box, the **Live Ops** panel is a companion you glance at: where you are in the kill chain, whether you're getting loud, and what your last moves mapped to. As you record, a **next-move nudge** points at the single highest-value methodology check you haven't hit yet, next to a running findings count. It builds as you work.
-
-![Live Ops, the run building in real time](docs/screenshots/live-ops.gif)
-
-*A demo run against **Forge** (a real HTB machine), time-compressed. The kill-chain trajectory climbs as you advance (and dips red on a backtrack), the stealth column fills toward the lab baseline, and each command lands in the feed and the run ribbon.*
-
-## Progress across runs
-
-Once you've logged a couple of runs, the **Progress** tab (next to History) plots grade, coverage, and methodology across your history on one chart, with a click-through card per run. Sessions recorded before the methodology engine existed show a gap in that line rather than a guess.
+New here? The full walkthrough (Pwnbox, capture, redaction) lives in **[TESTING.md](TESTING.md)**.
 
 ## The debrief, section by section
 
@@ -142,6 +161,10 @@ Structured findings pulled from your output (open ports, services and versions, 
 Every command on the shared timeline, a tool-frequency loadout, and a play/scrub head: the raw record behind all the analysis.
 
 </details>
+
+## Progress across runs
+
+Once you've logged a couple of runs, the **Progress** tab (next to History) plots grade, coverage, and methodology across your history on one chart, with a click-through card per run. Sessions recorded before the methodology engine existed show a gap in that line rather than a guess.
 
 ## Capture your own runs
 
