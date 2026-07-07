@@ -13,17 +13,31 @@ not one technique).
 
 Everything runs on your machine. No account, no telemetry, no cloud.
 
-> **Testing this?** Start with **[TESTING.md](TESTING.md)**.
+## Features
 
-## Getting started
+- **Graded debrief, per phase** — a Lighthouse-style audit read through MITRE ATT&CK (*what*), the Unified Kill Chain (*order*), and CWE (*weakness class*), ending in an explainable letter grade you can hover to see the math behind.
+- **The one lesson** — the single highest-value thing to fix next time, chosen deterministically and deep-linked to the exact step.
+- **Live Ops as you work** — where you are in the kill chain, how loud you're getting, and a next-move nudge, streaming in real time.
+- **The Ghost** — the optimal line derived from *your own* findings, showing where you went ahead, off-path, or pivoted too late (needs a write-up).
+- **Where you lost time** — dead-ends, loops, and stalls measured against your own pace and attributed to the right phase ("12 min on gobuster during privesc").
+- **Compared to the write-up** — how much of the intended path you retraced: matched steps, alternatives, out-of-order moves, skips.
+- **Terminal capture, any platform** — a userspace PTY agent (no eBPF, ptrace, or kernel hooks) for HTB, TryHackMe, OffSec, Immersive, or a local/CTF box.
+- **Optional web capture** — drive the target through Burp and `--web` folds graded HTTP attacks (SQLi, IDOR, traversal) onto the same timeline.
+- **Progress across runs** — grade, coverage, and methodology charted over your history.
+- **Local-first** — deterministic scoring; an optional local (Ollama) or opt-in cloud model only sharpens wording, never the numbers. No account, no telemetry, no cloud.
+
+## Install
 
 Two ways in, depending on what you need.
 
 **A · Just see the graded report** — no toolchain, runs in your browser:
 
 ```sh
-npm install && npm run dev        # → http://localhost:5173
+npm install && npm run dev        # → http://localhost:5173  (append ?demo=live to auto-play)
 ```
+
+Or open a prebuilt `report.html`, or generate one with `npm run export` → `dist/report.html`. Inside the
+app, **History → ▶ Watch live demo** streams a full Forge run end to end, then settles into the report.
 
 **B · Run the full desktop app** (live capture + local AI) — this builds from source, so it needs a
 toolchain. Check what you're missing first; it prints the exact install command for your OS:
@@ -39,9 +53,8 @@ npm run tauri dev                 # (also runs the check automatically first)
 | **Rust** (`rustup`) | ✓ | ✓ | ✓ |
 | **Desktop libs** | `libwebkit2gtk-4.1-dev` + friends | Xcode Command Line Tools | MS C++ Build Tools + WebView2 (preinstalled on Win11) |
 
-Quick Rust install (Linux/macOS): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`.
-`npm run doctor` gives you the full copy-paste command for whatever's absent. First desktop build is
-slow (~5–15 min), then fast. Full walkthrough (Pwnbox, capture, redaction): **[TESTING.md](TESTING.md)**.
+Quick Rust install (Linux/macOS): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`. First
+desktop build is slow (~5–15 min), then fast. New here? Start with **[TESTING.md](TESTING.md)**.
 
 ## See it live
 
@@ -55,24 +68,6 @@ yet, alongside a running findings count. It streams as you work:
 *A demo run against **Forge** (a real HTB machine), time-compressed. Kill-chain trajectory climbs as
 you advance (and dips red on a backtrack), the stealth column fills toward the lab baseline, and each
 command lands in the feed and the run ribbon.*
-
-## Try it
-
-- **Watch the whole thing:** run the app (below) and open **History → ▶ Watch live demo** — it streams
-  the Forge run end to end, then settles into the graded report.
-- **Just see the report (no install):** open `report.html`, or generate it with
-  `npm install && npm run export` → `dist/report.html`.
-- **Run the app:**
-
-  ```sh
-  npm install
-  npm run tauri dev     # desktop app
-  # or
-  npm run dev           # report UI in a browser → http://localhost:5173  (append ?demo=live to auto-play)
-  ```
-
-- **Record your web traffic too (optional):** if you drive the target through Burp, add `--web` to fold
-  graded HTTP attacks into the same run. Setup: [docs/web-capture.md](docs/web-capture.md).
 
 ## Progress — across runs
 
@@ -227,25 +222,6 @@ anything is stored or rendered. If Burp or its MCP server isn't reachable, the f
 hint and your terminal capture runs exactly as before — the web path never blocks a run. Full setup:
 **[docs/web-capture.md](docs/web-capture.md)**.
 
-> Phase 1 reads from Burp via MCP. A transparent/inline proxy and Burp/Caido/ZAP project-file import
-> are planned as later, additive sources into the same grading pipeline.
-
-## Adding a platform
-
-The Watcher grades any run the same way; a "platform" is just a **detect + identify** seam over that
-neutral pipeline. Adding one is a single adapter file in `src/lib/platform/` — see `htb.ts` or
-`thm.ts` for the shape (`id`, `label`, `kindNoun`, `detect()`, `identify()`, and an optional
-`intendedPath()` if the platform has a structured task list to parse natively instead of falling back
-to write-up extraction). Register it in `ADAPTERS` in `src/lib/platform/index.ts`, then run
-`npm run platform:conformance` — every adapter in `ADAPTERS` must pass `checkAdapter()`
-(`src/lib/platform/conformance.ts`) before it's wired in.
-
-Today only TryHackMe has a native intended-path — a deterministic parse of the room's pasted task
-list, no model involved. HTB, OffSec, and Immersive Labs all have detection and identity, but no
-native intended-path yet: they grade against a write-up run through the (local or cloud) model
-instead. HTB additionally has automated write-up fetching (0xdf's sitemap, the official write-up via
-your HTB API token) — convenience for *getting* a write-up, not a substitute for a native path.
-
 ## How it works
 
 A small Rust agent captures your shell through a normal PTY (ConPTY on Windows, openpty on Unix — **no
@@ -256,21 +232,6 @@ opt-in cloud model — only sharpens the coaching text; it never changes the num
 
 A run persisted to the optional encrypted store can be rebuilt into the same graded report straight
 from the store — see [docs/store-report.md](docs/store-report.md).
-
-## Layout
-
-```
-src/            report UI (React + Tailwind) + deterministic pipeline & metrics
-src-tauri/      desktop shell (Tauri)
-crates/         the Rust side:
-  capture/        PTY capture agent
-  core/           shared session lifecycle + redaction
-  daemon/         optional: single-owner store daemon
-  store/          optional: encrypted SQLCipher store
-plugins/        optional plugin API (SDK + conformance kit)  ·  burp-bridge/ (Burp→MCP web capture)
-schema/         the versioned JSON contracts
-fixtures/       sample sessions   ·   scripts/ tests/   tooling & tests
-```
 
 ## Privacy
 
