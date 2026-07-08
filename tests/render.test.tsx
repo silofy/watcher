@@ -50,11 +50,11 @@ describe("report renders end-to-end", () => {
   // GhostCard's populated path needs either a bundled ghost-bearing fixture or a jsdom render
   // (client snapshot path) rather than `renderToStaticMarkup` against the raw store.
 
-  it("renders the machine identity, verdict, and the 23-minute stall", () => {
-    expect(html).toContain("Uploadr");
+  it("renders the machine identity, platform, verdict, and command log", () => {
+    expect(html).toContain("Abducted"); // the default demo's identity in the verdict band
+    expect(html).toContain("Hack The Box"); // correctly identified platform (not mislabeled)
     expect(html).toContain("System flag");
-    expect(html).toContain("23 min");
-    expect(html).toContain("sudo -l");
+    expect(html).toContain("rpcclient"); // a real command from the run's command log
   });
 
   it("renders the skipped objective from the golden DAG", () => {

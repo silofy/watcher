@@ -35,12 +35,14 @@ describe("demo playthrough (Abducted)", () => {
     expect(Math.round(report.metrics.objective_coverage_pct)).toBe(95);
   });
 
-  it("registers a demo card in History without becoming the default session", () => {
+  it("registers a demo card in History (openable as a live playthrough)", () => {
     const s = useReport.getState();
     const card = s.sessionCards.find((c) => c.id === ABDUCTED.id);
     expect(card?.demo).toBe(true);
     expect(card?.machine.name).toBe("Abducted");
-    expect(s.activeId).not.toBe(ABDUCTED.id); // never the session the app lands on
+    // History is exactly the curated demos — no dev/sample fixtures leak in.
+    expect(s.sessionCards.every((c) => c.demo)).toBe(true);
+    expect(new Set(s.sessionCards.map((c) => c.machine.name))).toEqual(new Set(["Abducted", "RootMe"]));
   });
 
   it("marks a live snapshot as recording and resolves when it ends", () => {

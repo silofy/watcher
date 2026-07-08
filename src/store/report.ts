@@ -50,17 +50,9 @@ function loadSessions(): SessionEntry[] {
     }
   }
 
-  const mods = import.meta.glob("../../fixtures/session-*.json", { eager: true }) as Record<
-    string,
-    { default: WatcherReport }
-  >;
-  const entries = Object.entries(mods).map(([path, m]) => {
-    const id = (path.split("/").pop() ?? "session").replace(/\.json$/, "").replace(/^session-/, "");
-    return { id, label: m.default.session.target_scope, report: m.default };
-  });
-  // Curated demo first, then the rest alphabetically.
-  entries.sort((a, b) => (a.id === "htb-easy" ? -1 : b.id === "htb-easy" ? 1 : a.id.localeCompare(b.id)));
-  return entries;
+  // History is exactly the curated real-content demos (HTB Abducted, THM RootMe) — no dev/sample
+  // fixtures. Each is streamable live when opened (its `demo` flag drives startLiveDemo).
+  return DEMOS.map((d) => ({ id: d.id, label: d.session.target_scope, report: d.report }));
 }
 
 interface Derived {
