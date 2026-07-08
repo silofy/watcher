@@ -22,6 +22,7 @@ import { LiveDashboard } from "./components/LiveDashboard";
 import { Onboarding } from "./components/Onboarding";
 import { isLiveRecording } from "./lib/live";
 import { pickOneLesson } from "./lib/one-lesson";
+import { shouldShowNudge } from "./lib/onboarding";
 import { ArrowUpRight, ScanEye } from "./components/icons";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
@@ -90,10 +91,13 @@ function HeroLesson() {
 }
 
 export function App() {
-  const { report, view, gateDismissed, revealNonce, onboardingOpen, openOnboarding } = useReport();
+  const { report, view, gateDismissed, revealNonce, onboardingOpen, openOnboarding, setOnboardingStep, sessionCards } = useReport();
   const { session } = report;
   const needsWriteup = report.golden_dag.length === 0 && !gateDismissed;
   const recording = isLiveRecording(report);
+
+  const hasRealCapture = sessionCards.some((c) => !c.demo);
+  const showNudge = !onboardingOpen && shouldShowNudge({ onboarded: true, hasRealCapture });
 
   // The Evidence drawer starts closed; a deep-link reveal (a "step N ↗" click from PhaseAudit,
   // coaching, or GhostCard) must force it open so DeepDive's log-tab-and-scroll effect has a
@@ -141,9 +145,20 @@ export function App() {
               </nav>
             </div>
             <div className="flex items-center gap-2.5 text-xs">
-              <button type="button" onClick={openOnboarding} className="label text-faint hover:text-muted">
-                Setup guide
-              </button>
+              {showNudge ? (
+                <button
+                  type="button"
+                  onClick={() => { setOnboardingStep(1); openOnboarding(); }}
+                  className="label inline-flex items-center gap-1 rounded-full border border-signal/50 bg-signal/10 px-2.5 py-1 text-signal transition-colors hover:bg-signal/15"
+                  title="Finish setup — capture your first run"
+                >
+                  ⚡ Finish setup <ArrowUpRight size={12} />
+                </button>
+              ) : (
+                <button type="button" onClick={openOnboarding} className="label text-faint hover:text-muted">
+                  Setup guide
+                </button>
+              )}
               <PwnboxSync />
               <LlmStatusChip />
             </div>

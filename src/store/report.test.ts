@@ -33,3 +33,22 @@ describe("onboarding wizard state", () => {
     expect(ONBOARDED_KEY).toBe("watcher.onboarded");
   });
 });
+
+describe("onboarding activation-flow state", () => {
+  it("exposes step + done state and setters", () => {
+    const s = useReport.getState();
+    expect(typeof s.onboardingStep).toBe("number");
+    expect(s.onboardingDone).toEqual(expect.objectContaining({ demo: expect.any(Boolean), ai: expect.any(Boolean) }));
+    expect(typeof s.setOnboardingStep).toBe("function");
+    expect(typeof s.markOnboardingStep).toBe("function");
+  });
+
+  it("clamps step and marks completion", () => {
+    useReport.getState().setOnboardingStep(99);
+    expect(useReport.getState().onboardingStep).toBe(3);
+    useReport.getState().setOnboardingStep(-5);
+    expect(useReport.getState().onboardingStep).toBe(0);
+    useReport.getState().markOnboardingStep("demo");
+    expect(useReport.getState().onboardingDone.demo).toBe(true);
+  });
+});

@@ -19,7 +19,7 @@ import { sshSessionsFromDir, type SshLogFile } from "../lib/ssh/ingest";
 import { isLiveRecording } from "../lib/live";
 import { assembleReport } from "../lib/pipeline/ingest";
 import { DEMOS, demoById, isDemoId, LEGACY_DEMO_ID } from "../lib/demo/registry";
-import { ONBOARDED_KEY, ONBOARDED_VALUE, shouldOpenOnboarding } from "../lib/onboarding";
+import { ONBOARDED_KEY, ONBOARDED_VALUE, shouldOpenOnboarding, clampStep } from "../lib/onboarding";
 
 /**
  * The normalized store. The report blob is resolved from, in order:
@@ -175,6 +175,10 @@ interface ReportState extends Derived {
   demo: { phase: "recording" | "resolved" | "compared"; n: number; total: number } | null;
   /** First-run wizard visibility; initialised from localStorage (or ?onboarding=1). */
   onboardingOpen: boolean;
+  /** Current step of the activation flow (0-based). Persisted. */
+  onboardingStep: number;
+  /** Completion of steps not derivable from app state (capture completion is derived, not stored). */
+  onboardingDone: { demo: boolean; ai: boolean };
 
   setView: (v: View) => void;
   /** Dismiss the write-up gate for this session and show the run-only report. */
@@ -204,6 +208,10 @@ interface ReportState extends Derived {
   openOnboarding: () => void;
   /** Dismiss the wizard and persist that onboarding is done. */
   closeOnboarding: () => void;
+  /** Set the activation-flow step (clamped) and persist. */
+  setOnboardingStep: (n: number) => void;
+  /** Mark a non-derivable step complete and persist. */
+  markOnboardingStep: (key: "demo" | "ai") => void;
 }
 
 const RESET = { hoveredSeq: null, selectedSeq: null, zoomWin: null, playheadMs: 0, playing: false, gateDismissed: false } as const;
@@ -238,6 +246,31 @@ function persistOnboarded(): void {
   }
 }
 
+const PROGRESS_KEY = "watcher.onboardingProgress";
+
+function readOnboardingProgress(): { step: number; done: { demo: boolean; ai: boolean } } {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { step?: number; done?: { demo?: boolean; ai?: boolean } };
+        return { step: clampStep(p.step ?? 0), done: { demo: !!p.done?.demo, ai: !!p.done?.ai } };
+      }
+    }
+  } catch {
+    /* SSR / node / private mode — fresh */
+  }
+  return { step: 0, done: { demo: false, ai: false } };
+}
+
+function persistOnboardingProgress(step: number, done: { demo: boolean; ai: boolean }): void {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(PROGRESS_KEY, JSON.stringify({ step, done }));
+  } catch {
+    /* ignore */
+  }
+}
+
 export const useReport = create<ReportState>((set, get) => ({
   sessions: SESSIONS.map((s) => ({ id: s.id, label: s.label })),
   sessionCards: cardsFrom(),
@@ -259,6 +292,8 @@ export const useReport = create<ReportState>((set, get) => ({
   writeup: null,
   demo: null,
   onboardingOpen: readOnboardingOpen(),
+  onboardingStep: readOnboardingProgress().step,
+  onboardingDone: readOnboardingProgress().done,
 
   setView: (view) => set({ view }),
   setGateDismissed: (gateDismissed) => set({ gateDismissed }),
@@ -266,6 +301,16 @@ export const useReport = create<ReportState>((set, get) => ({
   closeOnboarding: () => {
     persistOnboarded();
     set({ onboardingOpen: false });
+  },
+  setOnboardingStep: (n) => {
+    const step = clampStep(n);
+    persistOnboardingProgress(step, get().onboardingDone);
+    set({ onboardingStep: step });
+  },
+  markOnboardingStep: (key) => {
+    const done = { ...get().onboardingDone, [key]: true };
+    persistOnboardingProgress(get().onboardingStep, done);
+    set({ onboardingDone: done });
   },
   switchSession: (id) => {
     const r = REPORTS[id];

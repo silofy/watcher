@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // npm run capture -- --machine <box>
 // Builds the Rust capture agent if needed, then execs it with your args forwarded.
 import { spawn, spawnSync } from "node:child_process";
