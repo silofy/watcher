@@ -21,4 +21,9 @@ describe("HTB Abducted demo", () => {
     expect(src).not.toContain("iXzvcib3SrpZ");       // no real cred anywhere
     expect(src).not.toMatch(/\b10\.129\.\d+\.\d+\b/); // no live lab IP anywhere
   });
+  it("renders as an HTB target carrying its real machine avatar", () => {
+    const t = ABDUCTED.report.session.target;
+    expect(t?.platform).toBe("htb");
+    expect(t?.emblem?.avatar).toContain("htb.systems");
+  });
 });

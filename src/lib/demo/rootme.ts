@@ -79,6 +79,18 @@ export const ROOTME_SESSION: Session = {
   shell: "bash",
   source: "local_pty",
   machine: { name: "RootMe", os: "Linux", difficulty: "Easy" },
+  // Explicit target so this demo renders correctly as TryHackMe (not HTB). `avatar` is left null
+  // until the room's public image URL is filled in; MachineAvatar shows the hue emblem meanwhile.
+  target: {
+    platform: "thm",
+    kind: "room",
+    name: "RootMe",
+    slug: "rootme",
+    os: "Linux",
+    difficulty: { level: 1, label: "Easy" },
+    emblem: { avatar: null, hue: null },
+    url: "https://tryhackme.com/room/rrootme",
+  },
 };
 
 /**

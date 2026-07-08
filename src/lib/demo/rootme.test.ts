@@ -19,4 +19,7 @@ describe("THM RootMe demo", () => {
     expect(src).not.toMatch(/\b[0-9a-f]{32}\b/i);
     expect(src).not.toMatch(/THM\{[^}]+\}/);
   });
+  it("renders as a TryHackMe target, not HTB", () => {
+    expect(ROOTME.report.session.target?.platform).toBe("thm");
+  });
 });

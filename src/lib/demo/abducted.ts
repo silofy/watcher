@@ -86,6 +86,22 @@ export const ABDUCTED_SESSION: Session = {
   shell: "bash",
   source: "local_pty",
   machine: { name: "Abducted", os: "Linux", difficulty: "Medium", retired: true },
+  // Explicit target so this demo renders as HTB with its real machine avatar (hotlinked from HTB's
+  // public CDN — no bundled asset, and an <img> hotlink loads cross-origin without the CORS wall
+  // that blocks the runtime fetch path). targetOf() returns an explicit session.target as-is.
+  target: {
+    platform: "htb",
+    kind: "box",
+    name: "Abducted",
+    slug: "abducted",
+    os: "Linux",
+    difficulty: { level: 3, label: "Medium" },
+    emblem: {
+      avatar: "https://cdn.services-k8s.prod.aws.htb.systems/content/machines/avatar/a1f1a05f-5c5d-4cca-8103-cf875d8e5698-1780591497.png",
+      hue: null,
+    },
+    url: "https://app.hackthebox.com/machines/abducted",
+  },
 };
 
 /**
