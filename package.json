@@ -22,6 +22,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit",
     "doctor": "node scripts/doctor.mjs",
+    "capture": "node scripts/capture.mjs",
     "pretauri": "node scripts/doctor.mjs",
     "tauri": "tauri"
   },

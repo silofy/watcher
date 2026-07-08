@@ -51,10 +51,10 @@ export function Install() {
 
       <div className="space-y-3">
         <Tier n="A" title="On your own machine" req={<Req tone="desktop">desktop app · any OS</Req>} unlocks="You attack over OpenVPN from your own Kali/Parrot/WSL. Run a watched shell — each command streams into the debrief live.">
-          <Code>watcher-capture --attach --machine &lt;name&gt;</Code>
-          <Step>Live — self-starts a session and streams each command as you run it. <code>exit</code> to stop. macOS / Linux / Windows.</Step>
-          <Step>A second terminal running <code>watcher-capture --attach</code> on the same box asks whether to join the live session or start fresh — <code>--new</code> forces a new one.</Step>
-          <Step>Pick the shell with <code>--shell bash</code> (or <code>pwsh</code>, <code>zsh</code>, …) — handy for git-bash / WSL on Windows; defaults to your login shell.</Step>
+          <Code>npm run capture -- --machine &lt;name&gt;</Code>
+          <Step>Run it from the repo root. It builds the capture agent the first time, then streams each command live as you run it. <code>exit</code> to stop. macOS / Linux / Windows.</Step>
+          <Step>Other platforms name the target neutrally: <code>npm run capture -- --platform thm --target &lt;name&gt;</code>.</Step>
+          <Step>A second terminal running <code>npm run capture</code> on the same box asks whether to join the live session or start fresh — add <code>-- --new</code> to force a new one. Pick a shell with <code>-- --shell bash</code> (or <code>pwsh</code>, <code>zsh</code>, …).</Step>
         </Tier>
 
         <div className="flex items-center gap-3 px-2 py-0.5">

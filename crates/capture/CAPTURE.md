@@ -17,10 +17,13 @@ Best when you attack from a local Kali/WSL/PowerShell over HTB's OpenVPN. Fully 
 2. Start a watched shell, naming the box:
 
    ```
-   watcher-capture --attach --machine Forge
+   npm run capture -- --machine Forge
    ```
 
-   On Windows: `& "…\crates\capture\target\debug\watcher-capture.exe" --attach --machine Forge` (one line).
+   Run from the repo root (works the same on macOS, Linux, and Windows). It builds the agent the
+   first time, then attaches. To run the compiled binary directly instead:
+   `./crates/capture/target/release/watcher-capture --attach --machine Forge`
+   (Windows: `.\crates\capture\target\release\watcher-capture.exe`).
 3. Hack as normal — `nmap`, `evil-winrm`, etc. Each completed command appears in the debrief within
    ~1–4 s. Type `exit` to stop.
 

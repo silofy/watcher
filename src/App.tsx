@@ -19,6 +19,7 @@ import { AiBanner } from "./components/AiBanner";
 import { LiveBridge } from "./components/LiveBridge";
 import { DemoDriver } from "./components/DemoDriver";
 import { LiveDashboard } from "./components/LiveDashboard";
+import { Onboarding } from "./components/Onboarding";
 import { isLiveRecording } from "./lib/live";
 import { pickOneLesson } from "./lib/one-lesson";
 import { ArrowUpRight, ScanEye } from "./components/icons";
@@ -89,7 +90,7 @@ function HeroLesson() {
 }
 
 export function App() {
-  const { report, view, gateDismissed, revealNonce } = useReport();
+  const { report, view, gateDismissed, revealNonce, onboardingOpen, openOnboarding } = useReport();
   const { session } = report;
   const needsWriteup = report.golden_dag.length === 0 && !gateDismissed;
   const recording = isLiveRecording(report);
@@ -119,6 +120,7 @@ export function App() {
 
   return (
     <div className="min-h-full">
+      {onboardingOpen && <Onboarding />}
       {/* self-driving live-mode demo — only active on ?demo=live, otherwise renders nothing */}
       <DemoDriver />
       <header className="sticky top-0 z-10 bg-ink/90 backdrop-blur">
@@ -139,6 +141,9 @@ export function App() {
               </nav>
             </div>
             <div className="flex items-center gap-2.5 text-xs">
+              <button type="button" onClick={openOnboarding} className="label text-faint hover:text-muted">
+                Setup guide
+              </button>
               <PwnboxSync />
               <LlmStatusChip />
             </div>

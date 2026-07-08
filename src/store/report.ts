@@ -19,6 +19,7 @@ import { sshSessionsFromDir, type SshLogFile } from "../lib/ssh/ingest";
 import { isLiveRecording } from "../lib/live";
 import { assembleReport } from "../lib/pipeline/ingest";
 import { DEMOS, demoById, isDemoId, LEGACY_DEMO_ID } from "../lib/demo/registry";
+import { ONBOARDED_KEY, ONBOARDED_VALUE, shouldOpenOnboarding } from "../lib/onboarding";
 
 /**
  * The normalized store. The report blob is resolved from, in order:
@@ -172,6 +173,8 @@ interface ReportState extends Derived {
   writeup: { source: string; confidence: number } | null;
   /** Live-demo progress, when the scripted playthrough is streaming; null when idle. */
   demo: { phase: "recording" | "resolved" | "compared"; n: number; total: number } | null;
+  /** First-run wizard visibility; initialised from localStorage (or ?onboarding=1). */
+  onboardingOpen: boolean;
 
   setView: (v: View) => void;
   /** Dismiss the write-up gate for this session and show the run-only report. */
@@ -197,6 +200,10 @@ interface ReportState extends Derived {
   setZoom: (win: [number, number] | null) => void;
   scrub: (ms: number) => void;
   setPlaying: (p: boolean) => void;
+  /** Open the setup wizard from the header "Setup guide"; does not clear the onboarded flag. */
+  openOnboarding: () => void;
+  /** Dismiss the wizard and persist that onboarding is done. */
+  closeOnboarding: () => void;
 }
 
 const RESET = { hoveredSeq: null, selectedSeq: null, zoomWin: null, playheadMs: 0, playing: false, gateDismissed: false } as const;
@@ -208,6 +215,28 @@ const DEMO_TICK_MS = 2000;
 const DEMO_GOLDEN_DELAY_MS = 2200;
 let demoTick: ReturnType<typeof setInterval> | undefined;
 let demoGoldenTimer: ReturnType<typeof setTimeout> | undefined;
+
+// DOM/localStorage access is guarded so the store still imports cleanly in the node test env
+// (where both are undefined → treated as a fresh install → wizard open).
+function readOnboardingOpen(): boolean {
+  let stored: string | null = null;
+  let force = false;
+  try {
+    if (typeof localStorage !== "undefined") stored = localStorage.getItem(ONBOARDED_KEY);
+    if (typeof location !== "undefined") force = new URLSearchParams(location.search).has("onboarding");
+  } catch {
+    /* private-mode / SSR / node — fall through to first-run defaults */
+  }
+  return shouldOpenOnboarding({ stored, force });
+}
+
+function persistOnboarded(): void {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(ONBOARDED_KEY, ONBOARDED_VALUE);
+  } catch {
+    /* ignore — the wizard still closes for this session */
+  }
+}
 
 export const useReport = create<ReportState>((set, get) => ({
   sessions: SESSIONS.map((s) => ({ id: s.id, label: s.label })),
@@ -229,9 +258,15 @@ export const useReport = create<ReportState>((set, get) => ({
   liveBanner: null,
   writeup: null,
   demo: null,
+  onboardingOpen: readOnboardingOpen(),
 
   setView: (view) => set({ view }),
   setGateDismissed: (gateDismissed) => set({ gateDismissed }),
+  openOnboarding: () => set({ onboardingOpen: true }),
+  closeOnboarding: () => {
+    persistOnboarded();
+    set({ onboardingOpen: false });
+  },
   switchSession: (id) => {
     const r = REPORTS[id];
     if (!r) return;

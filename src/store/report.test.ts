@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { DEMOS } from "../lib/demo/registry";
+import { ONBOARDED_KEY } from "../lib/onboarding";
 import { useReport } from "./report";
 
 describe("demo registry wired into the store", () => {
@@ -10,5 +11,25 @@ describe("demo registry wired into the store", () => {
       expect(card, `card for ${d.id}`).toBeTruthy();
       expect(card!.demo).toBe(true);
     }
+  });
+});
+
+describe("onboarding wizard state", () => {
+  it("exposes onboardingOpen plus open/close actions", () => {
+    const s = useReport.getState();
+    expect(typeof s.onboardingOpen).toBe("boolean");
+    expect(typeof s.openOnboarding).toBe("function");
+    expect(typeof s.closeOnboarding).toBe("function");
+  });
+
+  it("closeOnboarding closes the wizard, openOnboarding reopens it", () => {
+    useReport.getState().closeOnboarding();
+    expect(useReport.getState().onboardingOpen).toBe(false);
+    useReport.getState().openOnboarding();
+    expect(useReport.getState().onboardingOpen).toBe(true);
+  });
+
+  it("keeps the agreed storage key available for the store to persist", () => {
+    expect(ONBOARDED_KEY).toBe("watcher.onboarded");
   });
 });

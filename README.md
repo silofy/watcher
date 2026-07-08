@@ -178,11 +178,21 @@ Once you've logged a couple of runs, the **Progress** tab (next to History) plot
 ## Capture your own runs
 
 ```sh
-cd crates/capture && cargo build --release
-./target/release/watcher-capture --attach --machine <box>
+npm run capture -- --machine <box>
 ```
 
-Commands stream into the app live; type `exit` to stop. Pass `--platform <htb|thm|offsec|immersive|local> --target <name>` to name the target neutrally instead of (or alongside) `--machine`; that's how a capture declares which platform it belongs to without hardcoding HTB. The in-app **Install** tab walks through both capture paths (your own VM over VPN, or in Pwnbox). Full guide: **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
+Run it from the repo root. It builds the capture agent the first time, then streams each command into the app live; type `exit` to stop. Pass `--platform <htb|thm|offsec|immersive|local> --target <name>` to name the target neutrally instead of `--machine`.
+
+<details><summary>Advanced: run the binary directly (no Node)</summary>
+
+```sh
+cd crates/capture && cargo build --release
+./target/release/watcher-capture --attach --machine <box>   # Windows: .\target\release\watcher-capture.exe
+```
+
+</details>
+
+The in-app **Install** tab walks through both capture paths (your own VM over VPN, or in Pwnbox). Full guide: **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
 
 ## Record your web traffic (optional)
 
