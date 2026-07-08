@@ -81,8 +81,8 @@ New here? The full walkthrough (Pwnbox, capture, redaction) lives in **[TESTING.
 
 Two real runs you can watch build live in your browser, no install:
 
-- **HTB Abducted** (medium). Samba print-job command injection for a foothold, `rclone reveal` for credentials, Samba wide-links to pivot, then a writable systemd drop-in to root. [▶ Preview in your browser](https://silofy.github.io/watcher/?demo=abducted)
-- **THM RootMe** (easy). A `/panel` upload-filter bypass to a `www-data` shell, then a SUID-python GTFOBins jump to root. [▶ Preview in your browser](https://silofy.github.io/watcher/?demo=rootme)
+- **HTB Abducted** (medium). Samba print-job command injection for a foothold, `rclone reveal` for credentials, Samba wide-links to pivot, then a writable systemd drop-in to root. [▶ Preview in your browser](https://silofy.github.io/watcher-demos/?demo=abducted)
+- **THM RootMe** (easy). A `/panel` upload-filter bypass to a `www-data` shell, then a SUID-python GTFOBins jump to root. [▶ Preview in your browser](https://silofy.github.io/watcher-demos/?demo=rootme)
 
 Each streams the run command by command, then settles into the graded debrief. Both are transcribed from public write-ups, with flags and credentials redacted.
 
