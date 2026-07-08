@@ -79,8 +79,8 @@ export const ROOTME_SESSION: Session = {
   shell: "bash",
   source: "local_pty",
   machine: { name: "RootMe", os: "Linux", difficulty: "Easy" },
-  // Explicit target so this demo renders correctly as TryHackMe (not HTB). `avatar` is left null
-  // until the room's public image URL is filled in; MachineAvatar shows the hue emblem meanwhile.
+  // Explicit target so this demo renders correctly as TryHackMe (not HTB), with the room's real icon
+  // hotlinked from TryHackMe's public S3 (an <img> hotlink loads cross-origin without the CORS wall).
   target: {
     platform: "thm",
     kind: "room",
@@ -88,7 +88,10 @@ export const ROOTME_SESSION: Session = {
     slug: "rootme",
     os: "Linux",
     difficulty: { level: 1, label: "Easy" },
-    emblem: { avatar: null, hue: null },
+    emblem: {
+      avatar: "https://tryhackme-images.s3.amazonaws.com/room-icons/11d59cb34397e986062eb515f4d32421.png",
+      hue: null,
+    },
     url: "https://tryhackme.com/room/rrootme",
   },
 };

@@ -19,7 +19,9 @@ describe("THM RootMe demo", () => {
     expect(src).not.toMatch(/\b[0-9a-f]{32}\b/i);
     expect(src).not.toMatch(/THM\{[^}]+\}/);
   });
-  it("renders as a TryHackMe target, not HTB", () => {
-    expect(ROOTME.report.session.target?.platform).toBe("thm");
+  it("renders as a TryHackMe target with its real room icon", () => {
+    const t = ROOTME.report.session.target;
+    expect(t?.platform).toBe("thm");
+    expect(t?.emblem?.avatar).toContain("tryhackme-images");
   });
 });
