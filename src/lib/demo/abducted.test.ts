@@ -16,7 +16,8 @@ describe("HTB Abducted demo", () => {
     expect(blob).not.toMatch(/\b10\.129\.\d+\.\d+\b/);     // live lab IP
   });
   it("is redacted in the source file itself, not just the streamed raw (header comments included)", () => {
-    const src = readFileSync(new URL("./abducted.ts", import.meta.url), "utf8");
+    // Strip asset URLs first: an avatar URL can legitimately contain a 32-hex object hash, not a flag.
+    const src = readFileSync(new URL("./abducted.ts", import.meta.url), "utf8").replace(/https?:\/\/\S+/g, "");
     expect(src).not.toMatch(/\b[0-9a-f]{32}\b/i);   // no flag hash anywhere
     expect(src).not.toContain("iXzvcib3SrpZ");       // no real cred anywhere
     expect(src).not.toMatch(/\b10\.129\.\d+\.\d+\b/); // no live lab IP anywhere

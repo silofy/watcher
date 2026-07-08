@@ -15,7 +15,9 @@ describe("THM RootMe demo", () => {
     expect(blob).not.toMatch(/THM\{[^}]+\}/);
   });
   it("is redacted in the source file itself, not just the streamed raw (header comments included)", () => {
-    const src = readFileSync(new URL("./rootme.ts", import.meta.url), "utf8");
+    // Strip asset URLs first: a room-icon / avatar URL can legitimately contain a 32-hex object hash
+    // in its path, which is not a flag.
+    const src = readFileSync(new URL("./rootme.ts", import.meta.url), "utf8").replace(/https?:\/\/\S+/g, "");
     expect(src).not.toMatch(/\b[0-9a-f]{32}\b/i);
     expect(src).not.toMatch(/THM\{[^}]+\}/);
   });
