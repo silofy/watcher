@@ -105,8 +105,19 @@ export function classifyCommand(cmd: string, phaseTactic?: string, contextPath?:
   }
 
   // Override: a reverse-shell one-liner is Execution regardless of the leading binary.
-  if (/(bash|sh)\s+-i|\/dev\/tcp\/|rm\s+\/tmp\/f;.*mkfifo|nc.*-e/.test(lower)) {
+  // `\b` anchors the shell name so `ssh -i <keyfile>` (an identity flag) doesn't false-match `sh -i`.
+  if (/\b(bash|sh)\s+-i|\/dev\/tcp\/|rm\s+\/tmp\/f;.*mkfifo|nc.*-e/.test(lower)) {
     return { tactic: "TA0002", technique: "T1059", confidence: 0.85 };
+  }
+
+  // `sudo`/`doas` prefixing a recon/scanning tool is elevated recon, not sudo abuse.
+  // (`sudo -l`, GTFOBins like `sudo tar`, and bare sudo fall through to Privilege Escalation.)
+  if (binary === "sudo" || binary === "doas") {
+    const inner = extractBinary(cmd.replace(/^\s*(?:sudo|doas)\s+/i, ""));
+    if (inner && inner !== binary) {
+      const innerPrior = classifyBinary(inner);
+      if (innerPrior.tactic === "TA0007" && innerPrior.confidence >= 0.5) return innerPrior;
+    }
   }
 
   return classifyBinary(binary);
