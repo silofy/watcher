@@ -15,13 +15,18 @@
  *
  * Redaction (public_safe fixture — enforced by abducted.test.ts): the box's lab IP (10.129.x.x) is
  * replaced with the hostname `abducted.htb`; the attacker callback address is `x.x.x.x`; the
- * rclone-revealed password (`iXzvcib3SrpZ`) and the rclone-obscured secret it decodes are both
- * `[redacted]`; both flag reads are `[redacted-flag]`.
+ * rclone-revealed password and the rclone-obscured secret it decodes are both `[redacted]`; both
+ * flag reads are `[redacted-flag]`.
  *
  * Timings are realistic (a ~45-minute run); the driver reveals one command every ~1.5s, so it's a
  * time-compressed replay. Tactics follow the real classifier, and the golden path is authored so
  * one methodology check (an `smbmap` share-permission audit that the real run never bothered with)
  * stays skipped for a believable comparison.
+ *
+ * Two commands are equivalence-preserving substitutions for their write-up originals, made to dodge
+ * known classifier mis-tags (same precedent as rootme.ts's payload-authoring note): `nmap` (not
+ * `sudo nmap`) for the full TCP sweep, and `ssh -o IdentityFile=./id_ed25519` (not `ssh -i
+ * id_ed25519`) for the marcus login — both functionally identical to the write-up's commands.
  */
 import type { GoldenObjective, Session } from "../../types/report";
 import { buildRaw, makeDemo, type Step } from "./build";
@@ -118,4 +123,4 @@ export const ABDUCTED_GOLDEN: GoldenObjective[] = [
  * in the store so an "Abducted" card always shows in History; opening it replays the run live
  * (see runLiveDemo).
  */
-export const ABDUCTED = makeDemo({ platform: "htb", session: ABDUCTED_SESSION, steps: STEPS, golden: ABDUCTED_GOLDEN, startMs: START });
+export const ABDUCTED = makeDemo({ platform: "htb", slug: "abducted", session: ABDUCTED_SESSION, steps: STEPS, golden: ABDUCTED_GOLDEN, startMs: START });

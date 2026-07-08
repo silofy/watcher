@@ -6,6 +6,7 @@ export interface Step { cmd: string; gap: number; dur: number; out: string; line
 
 export interface DemoDef {
   id: string;
+  slug: string;
   platform: "htb" | "thm" | "immersive";
   target: string;
   session: Session;
@@ -36,6 +37,7 @@ export function buildRaw(steps: Step[], startMs: number): RawCommand[] {
 
 export function makeDemo(args: {
   platform: DemoDef["platform"];
+  slug: string;
   session: Session;
   steps: Step[];
   golden: GoldenObjective[];
@@ -44,5 +46,5 @@ export function makeDemo(args: {
   const raw = buildRaw(args.steps, args.startMs);
   const id = `${args.platform}:${args.session.uuid}`;
   const report = assembleReport(raw, { session: args.session, golden: args.golden });
-  return { id, platform: args.platform, target: args.session.machine?.name ?? "target", session: args.session, golden: args.golden, raw, report };
+  return { id, slug: args.slug, platform: args.platform, target: args.session.machine?.name ?? "target", session: args.session, golden: args.golden, raw, report };
 }

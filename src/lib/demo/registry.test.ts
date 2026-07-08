@@ -13,4 +13,10 @@ describe("demo registry", () => {
     }
     expect(isDemoId("not-a-demo")).toBe(false);
   });
+  it("resolves the ?demo=<slug> aliases the README advertises", () => {
+    expect(demoById("abducted")?.platform).toBe("htb");
+    expect(demoById("rootme")?.platform).toBe("thm");
+    expect(isDemoId("abducted")).toBe(true);
+    expect(isDemoId("rootme")).toBe(true);
+  });
 });

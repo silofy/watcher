@@ -28,8 +28,8 @@
  * (TA0002) rather than falling through to the generic low-confidence default for an unrecognized
  * `echo` invocation.
  *
- * Redaction (public_safe fixture — enforced by rootme.test.ts): both real flags the write-ups quote
- * (`THM{redacted}`, `THM{redacted}`) are replaced with `[flag]`; the target is
+ * Redaction (public_safe fixture — enforced by rootme.test.ts): both THM-style flags the write-ups
+ * quote (the room's user and root flags) are replaced with `[flag]`; the target is
  * always the hostname `rootme.thm` (no live TryHackMe lab IP anywhere); the attacker callback
  * address is `x.x.x.x`.
  *
@@ -109,4 +109,4 @@ export const ROOTME_GOLDEN: GoldenObjective[] = [
  * in the store so a "RootMe" card always shows in History; opening it replays the run live (see
  * runLiveDemo).
  */
-export const ROOTME = makeDemo({ platform: "thm", session: ROOTME_SESSION, steps: STEPS, golden: ROOTME_GOLDEN, startMs: START });
+export const ROOTME = makeDemo({ platform: "thm", slug: "rootme", session: ROOTME_SESSION, steps: STEPS, golden: ROOTME_GOLDEN, startMs: START });
