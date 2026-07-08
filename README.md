@@ -50,7 +50,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173**. Append `?demo=live` to auto-play a full run start to finish. You can also open a prebuilt `report.html`, or generate one with `npm run export` → `dist/report.html`.
+Open **http://localhost:5173**. The History tab includes two real-content demos (HTB Abducted, THM RootMe); click **▶ Watch live demo** on either to stream the full run live, then review the graded report. Append `?demo=abducted` or `?demo=rootme` to auto-play. You can also open a prebuilt `report.html`, or generate one with `npm run export` → `dist/report.html`.
 
 ### 2. Run the full desktop app
 

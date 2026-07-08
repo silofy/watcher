@@ -158,7 +158,7 @@ export function History() {
       ) : (
         <div className="space-y-2">
           {cards.map((c) => (
-            <Row key={c.id} c={c} onOpen={() => (c.demo ? startLiveDemo() : switchSession(c.id))} />
+            <Row key={c.id} c={c} onOpen={() => (c.demo ? startLiveDemo(c.id) : switchSession(c.id))} />
           ))}
         </div>
       )}

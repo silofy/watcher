@@ -1,19 +1,45 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DIFFICULTY_COLOR, hueFor } from "../lib/machine";
+import { resolveAvatar } from "../lib/platform/avatar";
 import type { Target } from "../types/report";
 
 /**
  * The target's emblem. Fetches the real avatar (e.g. HTB CDN) when one is provided, with an
  * onError fall-through to a generated, deterministic instrument emblem so it always renders —
  * offline, broken URL, or local capture all degrade gracefully.
+ *
+ * When the report doesn't already carry an avatar URL, this kicks off a non-blocking runtime
+ * lookup (`resolveAvatar`) under the user's own credentials — never bundled, never blocking, and
+ * any failure just keeps the generated `hue` emblem below.
  */
 export function MachineAvatar({ target, size = 64 }: { target: Target; size?: number }) {
   const [failed, setFailed] = useState(false);
+  const [resolved, setResolved] = useState<string | null>(null);
   const initials = (target.name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 2) || "??").toUpperCase();
   const hue = target.emblem?.hue ?? hueFor(target.name);
   const label = target.difficulty?.label;
   const ring = label ? DIFFICULTY_COLOR[label] ?? "var(--color-edge-bright)" : "var(--color-edge-bright)";
-  const avatar = target.emblem?.avatar;
+  const avatar = target.emblem?.avatar ?? resolved;
+
+  useEffect(() => {
+    if (target.emblem?.avatar) return; // already have one — no lookup needed
+    let cancelled = false;
+    // NOTE: no HTB token is passed here — the token lives only on the native/Rust side
+    // (see src/lib/net.ts: hasHtbToken/setHtbToken) and is never returned to the webview,
+    // so the HTB branch of resolveAvatar is inert here. The THM og:image branch resolves
+    // on desktop via the native (Tauri) fetch seam and degrades to the hue emblem whenever
+    // that's unavailable — dev browser (CORS-limited fallback), no HTB token, or any fetch
+    // failure — never blocking render either way.
+    resolveAvatar(target, {}).then((url) => {
+      if (!cancelled && url) setResolved(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Field-level deps (not `target` identity) so a new-but-equal target object from a report
+    // re-render doesn't re-trigger the lookup; only an actual change to platform/name/url/avatar should.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target.platform, target.name, target.url, target.emblem?.avatar]);
 
   if (avatar && !failed) {
     return (

@@ -80,7 +80,7 @@ cd crates/capture && cargo build --release
 With the desktop app open and HTB's VPN connected, start a watched shell:
 
 ```sh
-./target/release/watcher-capture --attach --machine Forge
+./target/release/watcher-capture --attach --machine Abducted
 ```
 
 Hack as normal — each completed command shows up in the debrief in ~1–4 s. Type `exit` to stop; it
