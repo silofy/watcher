@@ -26,14 +26,18 @@ export function MachineAvatar({ target, size = 64 }: { target: Target; size?: nu
     let cancelled = false;
     // NOTE: no HTB token is passed here — the token lives only on the native/Rust side
     // (see src/lib/net.ts: hasHtbToken/setHtbToken) and is never returned to the webview,
-    // so the HTB branch of resolveAvatar is inert here. The THM og:image branch still
-    // works off `target.url` with no credentials needed.
+    // so the HTB branch of resolveAvatar is inert here. The THM og:image branch resolves
+    // on desktop via the native (Tauri) fetch seam and degrades to the hue emblem whenever
+    // that's unavailable — dev browser (CORS-limited fallback), no HTB token, or any fetch
+    // failure — never blocking render either way.
     resolveAvatar(target, {}).then((url) => {
       if (!cancelled && url) setResolved(url);
     });
     return () => {
       cancelled = true;
     };
+    // Field-level deps (not `target` identity) so a new-but-equal target object from a report
+    // re-render doesn't re-trigger the lookup; only an actual change to platform/name/url/avatar should.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target.platform, target.name, target.url, target.emblem?.avatar]);
 
