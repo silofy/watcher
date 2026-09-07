@@ -19,6 +19,7 @@ import { isOnTarget } from "./pipeline/mitre";
 import { computeMethodology } from "./analysis/methodology";
 import { computeFocus } from "./analysis/focus";
 import { computeRecovery } from "./analysis/recovery";
+import { analyzePrivesc } from "./analysis/privesc";
 
 export type AuditKind = "insight" | "manual" | "pass";
 
@@ -371,6 +372,60 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       kind: "insight",
       title: `Slow recovery from stuck moments — median ${Math.round(recovery.median_ms / 60000)} min to get back on track`,
       detail: "After a dead end or a loop, it took a while before the next real advance. Time-box detours more tightly: if a path isn't paying off in a few minutes, switch approaches.",
+    });
+  }
+
+  // ── privilege-escalation attack paths (RootHound-style, from the run's own enumeration) ─────────
+  // The privesc engine matches captured output against a rulebook of known local-Linux root paths and
+  // tags each confirmed / likely. Unlike the Ghost this needs no write-up, so it coaches on any box.
+  // Surfaced into the PrivEsc phase; nothing here feeds the letter grade.
+  const privesc = analyzePrivesc(report);
+  const privescInsights = phaseByTactic.get("TA0004")?.insights ?? general;
+  if (privesc.slow_line) {
+    const { available_seq, rooted_seq, path } = privesc.slow_line;
+    const wastedMs = episodes
+      .filter((e) => e.seq > available_seq && e.seq < rooted_seq)
+      .reduce((sum, e) => sum + e.duration_ms + e.gap_before_ms, 0);
+    privescInsights.push({
+      id: "privesc-slow-line",
+      kind: "insight",
+      title: `A confirmed root path (${path.title}) was on the table at step ${available_seq} — you rooted at step ${rooted_seq}`,
+      detail: `The enumeration you'd already run exposed a known-good path to root (${path.title}): \`${path.abuse.split("\n")[0]}\`. You reached root by a longer line instead. When a confirmed escalation is visible, take it before chasing others.`,
+      savings_ms: wastedMs > 0 ? wastedMs : undefined,
+      evidence_seq: available_seq,
+      category: "PrivEsc",
+    });
+  } else if (privesc.confirmed > 0 && privesc.rooted_seq == null) {
+    const top = privesc.paths.find((p) => p.severity === "confirmed")!;
+    privescInsights.push({
+      id: "privesc-unrealized",
+      kind: "insight",
+      title: `A confirmed root path was available and not taken: ${top.title}`,
+      detail: `Your enumeration surfaced a known-good escalation (${top.title}) that never got exploited: \`${top.abuse.split("\n")[0]}\`.`,
+      evidence_seq: top.evidence_seq,
+      category: "PrivEsc",
+    });
+  } else if (privesc.confirmed > 0 && privesc.first_confirmed_seq != null) {
+    const top = privesc.paths.find((p) => p.severity === "confirmed")!;
+    privescInsights.push({
+      id: "privesc-clean-take",
+      kind: "pass",
+      title: `Spotted and used the confirmed privesc path (${top.title}) directly`,
+      detail: `You identified a known-good root path from your own enumeration and acted on it without thrashing — the discipline this whole audit rewards.`,
+      evidence_seq: top.evidence_seq,
+      category: "PrivEsc",
+    });
+  }
+  // The strongest LIKELY leads (kernel / sudo CVEs, dangerous groups) — surfaced so a real path isn't
+  // missed, capped so the phase doesn't fill with noise.
+  for (const p of privesc.paths.filter((p) => p.severity === "likely").slice(0, 2)) {
+    privescInsights.push({
+      id: `privesc-lead-${p.id}`,
+      kind: "insight",
+      title: `Privesc lead: ${p.title}`,
+      detail: `${p.detail} ${p.abuse.split("\n")[0]}`,
+      evidence_seq: p.evidence_seq || null,
+      category: "PrivEsc",
     });
   }
 
