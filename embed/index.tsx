@@ -8,13 +8,16 @@ import { GhostCard } from "../src/components/GhostCard";
 import { Assessment } from "../src/components/Assessment";
 import { LiveDashboard } from "../src/components/LiveDashboard";
 import { PhaseAudit } from "../src/components/PhaseAudit";
+import { IdentityBar } from "../src/components/IdentityBar";
 
 // Tailwind puts theme tokens on :root; that selector doesn't match inside a shadow tree,
 // so rehome them onto :host where they inherit into the mounted component.
 const css = (cssRaw as string).replace(/:root\b/g, ":host");
 
+// `header` = the report's identity band (machine, difficulty, live/graded scores) plus the
+// Writeup-reference row it renders — the persistent top block of the real app.
 const VIEWS: Record<string, React.ComponentType> = {
-  ghost: GhostCard, grade: Assessment, liveops: LiveDashboard, phase: PhaseAudit,
+  header: IdentityBar, ghost: GhostCard, grade: Assessment, liveops: LiveDashboard, phase: PhaseAudit,
 };
 
 function mount(el: HTMLElement, view: string) {
