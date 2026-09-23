@@ -1,45 +1,49 @@
 @import "tailwindcss";
 
 /*
- * "God Tier" — a deep-indigo flight-data-recorder. Near-black indigo ground (#0a081b), cool
- * off-white readouts, a teal-green signal, and a four-mode actor legend in teal / lavender / coral /
- * slate. OKLCH throughout; neutrals tinted toward the ground hue (~287) for cohesion. Good = teal,
- * alternative = cyan/lavender, deviation = coral, absence = slate. scale.ts mirrors these for SVG.
+ * Editorial dark: neutral black ground, one mint signal, the actor legend unchanged;
+ * Hanken Grotesk + Spline Sans Mono.
  */
 @theme {
-  /* type — Saira (equipment-label display) · Hanken Grotesk (humanist body) · Spline Mono (readouts) */
-  --font-display: "Saira Variable", "Saira", system-ui, sans-serif;
+  /* type: Hanken Grotesk (display + body) · Spline Sans Mono (eyebrows, readouts) */
+  --font-display: "Hanken Grotesk Variable", "Hanken Grotesk", system-ui, sans-serif;
   --font-sans: "Hanken Grotesk Variable", "Hanken Grotesk", system-ui, sans-serif;
   --font-mono: "Spline Sans Mono Variable", "Spline Sans Mono", ui-monospace, monospace;
 
-  /* deep-indigo ground (tinted toward 287) */
-  --color-ink: oklch(0.15 0.04 286);
-  --color-panel: oklch(0.205 0.038 287);
-  --color-panel-2: oklch(0.255 0.04 288);
-  --color-edge: oklch(0.33 0.042 289);
-  --color-edge-bright: oklch(0.44 0.05 290);
-  --color-fg: oklch(0.92 0.012 281);
-  --color-muted: oklch(0.73 0.022 284);
-  --color-faint: oklch(0.56 0.03 286);
+  /* neutral-black ground (editorial dark) */
+  --color-ink: #0b0b0c;
+  --color-panel: #111113;
+  --color-panel-2: #18181b;
+  --color-edge: #232326;
+  --color-edge-bright: #34343a;
+  --color-fg: #ededee;
+  --color-muted: #a0a3aa;
+  --color-faint: #80848c;
 
-  /* the one signal — teal-green readout lamp (#00cdb2) */
-  --color-signal: oklch(0.76 0.139 179);
-  --color-signal-dim: oklch(0.63 0.115 179);
+  /* the one signal: mint */
+  --color-signal: #2fe6b0;
+  --color-signal-dim: #22b58a;
 
-  /* actor-mode instrument legend — distinct hues across a common lightness band */
-  --color-tool: oklch(0.81 0.104 292); /* machine grinding — lavender (#c2b5ff) */
-  --color-manual: oklch(0.79 0.135 179); /* human iteration — teal (#31dec2) */
-  --color-stuck: oklch(0.78 0.129 25); /* reasoning / stuck — coral (#ff958d) */
-  --color-detour: oklch(0.66 0.16 29); /* off-path, low yield — deep coral */
+  /* actor-mode instrument legend */
+  --color-tool: oklch(0.8 0.085 292);
+  --color-manual: #2fe6b0;
+  --color-stuck: oklch(0.78 0.129 25);
+  --color-detour: oklch(0.66 0.16 29);
   --color-idle: oklch(0.5 0.03 250);
 
   /* alignment / verdict accents */
-  --color-match: oklch(0.76 0.139 179); /* on the golden path — teal */
-  --color-alt: oklch(0.85 0.13 201); /* alternative method — cyan (#02f4fe), NOT purple */
-  --color-skipped: oklch(0.6 0.045 250); /* missed objective — cool slate (absence) */
-  --color-loud: oklch(0.7 0.16 30); /* noise / stealth cost — bright coral */
-  --color-flag: oklch(0.83 0.143 85); /* flag captured — milestone gold, outside the path palette */
-  --color-web: oklch(0.75 0.14 230); /* HTTP/web capture (Burp) — a blue outside every other accent */
+  --color-match: #2fe6b0;
+  --color-alt: oklch(0.84 0.1 201);
+  --color-skipped: oklch(0.6 0.045 250);
+  --color-loud: oklch(0.7 0.16 30);
+  --color-flag: oklch(0.83 0.143 85);
+  --color-web: oklch(0.75 0.14 230);
+
+  /* flat editorial surfaces */
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 3px;
+  --radius-2xl: 3px;
 
   /* motion */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -66,74 +70,75 @@ body {
 
 /* ---- instrument vocabulary ---- */
 
-.font-display {
-  font-family: var(--font-display);
-  letter-spacing: -0.012em;
-}
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
 
-/* stenciled equipment label — small, wide-tracked uppercase Saira (12px floor) */
-.label {
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
-  font-weight: 600;
-  font-size: 0.75rem;
-  color: var(--color-faint);
-}
+  /* mono eyebrow: small, wide-tracked uppercase Spline Mono */
+  .label {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 500;
+    font-size: 0.65625rem; /* 10.5px */
+    color: var(--color-faint);
+  }
 
-.mono {
-  font-family: var(--font-mono);
-  font-feature-settings: "tnum";
-}
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum";
+  }
 
-.tnum {
-  font-variant-numeric: tabular-nums;
-}
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
 
-/* a hairline rule with an end tick, like a gauge baseline */
-.rule {
-  height: 1px;
-  background: var(--color-edge);
-}
+  /* a hairline rule with an end tick, like a gauge baseline */
+  .rule {
+    height: 1px;
+    background: var(--color-edge);
+  }
 
-/* a vertical hairline — separates KPI cells / ledger columns */
-.rule-y {
-  width: 1px;
-  align-self: stretch;
-  background: var(--color-edge);
-}
+  /* a vertical hairline — separates KPI cells / ledger columns */
+  .rule-y {
+    width: 1px;
+    align-self: stretch;
+    background: var(--color-edge);
+  }
 
-/* big console readout number — tabular display figures */
-.readout {
-  font-family: var(--font-display);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1;
-}
+  .readout {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
 
-/* faint registration ticks for panel corners */
-.ticks::before,
-.ticks::after {
-  content: "";
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-color: var(--color-edge-bright);
-  border-style: solid;
-  border-width: 0;
-}
-.ticks::before {
-  top: -1px;
-  left: -1px;
-  border-top-width: 1px;
-  border-left-width: 1px;
-}
-.ticks::after {
-  bottom: -1px;
-  right: -1px;
-  border-bottom-width: 1px;
-  border-right-width: 1px;
+  /* faint registration ticks for panel corners */
+  .ticks::before,
+  .ticks::after {
+    content: "";
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-color: var(--color-edge-bright);
+    border-style: solid;
+    border-width: 0;
+  }
+  .ticks::before {
+    top: -1px;
+    left: -1px;
+    border-top-width: 1px;
+    border-left-width: 1px;
+  }
+  .ticks::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom-width: 1px;
+    border-right-width: 1px;
+  }
 }
 
 /* staggered entrance for the debrief sections */
@@ -243,11 +248,23 @@ body {
   display: none;
 }
 
+@keyframes lamp {
+  50% {
+    opacity: 0.35;
+  }
+}
+.setup-lamp {
+  animation: lamp 1.8s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+  .setup-lamp {
+    animation: none;
   }
 }

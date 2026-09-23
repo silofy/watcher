@@ -32,16 +32,11 @@ function Tier({ n, title, req, unlocks, children }: { n: ReactNode; title: strin
   );
 }
 
-export function Install() {
+/** The full setup reference (capture options, Pwnbox, reference path, AI). Lives inside the
+ *  onboarding wizard's capture step: setup has one entry point. */
+export function InstallReference() {
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-5">
-        <h2 className="font-display text-2xl font-semibold text-fg">Setup</h2>
-        <p className="mt-1.5 text-sm text-muted">
-          Pick where you capture, then add the comparison and AI if you want. Everything runs on macOS, Linux, and Windows.
-        </p>
-      </div>
-
+    <div>
       {/* CAPTURE — the two options are alternatives: you hack on your own VM, or in Pwnbox */}
       <div className="mb-2.5 flex items-center gap-3">
         <span className="label text-muted">Capture — pick one</span>

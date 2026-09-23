@@ -129,8 +129,32 @@ function toCard(id: string, r: WatcherReport): SessionCard {
   };
 }
 
+/** Host-supplied prior runs (e.g. the marketing embed) so the Progress trend has history to plot.
+ *  Read once from `window.__WATCHER_CARDS__` or a `<script id="watcher-cards">` JSON array; each entry
+ *  needs only the fields Progress uses. Never present in the real app, so this is inert there. */
+function injectedCards(): SessionCard[] {
+  let raw: unknown = (globalThis as { __WATCHER_CARDS__?: unknown }).__WATCHER_CARDS__;
+  if (!raw && typeof document !== "undefined") {
+    const el = document.getElementById("watcher-cards");
+    if (el?.textContent) { try { raw = JSON.parse(el.textContent); } catch { /* ignore */ } }
+  }
+  if (!Array.isArray(raw)) return [];
+  return raw.map((c: Record<string, unknown>, i: number): SessionCard => ({
+    id: "hist-" + i,
+    machine: { name: String(c.name), os: "Linux", difficulty: "", retired: true } as unknown as MachineMeta,
+    target: { name: String(c.name), platform: (c.platform as string) ?? "htb" } as unknown as Target,
+    target_scope: String(c.name),
+    started_at: String(c.ended_at), ended_at: String(c.ended_at),
+    source: "import", rooted: c.rooted !== false,
+    grade: Number(c.grade), letter: String(c.letter),
+    coverage: Number(c.coverage), efficiency: Number(c.efficiency ?? c.coverage),
+    episodes: Number(c.episodes ?? 0), recording: false, isLatest: false, demo: false,
+    breadth: Number(c.breadth ?? 0), methodology: c.methodology == null ? null : Number(c.methodology),
+  }));
+}
+
 function cardsFrom(): SessionCard[] {
-  const cards = Object.entries(REPORTS).map(([id, r]) => toCard(id, r));
+  const cards = [...injectedCards(), ...Object.entries(REPORTS).map(([id, r]) => toCard(id, r))];
   const latestId = [...cards].sort((a, b) => Date.parse(b.ended_at) - Date.parse(a.ended_at))[0]?.id;
   return cards.map((c) => ({ ...c, isLatest: c.id === latestId }));
 }
@@ -143,7 +167,7 @@ const DEFAULT_ID =
 // a live replay) without ever being the session the app lands on.
 for (const d of DEMOS) REPORTS[d.id] = d.report;
 
-type View = "debrief" | "history" | "install" | "progress";
+type View = "debrief" | "history" | "progress";
 
 interface ReportState extends Derived {
   sessions: { id: string; label: string }[];

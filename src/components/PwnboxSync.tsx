@@ -24,10 +24,11 @@ function Field({ label, value, onChange, placeholder, type = "text" }: { label: 
  * Pwnbox header control. The dropdown is deliberately minimal — three plain steps and a link to the
  * full commands in Setup — so it reads at a glance instead of dumping CLI. The optional live auto-pull
  * (SSH) is a compact toggle; when on it keeps polling the Rust `pull_pwnbox` command and the live
- * bridge ingests what lands. The step-by-step commands live in the Setup tab, which has room for them.
+ * bridge ingests what lands. The step-by-step commands live in the setup wizard's capture step
+ * ("All setup options"), which has room for them.
  */
 export function PwnboxSync() {
-  const setView = useReport((s) => s.setView);
+  const { openOnboarding, setOnboardingStep } = useReport();
   const [cfg, setCfg] = useState<PwnboxConfig>(loadPwnboxConfig);
   const [open, setOpen] = useState(false);
   const [showConfig, setShowConfig] = useState(false); // the SSH connection fields, hidden until you want them
@@ -50,7 +51,8 @@ export function PwnboxSync() {
 
   const openSetup = () => {
     setOpen(false);
-    setView("install");
+    setOnboardingStep(1);
+    openOnboarding();
   };
 
   useEffect(() => {
@@ -85,7 +87,7 @@ export function PwnboxSync() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         title="Capture a session you're running in Pwnbox"
-        className={`flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+        className={`flex h-9 items-center gap-2 rounded-md border px-4 text-sm font-medium transition-colors ${
           cfg.enabled ? "border-match/40 bg-match/10 text-match" : "border-edge text-muted hover:border-signal/60 hover:bg-panel-2 hover:text-fg"
         }`}
       >

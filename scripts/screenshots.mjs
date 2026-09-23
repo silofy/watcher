@@ -93,6 +93,9 @@ step("launching Chromium and capturing the debrief");
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: BASE_VIEWPORT, deviceScaleFactor: DPR });
+  // A fresh browser profile is a first run, so the onboarding wizard would open over the report and
+  // cover every capture. Mark onboarding done before the page's scripts read it.
+  await page.addInitScript(() => localStorage.setItem("watcher.onboarded", "1"));
   await page.goto(pathToFileURL(reportHtml).href);
   await page.waitForSelector('[data-shot="verdict"]', { timeout: 10_000 });
   await page.waitForTimeout(SETTLE_MS);

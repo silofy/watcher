@@ -1,5 +1,6 @@
 import { useReport } from "../store/report";
-import { Section, tierColor } from "./ui";
+import { Section, Tag, tierColor } from "./ui";
+import { LevelBar } from "./dither";
 import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
 import { isLiveRecording } from "../lib/live";
 import { radarPoint, RADAR_GEOMETRY } from "../lib/radar";
@@ -49,7 +50,7 @@ const RUBRIC_DESC: Record<RubricKey, string> = {
 // (and the `truncate`d label inside it) can shrink rather than forcing a ~11rem floor that would
 // force a horizontal scrollbar on narrower widths. The three numeric columns stay fixed — they're
 // already narrow, tabular-nums content that never needs to shrink.
-const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
+const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 3rem 3.5rem 3rem";
 
 /**
  * Grade — one coherent picture: the radar plots the active rubric's weighted dimensions (6 for v1, 8
@@ -58,14 +59,14 @@ const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
  * a gate routed to a human. Rendered as its own visible section in the main narrative (see App.tsx) —
  * above the collapsed "Evidence & detail" drawer, since the grade is a verdict, not raw detail.
  */
-export function Assessment() {
+export function Assessment({ num }: { num?: string } = {}) {
   const s = useReport();
   const { report } = s;
 
   // the grade is a verdict — premature while the capture is live; settle it only when the run ends
   if (isLiveRecording(report)) {
     return (
-      <Section dataShot="grade" title="Grade" subtitle="the explainable rubric — settles when the run ends">
+      <Section dataShot="grade" num={num} title="Grade" subtitle="the explainable rubric — settles when the run ends">
         <p className="text-sm text-faint">
           <span className="animate-pulse" style={{ color: "var(--color-loud)" }}>
             ●
@@ -92,8 +93,10 @@ export function Assessment() {
   return (
     <Section
       dataShot="grade"
+      num={num}
       title="Grade"
       subtitle="how your score breaks down — the explainable rubric"
+      lead={{ value: grade.letter, unit: ` · ${grade.score.toFixed(1)}`, caption: `weighted across ${n} rubric metrics`, color: gc }}
       right={
         <div className="flex items-center gap-2">
           {/* subtle — which rubric produced this grade, not a badge that competes with the verdict */}
@@ -102,15 +105,7 @@ export function Assessment() {
           </span>
           {/* a status chip, not a link — this panel IS the grade, so it never points anywhere; the
               flagged case still names where the gate sends it (a human review queue) */}
-          <span
-            className="rounded-full border px-2 py-0.5"
-            style={{
-              color: flagged ? "var(--color-loud)" : "var(--color-match)",
-              borderColor: flagged ? "color-mix(in oklch, var(--color-loud) 35%, transparent)" : "color-mix(in oklch, var(--color-match) 35%, transparent)",
-            }}
-          >
-            {flagged ? "Integrity queue" : "Graded"}
-          </span>
+          <Tag color={flagged ? "var(--color-loud)" : "var(--color-match)"}>{flagged ? "Integrity queue" : "Graded"}</Tag>
         </div>
       }
     >
@@ -160,7 +155,7 @@ export function Assessment() {
 
         {/* the rubric math behind the chart */}
         <div>
-          <div className="label grid gap-2 px-1.5 pb-1.5 text-xs" style={{ gridTemplateColumns: RUBRIC_COLS }}>
+          <div className="label grid gap-2 px-1.5 pb-1.5" style={{ gridTemplateColumns: RUBRIC_COLS }}>
             <span>metric</span>
             <span />
             <span className="text-right">score</span>
@@ -186,8 +181,8 @@ export function Assessment() {
                       <span className="mt-1.5 block text-xs leading-relaxed text-muted">{RUBRIC_DESC[k]}</span>
                     </span>
                   </span>
-                  <div className="min-w-0 h-1.5 overflow-hidden rounded-full bg-edge">
-                    <div className="h-full rounded-full" style={{ width: `${c.raw}%`, backgroundColor: barColor }} />
+                  <div className="min-w-0">
+                    <LevelBar value={c.raw} color={barColor} height={8} label={RUBRIC_LABELS[k]} />
                   </div>
                   <span className="mono text-right tabular-nums" style={{ color: barColor }}>
                     {c.raw}

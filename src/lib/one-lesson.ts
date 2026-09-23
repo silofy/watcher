@@ -7,6 +7,8 @@ import { humanizeObjective } from "./audits";
 export interface OneLesson {
   text: string;
   evidence_seq: number | null;
+  /** present for a Ghost late pivot: where the way forward opened, and where you took it */
+  pivot?: { unlock_seq: number; acted_seq: number };
 }
 
 /**
@@ -24,10 +26,13 @@ export function pickOneLesson(report: WatcherReport): OneLesson | null {
   const latePivots = (report.ghost?.items ?? []).filter((i) => i.verdict === "late_pivot");
   if (latePivots.length) {
     const worst = latePivots.reduce((a, b) => ((b.lag_ms ?? 0) > (a.lag_ms ?? 0) ? b : a));
+    const pivot = worst.unlock_seq != null && worst.actual_seq != null ? { unlock_seq: worst.unlock_seq, acted_seq: worst.actual_seq } : undefined;
     const text =
       worst.note ??
-      `Unlocked for ${humanizeObjective(worst.objective)} at step ${worst.unlock_seq} but you didn't act until step ${worst.actual_seq} — the optimal line pivots here sooner.`;
-    return { text, evidence_seq: worst.actual_seq ?? worst.unlock_seq ?? null };
+      (pivot
+        ? `Unlocked for ${humanizeObjective(worst.objective)} at step ${pivot.unlock_seq}, but you didn't act until step ${pivot.acted_seq}.`
+        : `You sat on ${humanizeObjective(worst.objective)} after its prerequisites surfaced.`);
+    return { text, evidence_seq: worst.actual_seq ?? worst.unlock_seq ?? null, ...(pivot ? { pivot } : {}) };
   }
 
   const miss = topUnmetCheck(report);

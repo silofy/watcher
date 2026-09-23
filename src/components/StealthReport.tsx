@@ -1,3 +1,4 @@
+import { useId, useRef } from "react";
 import { useReport, activeSeq } from "../store/report";
 import { AXIS_W } from "../lib/scale";
 import { episodeNoise, NOISE_BASELINE } from "../lib/metrics";
@@ -6,6 +7,9 @@ import { useAxisZoom } from "./useAxisZoom";
 import { ZoomControls } from "./ZoomControls";
 import { fmtClock } from "../lib/format";
 import { ChevronDown } from "./icons";
+import { GradientDitherPattern, LevelBar } from "./dither";
+import { useWidth } from "./useWidth";
+import { ditherMask } from "../lib/dither";
 
 const H = 84;
 const TOP = 10;
@@ -18,6 +22,15 @@ export function StealthReport() {
   const hovered = focus != null ? timeline.bySeq.get(focus) : null;
 
   const { w0, w1, span, zx, zoomed, zoomOut, reset, sel, handlers } = useAxisZoom(timeline.totalMs);
+
+  // the chart is drawn in AXIS_W × H user units stretched to its box (preserveAspectRatio="none"),
+  // so the dither tile is converted per axis to stay 2px dots on screen
+  const box = useRef<HTMLDivElement>(null);
+  const pxW = useWidth(box, AXIS_W);
+  const kx = AXIS_W / Math.max(1, pxW);
+  const ky = H / 132;
+  const gradRows = Math.ceil(H / (3 * ky));
+  const gradId = `noise-${useId().replace(/:/g, "")}`;
 
   const loudSeqs = new Set(metrics.loud_moments.map((l) => l.seq));
   const stealth = Math.round(metrics.stealth_score);
@@ -70,6 +83,7 @@ export function StealthReport() {
   const loudList = metrics.loud_moments
     .slice(0, 4)
     .map((l) => ({ seq: l.seq, noise: l.noise, binary: report.episodes.find((e) => e.seq === l.seq)?.binary ?? "?" }));
+  const maxNoise = Math.max(...metrics.loud_moments.map((m) => m.noise), 1);
 
   return (
     <Section
@@ -91,7 +105,7 @@ export function StealthReport() {
       {/* legend + the headline number */}
       <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-3 rounded-[1px]" style={{ background: "color-mix(in oklch, var(--color-loud) 45%, transparent)" }} />
+          <span className="inline-block h-2 w-3" style={{ background: "var(--color-loud)", ...ditherMask() }} />
           cumulative noise
         </span>
         <span className="flex items-center gap-1.5">
@@ -109,45 +123,50 @@ export function StealthReport() {
 
       {/* the burn-up: area climbs toward the ceiling; steep jumps = loud commands */}
       <div className="relative cursor-crosshair select-none overflow-hidden rounded-md border border-edge bg-ink/40" style={{ height: 132 }} {...handlers}>
-        <svg viewBox={`0 0 ${AXIS_W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-          {/* phase boundary separators — where in the run we are */}
-          {phaseWindows.slice(1).map(({ phase, t0 }) => (
-            <line key={`sep-${phase.mitre_tactic}`} x1={zx(t0)} y1={TOP} x2={zx(t0)} y2={BASE_Y} stroke="var(--color-edge)" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none" />
-          ))}
+        <div ref={box} className="absolute inset-0">
+          <svg viewBox={`0 0 ${AXIS_W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+            <defs>
+              <GradientDitherPattern id={gradId} color="var(--color-loud)" rows={gradRows} top={0.9} bottom={0.18} kx={kx} ky={ky} />
+            </defs>
+            {/* phase boundary separators — where in the run we are */}
+            {phaseWindows.slice(1).map(({ phase, t0 }) => (
+              <line key={`sep-${phase.mitre_tactic}`} x1={zx(t0)} y1={TOP} x2={zx(t0)} y2={BASE_Y} stroke="var(--color-edge)" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+            ))}
 
-          <line x1={0} y1={BASE_Y} x2={AXIS_W} y2={BASE_Y} stroke="var(--color-edge)" vectorEffect="non-scaling-stroke" />
+            <line x1={0} y1={BASE_Y} x2={AXIS_W} y2={BASE_Y} stroke="var(--color-edge)" vectorEffect="non-scaling-stroke" />
 
-          {/* the ceiling — if the curve reaches it, stealth is 0 */}
-          <line x1={0} y1={ceilingY} x2={AXIS_W} y2={ceilingY} stroke="var(--color-loud)" strokeWidth={1} strokeDasharray="4 3" vectorEffect="non-scaling-stroke" pointerEvents="none" />
+            {/* the ceiling — if the curve reaches it, stealth is 0 */}
+            <line x1={0} y1={ceilingY} x2={AXIS_W} y2={ceilingY} stroke="var(--color-loud)" strokeWidth={1} strokeDasharray="4 3" vectorEffect="non-scaling-stroke" pointerEvents="none" />
 
-          <path d={area} fill="color-mix(in oklch, var(--color-loud) 16%, transparent)" stroke="none" />
-          <path d={line} fill="none" stroke="var(--color-loud)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+            <path d={area} fill={`url(#${gradId})`} stroke="none" />
+            <path d={line} fill="none" stroke="var(--color-loud)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
 
-          {/* rolling exposure — rises at loud moments, decays while you stay quiet */}
-          <path d={expPath} fill="none" stroke="var(--color-tool)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" opacity={0.95} />
+            {/* rolling exposure — rises at loud moments, decays while you stay quiet */}
+            <path d={expPath} fill="none" stroke="var(--color-tool)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" opacity={0.95} />
 
-          {/* per-command hit areas keep hover/click working on the line chart */}
-          {timeline.items.map(({ ep, gapStart, t1 }) => (
-            <rect
-              key={ep.seq}
-              x={zx(gapStart)}
-              y={TOP}
-              width={Math.max(1, zx(t1) - zx(gapStart))}
-              height={BASE_Y - TOP}
-              fill={focus === ep.seq ? "color-mix(in oklch, var(--color-fg) 8%, transparent)" : "transparent"}
-              className="cursor-pointer"
-              onMouseEnter={() => s.hover(ep.seq)}
-              onMouseLeave={() => s.hover(null)}
-              onClick={() => s.select(s.selectedSeq === ep.seq ? null : ep.seq)}
-            />
-          ))}
+            {/* per-command hit areas keep hover/click working on the line chart */}
+            {timeline.items.map(({ ep, gapStart, t1 }) => (
+              <rect
+                key={ep.seq}
+                x={zx(gapStart)}
+                y={TOP}
+                width={Math.max(1, zx(t1) - zx(gapStart))}
+                height={BASE_Y - TOP}
+                fill={focus === ep.seq ? "color-mix(in oklch, var(--color-fg) 8%, transparent)" : "transparent"}
+                className="cursor-pointer"
+                onMouseEnter={() => s.hover(ep.seq)}
+                onMouseLeave={() => s.hover(null)}
+                onClick={() => s.select(s.selectedSeq === ep.seq ? null : ep.seq)}
+              />
+            ))}
 
-          {sel && (
-            <rect x={Math.min(sel[0], sel[1]) * AXIS_W} y={TOP} width={Math.abs(sel[1] - sel[0]) * AXIS_W} height={BASE_Y - TOP} fill="color-mix(in oklch, var(--color-signal) 18%, transparent)" stroke="var(--color-signal)" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none" />
-          )}
+            {sel && (
+              <rect x={Math.min(sel[0], sel[1]) * AXIS_W} y={TOP} width={Math.abs(sel[1] - sel[0]) * AXIS_W} height={BASE_Y - TOP} fill="color-mix(in oklch, var(--color-signal) 18%, transparent)" stroke="var(--color-signal)" strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+            )}
 
-          <line x1={zx(playheadMs)} y1={TOP} x2={zx(playheadMs)} y2={BASE_Y} stroke="var(--color-fg)" strokeWidth={1} opacity={0.6} vectorEffect="non-scaling-stroke" pointerEvents="none" />
-        </svg>
+            <line x1={zx(playheadMs)} y1={TOP} x2={zx(playheadMs)} y2={BASE_Y} stroke="var(--color-fg)" strokeWidth={1} opacity={0.6} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+          </svg>
+        </div>
 
         {/* loud-jump markers + labels (HTML, crisp). Only the loud moments, so no collisions. */}
         <div className="pointer-events-none absolute inset-0">
@@ -201,15 +220,13 @@ export function StealthReport() {
                 onClick={() => s.reveal(l.seq)}
                 onMouseEnter={() => s.hover(l.seq)}
                 onMouseLeave={() => s.hover(null)}
-                className="grid w-full grid-cols-[2.6rem_1fr_3.5rem] items-center gap-2 px-1.5 py-1 text-left text-sm transition-colors hover:bg-panel-2/50"
+                className="grid w-full grid-cols-[2.6rem_7rem_1fr] items-center gap-2 px-1.5 py-[7px] text-left text-sm transition-colors hover:bg-panel-2/50"
                 title={`Step ${l.seq} — click to inspect in the command log`}
               >
                 <span className="mono text-xs text-faint">#{l.seq}</span>
                 <span className="mono truncate text-fg">{l.binary}</span>
-                <span className="justify-self-end">
-                  <div className="h-1.5 w-12 overflow-hidden rounded-full bg-panel-2">
-                    <div className="h-full rounded-full" style={{ width: `${Math.round((l.noise / Math.max(...metrics.loud_moments.map((m) => m.noise), 1)) * 100)}%`, background: "var(--color-loud)" }} />
-                  </div>
+                <span className="min-w-0">
+                  <LevelBar value={l.noise} max={maxNoise} color="var(--color-loud)" height={8} label={`${l.binary} noise`} />
                 </span>
               </button>
             ))}
