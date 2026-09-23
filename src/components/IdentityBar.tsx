@@ -8,40 +8,20 @@ import { isLiveRecording } from "../lib/live";
 import { fmtDuration } from "../lib/format";
 import { WriteupControl } from "./WriteupControl";
 import { AnimatedNumber } from "./AnimatedNumber";
+import { LevelBar } from "./dither";
+import { ditherMask, ditherTrack } from "../lib/dither";
 import type { ReactNode } from "react";
-
-/**
- * A machine attribute chip. `filled` tints the whole chip by its color — used for the attributes that
- * carry a signal (difficulty, latest). Plain chips are quiet metadata (OS, retired), so the eye goes
- * to the meaningful ones instead of a flat row of identical pills.
- */
-function Pill({ text, color, filled }: { text: string; color?: string; filled?: boolean }) {
-  if (filled && color) {
-    return (
-      <span
-        className="label rounded px-1.5 py-0.5 text-xs font-medium"
-        style={{
-          color,
-          backgroundColor: `color-mix(in oklch, ${color} 16%, transparent)`,
-          border: `1px solid color-mix(in oklch, ${color} 40%, transparent)`,
-        }}
-      >
-        {text}
-      </span>
-    );
-  }
-  return <span className="label rounded border border-edge px-1.5 py-0.5 text-xs text-faint">{text}</span>;
-}
 
 /** A 0–100 score's quality word, tiered to match tierColor (Good ≥ 65, Average ≥ 40, else Poor). */
 const tierWord = (v: number) => (v >= 65 ? "Good" : v >= 40 ? "Average" : "Poor");
 
-/** A headline score (grade / stealth) tinted by its quality color — number, sub-line, and a soft
- *  background band all carry the color so "good vs poor" reads at a glance. */
-function ScoreReadout({ label, value, sub, color }: { label: string; value: ReactNode; sub: string; color: string }) {
+/** A headline score (grade / stealth) tinted by its quality color — number, sub-line, a soft
+ *  background band, and a dithered level bar along the bottom edge all carry the color so
+ *  "good vs poor" reads at a glance. */
+function ScoreReadout({ label, value, sub, color, level }: { label: string; value: ReactNode; sub: string; color: string; level: number }) {
   return (
     <div
-      className="rounded-lg px-4 py-2 text-right"
+      className="relative overflow-hidden rounded-lg px-4 pb-[22px] pt-2 text-right"
       style={{
         backgroundColor: `color-mix(in oklch, ${color} 12%, transparent)`,
         border: `1px solid color-mix(in oklch, ${color} 32%, var(--color-edge))`,
@@ -54,18 +34,43 @@ function ScoreReadout({ label, value, sub, color }: { label: string; value: Reac
       <div className="label mt-1 tabular-nums" style={{ color }}>
         {sub}
       </div>
+      <div className="absolute inset-x-0 bottom-0">
+        <LevelBar value={level} color={color} height={8} label={`${label} ${Math.round(level)} of 100`} />
+      </div>
     </div>
   );
 }
 
-/** The pills row — difficulty/OS/retired/local, reused by both variants below. */
-function AttributePills({ target, retired }: { target: ReturnType<typeof targetOf>; retired: boolean }) {
+const LEVEL: Record<string, number> = { Easy: 1, Medium: 2, Hard: 3, Insane: 4 };
+
+/** Difficulty as four dithered pips (Easy 1 … Insane 4) plus the word, both in the difficulty colour. */
+export function DifficultyPips({ label, color }: { label: string; color: string }) {
+  const lv = LEVEL[label] ?? 0;
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {target.difficulty?.label && <Pill text={target.difficulty.label} color={DIFFICULTY_COLOR[target.difficulty.label]} filled />}
-      {target.os && <Pill text={target.os} />}
-      {retired && <Pill text="Retired" />}
-      {target.platform === "local" && <Pill text="Local" />}
+    <span className="inline-flex items-center gap-[7px]">
+      <span aria-hidden="true" className="inline-flex gap-0.5">
+        {[1, 2, 3, 4].map((n) => (
+          <i key={n} data-on={n <= lv || undefined} className="block h-2.5 w-1.5" style={n <= lv ? { background: color, ...ditherMask() } : ditherTrack()} />
+        ))}
+      </span>
+      <span className="label" style={{ color }}>
+        {label}
+      </span>
+    </span>
+  );
+}
+
+/** The identity metadata line: difficulty │ OS │ retired/local, no boxes. */
+function MetaLine({ target, retired }: { target: ReturnType<typeof targetOf>; retired: boolean }) {
+  const parts: ReactNode[] = [];
+  const diff = target.difficulty?.label;
+  if (diff) parts.push(<DifficultyPips key="d" label={diff} color={DIFFICULTY_COLOR[diff] ?? "var(--color-muted)"} />);
+  if (target.os) parts.push(<span key="os" className="label text-muted">{target.os}</span>);
+  if (retired) parts.push(<span key="r" className="label">Retired</span>);
+  if (target.platform === "local") parts.push(<span key="l" className="label">Local</span>);
+  return (
+    <div className="flex flex-wrap items-center gap-2.5">
+      {parts.flatMap((p, i) => (i ? [<span key={`s${i}`} aria-hidden="true" className="h-[11px] w-px bg-edge-bright" />, p] : [p]))}
     </div>
   );
 }
@@ -98,7 +103,7 @@ export function IdentityBar() {
             <div className="label text-faint">{platformLabel(target.platform)}</div>
             <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{target.name}</h1>
             <div className="mt-2">
-              <AttributePills target={target} retired={retired} />
+              <MetaLine target={target} retired={retired} />
             </div>
           </div>
         </div>
@@ -128,12 +133,14 @@ export function IdentityBar() {
                 value={<AnimatedNumber value={Math.round(metrics.stealth_score)} />}
                 sub={`/100 · ${tierWord(metrics.stealth_score)}`}
                 color={tierColor(metrics.stealth_score)}
+                level={metrics.stealth_score}
               />
               <ScoreReadout
                 label="Grade"
                 value={grade.letter}
                 sub={`${Math.round(grade.score)} / 100`}
                 color={gradeColor(grade.letter)}
+                level={grade.score}
               />
             </>
           )}
