@@ -3,6 +3,38 @@ import { ACTOR_COLORS, ACTOR_LABELS, DETOUR_COLOR } from "../lib/scale";
 import type { ActorMode } from "../types/report";
 import { ChevronDown } from "./icons";
 
+export interface SectionLead {
+  value: ReactNode;
+  unit?: string;
+  caption: string;
+  color?: string;
+}
+
+/** A section's single lead figure: one big number and a short caption, read before any detail. */
+function Lead({ lead }: { lead: SectionLead }) {
+  return (
+    <div className="flex items-baseline gap-3 pb-3.5 pt-0.5">
+      <span className="font-display text-[40px] font-bold leading-none tracking-[-0.035em] tabular-nums" style={{ color: lead.color ?? "var(--color-fg)" }}>
+        {lead.value}
+        {lead.unit && <small className="ml-0.5 text-[0.5em] font-semibold tracking-normal text-muted">{lead.unit}</small>}
+      </span>
+      <span className="text-[13px] leading-snug text-muted">{lead.caption}</span>
+    </div>
+  );
+}
+
+/** A subtitle demoted to help: an "i" with the text as tooltip + screen-reader text. */
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="inline-flex items-center">
+      <span aria-hidden="true" title={text} className="cursor-help select-none rounded-full border border-edge-bright px-[5px] font-mono text-[10px] leading-4 text-faint">
+        i
+      </span>
+      <span className="sr-only">{text}</span>
+    </span>
+  );
+}
+
 /**
  * A flat console section — a stenciled label over a hairline rule, content flush on the ground. No
  * card border/bg (the Antimetal "ledger" feel); pass `boxed` only where grouping truly needs a box.
@@ -20,6 +52,8 @@ export function Section({
   defaultOpen = false,
   srTitle = false,
   dataShot,
+  num,
+  lead,
 }: {
   title?: string;
   subtitle?: string;
@@ -40,9 +74,18 @@ export function Section({
   /** Presentation-only capture anchor for the screenshot tooling (scripts/screenshots.mjs) — a
    *  stable `data-shot="…"` hook on the outer element, inert otherwise. */
   dataShot?: string;
+  /** A numbered eyebrow prefix (e.g. "02"), printed in signal color before the title. */
+  num?: string;
+  /** The section's single lead figure, rendered between the header and the hairline rule. */
+  lead?: SectionLead;
 }) {
-  const titleEl = title && <h2 className={`font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted ${srTitle ? "sr-only" : ""}`}>{title}</h2>;
-  const subEl = subtitle && <span className="text-xs text-faint">{subtitle}</span>;
+  const titleEl = title && (
+    <h2 className={`label ${srTitle ? "sr-only" : ""}`}>
+      {num && <span className="mr-3 text-signal">{num}</span>}
+      {title}
+    </h2>
+  );
+  const subEl = subtitle && <InfoTip text={subtitle} />;
   const rightEl = right && <div className="text-xs text-muted">{right}</div>;
 
   if (collapsible) {
@@ -71,7 +114,7 @@ export function Section({
   return (
     <section
       data-shot={dataShot}
-      className={`relative ${boxed ? "rounded border border-edge bg-panel px-4 py-3" : ""} ${i != null ? "rise" : ""} ${className}`}
+      className={`relative ${boxed ? "rounded-md border border-edge px-4 py-3" : ""} ${i != null ? "rise" : ""} ${className}`}
       style={i != null ? ({ "--i": i } as CSSProperties) : undefined}
     >
       {(title || right) && (
@@ -83,6 +126,7 @@ export function Section({
           {rightEl}
         </header>
       )}
+      {lead && <Lead lead={lead} />}
       <div className="h-px bg-edge" />
       <div className="pt-3">{children}</div>
     </section>
@@ -131,8 +175,8 @@ export function Collapse({
     >
       <summary data-shot={summaryDataShot} className="flex cursor-pointer list-none items-baseline gap-2.5 py-1 [&::-webkit-details-marker]:hidden">
         <ChevronDown className="text-faint transition-transform duration-200 group-open/sec:rotate-180" />
-        <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>
-        {subtitle && <span className="text-xs text-faint">{subtitle}</span>}
+        <h2 className="label">{title}</h2>
+        {subtitle && <InfoTip text={subtitle} />}
       </summary>
       <div className="mt-2 h-px bg-edge" />
       <div className="pt-3">{children}</div>
@@ -205,14 +249,14 @@ export function Panel({
 }) {
   return (
     <section
-      className={`relative rounded-lg border border-edge bg-panel ${i != null ? "rise" : ""} ${className}`}
+      className={`relative rounded-lg border border-edge ${i != null ? "rise" : ""} ${className}`}
       style={i != null ? ({ "--i": i } as CSSProperties) : undefined}
     >
       {(title || right) && (
         <header className="flex items-baseline justify-between gap-4 px-5 pt-3.5 pb-3">
           <div className="flex items-baseline gap-3">
-            {title && <h2 className="font-display text-sm font-semibold uppercase tracking-[0.13em] text-muted">{title}</h2>}
-            {subtitle && <span className="text-xs text-faint">{subtitle}</span>}
+            {title && <h2 className="label">{title}</h2>}
+            {subtitle && <InfoTip text={subtitle} />}
           </div>
           {right && <div className="text-xs text-muted">{right}</div>}
         </header>
@@ -338,6 +382,35 @@ export function ActorLegend() {
           {l.label}
         </span>
       ))}
+    </div>
+  );
+}
+
+/** A flat hairline tag: mono, uppercase, bordered in a tint of its own colour. Replaces tinted pills. */
+export function Tag({ color = "var(--color-muted)", border, className = "", children }: { color?: string; border?: string; className?: string; children: ReactNode }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-[3px] border px-[7px] py-1 font-mono text-[10.5px] font-medium uppercase leading-none tracking-[0.1em] ${className}`}
+      style={{ color, borderColor: border ?? `color-mix(in oklch, ${color} 40%, transparent)` }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** A tally legend: colour square, bold count, label. Zero counts are omitted. */
+export function TallyKey({ items }: { items: { label: string; count: number; color: string }[] }) {
+  return (
+    <div className="label mt-2 flex flex-wrap gap-[18px]">
+      {items
+        .filter((i) => i.count > 0)
+        .map((i) => (
+          <span key={i.label} className="inline-flex items-center">
+            <i aria-hidden="true" className="mr-[7px] inline-block h-2 w-2" style={{ background: i.color }} />
+            <b className="mr-[5px] font-semibold text-fg">{i.count}</b>
+            {i.label}
+          </span>
+        ))}
     </div>
   );
 }
