@@ -209,3 +209,7 @@ A run persisted to the optional encrypted store can be rebuilt into the same gra
 ## Privacy
 
 By default your session never leaves the machine, and redaction runs before anything hits disk. Two opt-in paths make outbound requests, each by your action. One is fetching a write-up you asked for (a public blog, or your own HTB write-up via the API once you add a token). The other, only if you pick a **cloud** coaching model (Claude / ChatGPT / Gemini) over the local one, is sending that model your commands, redacted first (IPs, creds, flags stripped). Rules-based and local (Ollama) coaching stay fully offline, and API keys and tokens are stored only on your machine. More in **[TESTING.md](TESTING.md)**.
+
+## License
+
+[AGPL-3.0](LICENSE). You can use, study, and modify The Watcher freely; if you distribute a modified version, or run one as a network service, you must publish your changes under the same license.

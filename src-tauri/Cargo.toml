@@ -1,6 +1,7 @@
 [package]
 name = "watcher"
 version = "0.1.0"
+license = "AGPL-3.0-only"
 description = "The Watcher — local-first flight data recorder for ethical hackers"
 authors = ["The Watcher"]
 edition = "2021"

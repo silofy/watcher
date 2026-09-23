@@ -1,6 +1,7 @@
 [package]
 name = "watcher-capture"
 version = "0.1.0"
+license = "AGPL-3.0-only"
 edition = "2021"
 description = "The Watcher — cross-platform PTY capture proof-of-concept (ConPTY on Windows, openpty on Unix)"
 

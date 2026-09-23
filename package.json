@@ -1,6 +1,7 @@
 {
   "name": "watcher-report",
   "private": true,
+  "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "type": "module",
   "description": "The Watcher — interactive report UI (Phase 1 vertical slice). Renders a schema-versioned session JSON as the operator's mirror.",
