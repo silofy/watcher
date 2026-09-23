@@ -217,7 +217,15 @@ export function App() {
                 ghost data render nothing here. */}
             {report.ghost?.items?.length ? (
               <Rise i={5} id="ghost">
-                <Section title="You vs. the Ghost" subtitle="the optimal line from where you stood — wins first">
+                <Section
+                  title="You vs. the Ghost"
+                  num={num.ghost}
+                  lead={{
+                    value: Math.round((report.ghost.time_lost_ms ?? 0) / 60000),
+                    unit: " min",
+                    caption: `lost to late pivots${report.ghost.human_wins ? ` · you beat the optimal line ${report.ghost.human_wins}×` : ""}`,
+                  }}
+                >
                   <GhostCard />
                 </Section>
               </Rise>

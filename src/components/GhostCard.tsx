@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useReport } from "../store/report";
-import { refinedNotes, verdictMeta } from "../lib/ghost/ghost-view";
+import { refinedNotes } from "../lib/ghost/ghost-view";
 import { narrateGhost } from "../lib/ghost/narrate";
 import type { GhostDiffItem, GhostResult } from "../lib/ghost/ghost";
 import { resolveProvider } from "../lib/llm";
-import { humanizeObjective } from "../lib/audits";
-import { fmtMinutes } from "../lib/format";
-import { Chip } from "./ui";
+import { ghostHeadline, verdictCounts, VERDICT, VERDICT_ORDER } from "../lib/ghost/headline";
+import { PivotStrip } from "./PivotStrip";
+import { TallyKey } from "./ui";
+import { ditherMask } from "../lib/dither";
 
 /** "You vs. the Ghost" — the counterfactual "optimal-from-your-state" comparison (schema v1.4).
  *  Leads with human wins (ahead / off-path captures) before the time lost to late pivots, then a
@@ -19,6 +20,7 @@ import { Chip } from "./ui";
 export function GhostCard() {
   const ghost = useReport((s) => s.report.ghost);
   const reveal = useReport((s) => s.reveal);
+  const total = useReport((s) => s.report.episodes.length);
   const items = ghost?.items ?? [];
   const [narrated, setNarrated] = useState<Map<string, string>>(new Map());
 
@@ -52,57 +54,30 @@ export function GhostCard() {
 
   if (!items.length) return null;
 
-  const wins = ghost?.human_wins ?? 0;
-  const lostMs = ghost?.time_lost_ms ?? 0;
+  const head = ghostHeadline(items);
+  const counts = verdictCounts(items);
 
   return (
-    <div className="flex flex-col gap-3" data-shot="ghost">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        {wins > 0 && (
-          <p className="text-sm font-medium" style={{ color: "var(--color-match)" }}>
-            You beat the optimal line {wins}× — the write-up didn't see that coming.
-          </p>
+    <div className="flex flex-col gap-[18px]" data-shot="ghost">
+      <p className="max-w-[60ch] text-[17px] font-semibold leading-snug text-fg">
+        {head.kind === "pivots" ? (
+          <>
+            {head.count} of {head.total} objectives were reachable from <span className="text-loud">step {head.unlockSeq}</span>. You worked through them one at a time until step{" "}
+            {head.lastSeq}.
+          </>
+        ) : (
+          "You stayed on the optimal line."
         )}
-        {lostMs > 0 && (
-          <p className="text-sm text-faint">
-            <span className="mono text-fg">{fmtMinutes(lostMs)}</span> lost to late pivots.
-          </p>
-        )}
-        {wins === 0 && lostMs === 0 && <p className="text-sm text-faint">You tracked the optimal line step for step.</p>}
+      </p>
+      <div>
+        <div className="flex h-2.5 gap-0.5" aria-hidden="true">
+          {VERDICT_ORDER.filter((k) => counts[k]).map((k) => (
+            <i key={k} style={{ flex: counts[k], background: VERDICT[k].color, ...ditherMask() }} />
+          ))}
+        </div>
+        <TallyKey items={VERDICT_ORDER.map((k) => ({ label: VERDICT[k].label, count: counts[k], color: VERDICT[k].color }))} />
       </div>
-
-      <ul className="flex flex-col gap-1">
-        {items.map((it) => {
-          const meta = verdictMeta(it.verdict);
-          const seq = it.actual_seq ?? it.unlock_seq;
-          const refined = narrated.get(it.objective);
-          const note = refined ?? it.note;
-          const body = (
-            <>
-              <Chip color={meta.tone}>{meta.label}</Chip>
-              <span className="text-xs text-muted">{humanizeObjective(it.objective)}</span>
-              {note && <span className="text-sm text-fg">{note}</span>}
-              {refined && <span className="label rounded bg-signal/20 px-1.5 text-xs text-signal">ai</span>}
-            </>
-          );
-          return (
-            <li key={it.objective}>
-              {seq != null ? (
-                <button
-                  type="button"
-                  onClick={() => reveal(seq)}
-                  className="flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded px-1.5 py-1 text-left transition-colors hover:bg-panel-2/60"
-                  title={`jump to step #${seq}`}
-                >
-                  {body}
-                </button>
-              ) : (
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-1.5 py-1">{body}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <PivotStrip items={items} total={total} notes={narrated} onReveal={reveal} />
     </div>
   );
 }
