@@ -20,4 +20,16 @@ describe("pickOneLesson pivot", () => {
     const lesson = pickOneLesson(withGhost([{ objective: "a", verdict: "late_pivot", unlock_seq: null, actual_seq: 9, lag_ms: 1 }]));
     expect(lesson?.pivot).toBeUndefined();
   });
+
+  it("falls back to a null-free sentence when a pivot step is missing", () => {
+    const lesson = pickOneLesson(withGhost([{ objective: "read_rclone_config", verdict: "late_pivot", unlock_seq: null, actual_seq: 9, lag_ms: 1 }]));
+    expect(lesson?.text).not.toMatch(/null/i);
+    expect(lesson?.text).toBe("You sat on Read rclone config after its prerequisites surfaced.");
+  });
+
+  it("states the pivot plainly, with no em dash, when both steps are known", () => {
+    const lesson = pickOneLesson(withGhost([{ objective: "read_rclone_config", verdict: "late_pivot", unlock_seq: 5, actual_seq: 15, lag_ms: 1 }]));
+    expect(lesson?.text).not.toContain("—");
+    expect(lesson?.text).toBe("Unlocked for Read rclone config at step 5, but you didn't act until step 15.");
+  });
 });
