@@ -22,8 +22,9 @@ import { Onboarding } from "./components/Onboarding";
 import { isLiveRecording } from "./lib/live";
 import { pickOneLesson } from "./lib/one-lesson";
 import { shouldShowNudge } from "./lib/onboarding";
-import { ArrowUpRight, ScanEye } from "./components/icons";
+import { ScanEye } from "./components/icons";
 import { ditherMask } from "./lib/dither";
+import { StepStrip } from "./components/StepStrip";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
   return (
@@ -59,32 +60,36 @@ function HeroLesson() {
   const { report, reveal } = useReport();
   const lesson = pickOneLesson(report);
   if (!lesson) return null;
+  const p = lesson.pivot;
+  const total = report.episodes.length;
   const body = (
-    <>
-      <span className="label text-signal">The one lesson</span>
-      <p className="mt-2 text-xl font-semibold leading-snug text-fg sm:text-2xl">{lesson.text}</p>
-      {lesson.evidence_seq != null && (
-        <span className="label mt-2 flex items-center gap-0.5 text-signal/70">
-          jump to step {lesson.evidence_seq} <ArrowUpRight size={12} />
-        </span>
-      )}
-    </>
+    <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_290px] md:items-end">
+      <div>
+        <span className="label text-signal">The one lesson</span>
+        <p className="mt-3 text-balance font-display text-[34px] font-bold leading-[1.08] tracking-[-0.03em] text-fg">
+          {p ? (
+            <>
+              The way forward opened at step {p.unlock_seq}. <span className="text-loud">You took it at step {p.acted_seq}.</span>
+            </>
+          ) : (
+            lesson.text
+          )}
+        </p>
+        {lesson.evidence_seq != null && <span className="label mt-3.5 inline-block text-signal">Replay step {lesson.evidence_seq} →</span>}
+      </div>
+      {p && total > 0 && <StepStrip unlock={p.unlock_seq} acted={p.acted_seq} total={total} />}
+    </div>
   );
+  const cls = "block w-full border-y border-edge py-7 text-left";
   if (lesson.evidence_seq == null) {
     return (
-      <div data-shot="one-lesson" className="rounded-xl border border-signal/40 bg-signal/10 px-6 py-5">
+      <div data-shot="one-lesson" className={cls}>
         {body}
       </div>
     );
   }
   return (
-    <button
-      type="button"
-      data-shot="one-lesson"
-      onClick={() => reveal(lesson.evidence_seq!)}
-      className="w-full rounded-xl border border-signal/40 bg-signal/10 px-6 py-5 text-left transition-colors hover:bg-signal/15"
-      title={`jump to step #${lesson.evidence_seq}`}
-    >
+    <button type="button" data-shot="one-lesson" onClick={() => reveal(lesson.evidence_seq!)} className={`${cls} transition-colors hover:bg-panel/60`} title={`Replay step ${lesson.evidence_seq}`}>
       {body}
     </button>
   );
