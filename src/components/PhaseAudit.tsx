@@ -338,7 +338,7 @@ function GeneralCard({ items }: { items: AuditItem[] }) {
  * directly under the KPI stats: scannable, text-first, actionable. Complements (does not replace) the
  * timeline/graph sections below.
  */
-export function PhaseAudit({ hideTakeaway = false }: { hideTakeaway?: boolean } = {}) {
+export function PhaseAudit({ hideTakeaway = false, num }: { hideTakeaway?: boolean; num?: string } = {}) {
   const s = useReport();
   const { phases, general } = buildPhaseAudits(s.report);
   if (phases.length === 0 && general.length === 0) return null;
@@ -354,7 +354,7 @@ export function PhaseAudit({ hideTakeaway = false }: { hideTakeaway?: boolean } 
   const takeaway = !hideTakeaway && lead ? stepText(lead) : undefined;
 
   return (
-    <Section dataShot="phase-audit" title="Phase audit" subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}>
+    <Section dataShot="phase-audit" num={num} title="Phase audit" subtitle={`per MITRE phase · ${totalInsights} insight${totalInsights === 1 ? "" : "s"}, ${totalManual} to check`}>
       {takeaway && (
         <div className="mb-3 rounded-lg bg-signal/10 px-3.5 py-3">
           <span className="label text-signal">Key takeaway</span>

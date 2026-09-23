@@ -30,7 +30,7 @@ function Count({ n, label, color }: { n: number; label: string; color: string })
   );
 }
 
-export function PathComparison() {
+export function PathComparison({ num }: { num?: string } = {}) {
   const { report } = useReport();
   const recording = isLiveRecording(report);
   const coverage = Math.round(report.metrics.objective_coverage_pct);
@@ -46,6 +46,7 @@ export function PathComparison() {
   return (
     <Section
       dataShot="path"
+      num={num}
       title="What you'd do differently"
       subtitle="the intended write-up path vs your route"
       right={

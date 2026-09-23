@@ -122,6 +122,9 @@ export function App() {
     if (revealNonce > 0 && revealNonce !== prev) setEvidenceOpen(true);
   }, [revealNonce]);
 
+  const hasGhost = !!report.ghost?.items?.length;
+  const num = { path: "01", audit: "02", ghost: "03", grade: hasGhost ? "04" : "03" };
+
   return (
     <div className="min-h-full">
       {onboardingOpen && <Onboarding />}
@@ -200,13 +203,13 @@ export function App() {
 
             {/* 3. what you'd do differently */}
             <Rise i={3} id="path">
-              <PathComparison />
+              <PathComparison num={num.path} />
             </Rise>
 
             {/* 4. phase audit — the actionable per-phase spine (its own takeaway banner is suppressed,
                 since the hero above already leads with it) */}
             <Rise i={4} id="audit">
-              <PhaseAudit hideTakeaway />
+              <PhaseAudit hideTakeaway num={num.audit} />
             </Rise>
 
             {/* 4b. you vs. the ghost — the optimal line from where you stood, visible in the main
@@ -223,7 +226,7 @@ export function App() {
             {/* 4c. the grade — visible in the main narrative (not buried in the collapsed drawer
                 below), since a verdict this load-bearing shouldn't need a click to see. */}
             <Rise i={6} id="grade">
-              <Assessment />
+              <Assessment num={num.grade} />
             </Rise>
 
             {/* 5. evidence & detail — the raw record, collapsed by default. `Collapse` is a native
