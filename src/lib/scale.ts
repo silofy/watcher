@@ -10,13 +10,12 @@
 import { scaleLinear, type ScaleLinear } from "d3-scale";
 import type { ActorMode, Alignment, Episode, Phase } from "../types/report";
 
-// OKLCH instrument legend — mirrors src/index.css. Calibrated to one lightness/chroma band so the
-// four modes read as a single legend, not a neon dashboard. WebView2/Chromium render oklch in SVG.
+// Instrument legend — mirrors src/index.css. WebView2/Chromium render oklch in SVG.
 export const ACTOR_COLORS: Record<ActorMode, string> = {
-  machine_bound: "oklch(0.81 0.104 292)", // tool — grinding, human waiting (lavender)
-  human_active: "oklch(0.79 0.135 179)", // manual — iteration (teal)
-  think_pause: "oklch(0.78 0.129 25)", // stuck — reasoning or stuck (coral)
-  idle: "oklch(0.5 0.03 250)", // walked away — excluded from analytics
+  machine_bound: "oklch(0.8 0.085 292)", // tool (lavender)
+  human_active: "#2fe6b0", // manual (mint)
+  think_pause: "oklch(0.78 0.129 25)", // stuck (coral)
+  idle: "oklch(0.5 0.03 250)", // walked away
 };
 
 export const ACTOR_LABELS: Record<ActorMode, string> = {
@@ -51,8 +50,8 @@ export function httpParts(cmd: string): { method: string; path: string } {
 }
 
 export const ALIGNMENT_COLORS: Record<NonNullable<Alignment>, string> = {
-  match: "oklch(0.76 0.139 179)", // on the golden path — teal
-  alternative: "oklch(0.85 0.13 201)", // alternative method — cyan
+  match: "#2fe6b0", // on the golden path — mint
+  alternative: "oklch(0.84 0.1 201)", // alternative method — cyan
   detour: "oklch(0.66 0.16 29)", // wasted effort — deep coral
   skipped: "oklch(0.6 0.045 250)", // missed objective — cool slate
   out_of_order: "oklch(0.78 0.129 25)", // right thing, wrong time — coral
