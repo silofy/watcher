@@ -56,7 +56,7 @@ What was tried and **rejected** (don't reintroduce):
 | `--color-edge-bright` | `oklch(0.44 0.05 290)` | `#34343a` |
 | `--color-fg` | `oklch(0.92 0.012 281)` | `#ededee` |
 | `--color-muted` | `oklch(0.73 0.022 284)` | `#a0a3aa` |
-| `--color-faint` | `oklch(0.56 0.03 286)` | `#6a6e76` |
+| `--color-faint` | `oklch(0.56 0.03 286)` | `#80848c` (the preview's `#6a6e76` is only ~3.8:1 on `#0b0b0c`; §9 needs ≥ 4.5:1 for 10.5px eyebrows) |
 | `--color-signal` / `--color-match` / `--color-manual` | `oklch(0.76 0.139 179)` family | `#2fe6b0` (dim: `#22b58a`) |
 | `--color-tool` | `oklch(0.81 0.104 292)` | `oklch(0.8 0.085 292)` (less glow on black) |
 | `--color-alt` | `oklch(0.85 0.13 201)` | `oklch(0.84 0.1 201)` |
@@ -111,6 +111,11 @@ Used: KPI tile levels · phase levels · metric bars · loudest-moment bars · d
   - OS in `muted` mono, Retired/Local in `faint`, separated by 1px `edge-bright` rules.
 - **Score tiles** (`ScoreReadout`): a `LevelBar` (8px) across the bottom, value in the tile's tier colour, with **22px** bottom padding so it doesn't crowd the `/100 · GOOD` line.
 - **Header buttons:** Finish setup loses the ⚡ emoji and the pill: transparent, 1px mint border at 45%, 3px corners, mono label, an 8px **dithered mint lamp** that pulses (opacity 1 → .35, 1.8s; static, fully opaque, under `prefers-reduced-motion`), and an arrow that nudges 2px on hover. Pwnbox / AI·setup get the same corners.
+
+### 4.1 Sticky header and setup entry (added 2026-09-22, validated in preview)
+- **Height 64px** (was ~44px): the row is `min-h-16`; the nav stretches the full height so the active tab's underline sits **on** the header's bottom rule (`-mb-px`).
+- **Tabs:** 12px mono eyebrow, `0.12em`; inactive `muted` (not `faint`), hover `fg`; **active `fg`, weight 600, 2px `signal` bar**. 28px between tabs.
+- **One setup entry point (user decision):** the **Install tab is removed**. Setup lives only in the onboarding wizard, opened by the header button ("Finish setup" until the first real capture, then "Setup guide"). **Everything on the Install page moves into the wizard's capture step** as an "All setup options" section (own-machine, Pwnbox incl. live auto-pull, reference path, AI coaching, status note), so no information is lost. The `"install"` view is deleted; PwnboxSync's "setup" link opens the wizard at the capture step.
 
 ---
 
