@@ -58,6 +58,6 @@ describe("report renders end-to-end", () => {
   });
 
   it("renders the skipped objective from the golden DAG", () => {
-    expect(html).toContain("never attempted");
+    expect(html).toContain("Never attempted");
   });
 });
