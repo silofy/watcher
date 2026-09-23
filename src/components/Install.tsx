@@ -46,10 +46,12 @@ export function InstallReference() {
 
       <div className="space-y-3">
         <Tier n="A" title="On your own machine" req={<Req tone="desktop">desktop app · any OS</Req>} unlocks="You attack over OpenVPN from your own Kali/Parrot/WSL. Run a watched shell — each command streams into the debrief live.">
-          <Code>npm run capture -- --machine &lt;name&gt;</Code>
-          <Step>Run it from the repo root. It builds the capture agent the first time, then streams each command live as you run it. <code>exit</code> to stop. macOS / Linux / Windows.</Step>
-          <Step>Other platforms name the target neutrally: <code>npm run capture -- --platform thm --target &lt;name&gt;</code>.</Step>
-          <Step>A second terminal running <code>npm run capture</code> on the same box asks whether to join the live session or start fresh — add <code>-- --new</code> to force a new one. Pick a shell with <code>-- --shell bash</code> (or <code>pwsh</code>, <code>zsh</code>, …).</Step>
+          <Step><span className="text-fg">1. Install the capture agent</span> — one line, no toolchain. It downloads the prebuilt binary and verifies its checksum:</Step>
+          <Code>curl -fsSL https://raw.githubusercontent.com/silofy/watcher/main/install.sh | sh</Code>
+          <Step>On Windows (PowerShell): <code>irm https://raw.githubusercontent.com/silofy/watcher/main/install.ps1 | iex</code></Step>
+          <Step><span className="text-fg">2. Run a watched shell</span> — each command streams in live as you run it. <code>exit</code> to stop.</Step>
+          <Code>watcher-capture --attach --platform htb --target &lt;box&gt;</Code>
+          <Step>Other platforms: <code>--platform thm</code> (or <code>offsec</code>, <code>immersive</code>, <code>local</code>). A second terminal on the same box asks whether to join the live session or start fresh — add <code>--new</code> to force a new one. Pick a shell with <code>--shell bash</code> (or <code>pwsh</code>, <code>zsh</code>, …). From a source checkout, <code>npm run capture -- …</code> does the same.</Step>
         </Tier>
 
         <div className="flex items-center gap-3 px-2 py-0.5">
@@ -59,11 +61,11 @@ export function InstallReference() {
         </div>
 
         <Tier n="B" title="In Pwnbox" req={<Req tone="desktop">desktop app</Req>} unlocks="You hack in HTB's cloud Pwnbox (a pixel stream). Run the agent inside it, then bring the export back. The basic flow needs no SSH keys.">
-          <Step><span className="text-fg">1. Put the agent in Pwnbox.</span> It's in your checkout — upload it with Pwnbox's file-transfer button, or <code>scp</code> it up:</Step>
-          <Code>scp crates/capture/dist/watcher-capture-linux-x86_64 &lt;user&gt;@&lt;host&gt;:~/</Code>
+          <Step><span className="text-fg">1. Install the agent in Pwnbox.</span> Pwnbox has internet, so paste this into its terminal:</Step>
+          <Code>curl -fsSL https://raw.githubusercontent.com/silofy/watcher/main/install.sh | sh</Code>
           <Step><span className="text-fg">2. Run it</span> in the Pwnbox terminal — hack, then <code>exit</code>:</Step>
-          <Code>chmod +x watcher-capture-linux-x86_64 &amp;&amp; ./watcher-capture-linux-x86_64 --export ~/box.json --machine &lt;box&gt;</Code>
-          <Step><span className="text-fg">3. Bring it back.</span> Download <code>box.json</code> from Pwnbox, then drag it onto the <span className="text-fg">History</span> tab — it opens as a debrief. No keys, no config.</Step>
+          <Code>watcher-capture --export ~/.watcher-exports/box.json --platform htb --target &lt;box&gt;</Code>
+          <Step><span className="text-fg">3. Bring it back.</span> Download <code>~/.watcher-exports/box.json</code> from Pwnbox, then drag it onto the <span className="text-fg">History</span> tab — it opens as a debrief. No keys, no config.</Step>
           <Step className="pt-1.5"><span className="text-fg">Optional — live auto-pull.</span> Skip the download: Watcher <code>scp</code>-pulls every 15s straight into History. Top bar → <span className="text-fg">Pwnbox</span> → enable <span className="text-fg">Auto-pull</span>, paste <code>user@host</code>. The pull is key-based, so enable key login once (Pwnbox gives a password — this uses it one time):</Step>
           <Code>ssh-copy-id &lt;user&gt;@&lt;host&gt;</Code>
         </Tier>

@@ -228,14 +228,16 @@ export function StepCapture() {
   return (
     <div className="space-y-5">
       <p className="max-w-prose text-[15px] leading-relaxed text-muted">
-        One command, from the repo root, turns a shell into a recorded session. Play a box in another window {"—"} each
-        command streams into a live debrief here.
+        Install the capture agent once, then one command turns a shell into a recorded session. Play a box in another
+        window {"—"} each command streams into a live debrief here.
       </p>
 
-      <CommandRow cmd="npm run capture -- --machine <box>" />
+      <CommandRow cmd="curl -fsSL https://raw.githubusercontent.com/silofy/watcher/main/install.sh | sh" />
+      <CommandRow cmd="watcher-capture --attach --platform htb --target <box>" />
       <p className="text-xs text-faint">
-        Other platforms name the target neutrally:{" "}
-        <code className="mono rounded bg-panel-2 px-1 py-0.5 text-fg">--platform thm --target &lt;name&gt;</code>
+        On Windows, install with{" "}
+        <code className="mono rounded bg-panel-2 px-1 py-0.5 text-fg">irm https://raw.githubusercontent.com/silofy/watcher/main/install.ps1 | iex</code>
+        . Other platforms: <code className="mono rounded bg-panel-2 px-1 py-0.5 text-fg">--platform thm</code>.
       </p>
 
       {newest ? (
