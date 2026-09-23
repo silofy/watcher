@@ -11,7 +11,6 @@ import { GhostCard } from "./components/GhostCard";
 import { PathComparison } from "./components/PathComparison";
 import { History } from "./components/History";
 import { Progress } from "./components/Progress";
-import { Install } from "./components/Install";
 import { WriteupGate } from "./components/WriteupGate";
 import { LlmStatusChip } from "./components/LlmStatusChip";
 import { PwnboxSync } from "./components/PwnboxSync";
@@ -24,6 +23,7 @@ import { isLiveRecording } from "./lib/live";
 import { pickOneLesson } from "./lib/one-lesson";
 import { shouldShowNudge } from "./lib/onboarding";
 import { ArrowUpRight, ScanEye } from "./components/icons";
+import { ditherMask } from "./lib/dither";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
   return (
@@ -33,15 +33,15 @@ function Rise({ i, className, id, children }: { i: number; className?: string; i
   );
 }
 
-function Tab({ id, label }: { id: "debrief" | "history" | "install" | "progress"; label: string }) {
+function Tab({ id, label }: { id: "debrief" | "history" | "progress"; label: string }) {
   const { view, setView } = useReport();
   const active = view === id;
   return (
     <button
       type="button"
       onClick={() => setView(id)}
-      className={`label border-b-2 px-1 pb-1.5 pt-0.5 transition-colors ${
-        active ? "border-signal text-fg" : "border-transparent text-faint hover:text-muted"
+      className={`label -mb-px flex items-center border-b-2 px-0.5 text-xs tracking-[0.12em] transition-colors ${
+        active ? "border-signal font-semibold text-fg" : "border-transparent text-muted hover:text-fg"
       }`}
     >
       {label}
@@ -129,19 +129,18 @@ export function App() {
       <DemoDriver />
       <header className="sticky top-0 z-10 bg-ink/90 backdrop-blur">
         <div className="border-b border-edge">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-5">
-            <div className="flex items-center gap-7 py-2.5">
+          <div className="mx-auto flex min-h-16 max-w-6xl items-stretch justify-between gap-6 px-5">
+            <div className="flex items-stretch gap-7">
               <div className="flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-signal/15 text-signal">
                   <ScanEye size={13} />
                 </span>
                 <span className="font-display font-semibold tracking-tight text-fg">The Watcher</span>
               </div>
-              <nav className="flex items-center gap-5">
+              <nav className="flex items-stretch gap-7">
                 <Tab id="debrief" label="Debrief" />
                 <Tab id="history" label="History" />
                 <Tab id="progress" label="Progress" />
-                <Tab id="install" label="Install" />
               </nav>
             </div>
             <div className="flex items-center gap-2.5 text-xs">
@@ -149,10 +148,12 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => { setOnboardingStep(1); openOnboarding(); }}
-                  className="label inline-flex items-center gap-1 rounded-full border border-signal/50 bg-signal/10 px-2.5 py-1 text-signal transition-colors hover:bg-signal/15"
+                  className="group inline-flex items-center gap-2 rounded-[3px] border border-signal/45 px-3 py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-signal transition-colors hover:border-signal hover:bg-signal/5"
                   title="Finish setup — capture your first run"
                 >
-                  ⚡ Finish setup <ArrowUpRight size={12} />
+                  <span aria-hidden="true" className="setup-lamp inline-block h-2 w-2 bg-signal" style={ditherMask()} />
+                  Finish setup
+                  <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
                 </button>
               ) : (
                 <button type="button" onClick={openOnboarding} className="label text-faint hover:text-muted">
@@ -171,9 +172,7 @@ export function App() {
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-5">
-        {view === "install" ? (
-          <Install />
-        ) : view === "history" ? (
+        {view === "history" ? (
           <History />
         ) : view === "progress" ? (
           <Progress />

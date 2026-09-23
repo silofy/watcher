@@ -4,7 +4,8 @@ import { STEP_COUNT, deriveChecklist } from "../lib/onboarding";
 import { llmStatus, pullModel, DEFAULT_MODEL } from "../lib/llm/runtime";
 import { setCoachMode } from "../lib/llm/mode";
 import { setApiKey, CLOUD_LABEL, type CloudName } from "../lib/llm/cloud";
-import { Check, ScanEye, ArrowUpRight, Terminal, Crosshair } from "./icons";
+import { Check, ScanEye, ArrowUpRight, Terminal, Crosshair, ChevronDown } from "./icons";
+import { InstallReference } from "./Install";
 
 /** Tauri-only: never read `window` at module load — only inside handlers/effects. */
 const isDesktop = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -216,7 +217,7 @@ function StepMeet() {
 
 // ── step ② Capture your first run ──────────────────────────────────────────
 
-function StepCapture() {
+export function StepCapture() {
   const { sessionCards, switchSession, closeOnboarding, setOnboardingStep, onboardingStep } = useReport();
 
   const realCards = sessionCards.filter((c) => !c.demo);
@@ -273,6 +274,16 @@ function StepCapture() {
           <Ghost onClick={() => setOnboardingStep(onboardingStep + 1)}>Skip for now {"—"} I{"’"}ll capture later {"→"}</Ghost>
         </div>
       )}
+
+      <details className="group/all border-t border-edge pt-4">
+        <summary className="label flex cursor-pointer list-none items-center gap-2 text-muted [&::-webkit-details-marker]:hidden">
+          <ChevronDown size={12} className="transition-transform group-open/all:rotate-180" />
+          All setup options
+        </summary>
+        <div className="mt-4">
+          <InstallReference />
+        </div>
+      </details>
     </div>
   );
 }
