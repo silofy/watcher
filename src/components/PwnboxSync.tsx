@@ -24,7 +24,8 @@ function Field({ label, value, onChange, placeholder, type = "text" }: { label: 
  * Pwnbox header control. The dropdown is deliberately minimal — three plain steps and a link to the
  * full commands in Setup — so it reads at a glance instead of dumping CLI. The optional live auto-pull
  * (SSH) is a compact toggle; when on it keeps polling the Rust `pull_pwnbox` command and the live
- * bridge ingests what lands. The step-by-step commands live in the Setup tab, which has room for them.
+ * bridge ingests what lands. The step-by-step commands live in the setup wizard's capture step
+ * ("All setup options"), which has room for them.
  */
 export function PwnboxSync() {
   const { openOnboarding, setOnboardingStep } = useReport();

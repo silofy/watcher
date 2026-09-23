@@ -85,7 +85,7 @@ export function Section({
       {title}
     </h2>
   );
-  const subEl = subtitle && <InfoTip text={subtitle} />;
+  const subEl = subtitle && (srTitle ? <span className="text-xs text-faint">{subtitle}</span> : <InfoTip text={subtitle} />);
   const rightEl = right && <div className="text-xs text-muted">{right}</div>;
 
   if (collapsible) {
