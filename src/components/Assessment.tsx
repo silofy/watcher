@@ -1,5 +1,5 @@
 import { useReport } from "../store/report";
-import { Section, tierColor } from "./ui";
+import { Section, Tag, tierColor } from "./ui";
 import { LevelBar } from "./dither";
 import { computeGrade, gradeColor, type RubricKey } from "../lib/bridge/grade";
 import { isLiveRecording } from "../lib/live";
@@ -50,7 +50,7 @@ const RUBRIC_DESC: Record<RubricKey, string> = {
 // (and the `truncate`d label inside it) can shrink rather than forcing a ~11rem floor that would
 // force a horizontal scrollbar on narrower widths. The three numeric columns stay fixed — they're
 // already narrow, tabular-nums content that never needs to shrink.
-const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 2.25rem 2.75rem 3rem";
+const RUBRIC_COLS = "minmax(0,1.4fr) minmax(0,1fr) 3rem 3.5rem 3rem";
 
 /**
  * Grade — one coherent picture: the radar plots the active rubric's weighted dimensions (6 for v1, 8
@@ -105,15 +105,7 @@ export function Assessment({ num }: { num?: string } = {}) {
           </span>
           {/* a status chip, not a link — this panel IS the grade, so it never points anywhere; the
               flagged case still names where the gate sends it (a human review queue) */}
-          <span
-            className="rounded-full border px-2 py-0.5"
-            style={{
-              color: flagged ? "var(--color-loud)" : "var(--color-match)",
-              borderColor: flagged ? "color-mix(in oklch, var(--color-loud) 35%, transparent)" : "color-mix(in oklch, var(--color-match) 35%, transparent)",
-            }}
-          >
-            {flagged ? "Integrity queue" : "Graded"}
-          </span>
+          <Tag color={flagged ? "var(--color-loud)" : "var(--color-match)"}>{flagged ? "Integrity queue" : "Graded"}</Tag>
         </div>
       }
     >
@@ -163,7 +155,7 @@ export function Assessment({ num }: { num?: string } = {}) {
 
         {/* the rubric math behind the chart */}
         <div>
-          <div className="label grid gap-2 px-1.5 pb-1.5 text-xs" style={{ gridTemplateColumns: RUBRIC_COLS }}>
+          <div className="label grid gap-2 px-1.5 pb-1.5" style={{ gridTemplateColumns: RUBRIC_COLS }}>
             <span>metric</span>
             <span />
             <span className="text-right">score</span>

@@ -32,11 +32,23 @@ export function PivotStrip({ items, total, notes, onReveal }: { items: GhostItem
   const skipId = `${uid}-skip`;
 
   const it = hot == null ? null : rows[hot];
-  let tip: { left: number; top: number } | null = null;
+  let tip: { left: number; top: number; below: boolean } | null = null;
   if (it && hot != null) {
+    const tipW = Math.min(TIP_W, W);
+    const below = W < LBL + TIP_W;
     const end = it.actual_seq != null ? x(it.actual_seq) : x(span);
-    const fits = end + 14 + TIP_W <= W;
-    tip = { left: fits ? end + 14 : Math.max(LBL, end - 14 - TIP_W), top: TOP + hot * RH + RH / 2 };
+    let left: number;
+    let top: number;
+    if (below) {
+      left = end - tipW / 2;
+      top = TOP + hot * RH + RH + 6; // row bottom + 6 — stacked under the row, not centered beside it
+    } else {
+      const fits = end + 14 + TIP_W <= W;
+      left = fits ? end + 14 : end - 14 - TIP_W;
+      top = TOP + hot * RH + RH / 2;
+    }
+    left = Math.max(0, Math.min(left, W - tipW));
+    tip = { left, top, below };
   }
 
   return (
@@ -92,10 +104,15 @@ export function PivotStrip({ items, total, notes, onReveal }: { items: GhostItem
       {it && tip && (
         <div
           role="status"
-          className="pointer-events-none absolute z-10 w-[300px] -translate-y-1/2 rounded-[3px] border border-edge-bright bg-panel-2 px-[13px] py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.55)]"
+          className={`pointer-events-none absolute z-10 w-[min(300px,100%)] rounded-[3px] border border-edge-bright bg-panel-2 px-[13px] py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.55)] ${tip.below ? "" : "-translate-y-1/2"}`}
           style={{ left: tip.left, top: tip.top }}
         >
           <Tag color={VERDICT[it.verdict].color}>{VERDICT[it.verdict].label}</Tag>
+          {notes.get(it.objective) && (
+            <Tag color="var(--color-signal)" className="ml-1.5">
+              ai
+            </Tag>
+          )}
           <b className="mt-2 block text-[15px] font-semibold leading-tight text-fg">{humanizeObjective(it.objective)}</b>
           <p className="mt-1 text-[13px] leading-snug text-muted">{notes.get(it.objective) ?? ghostDetail(it)}</p>
           {it.actual_seq != null && <span className="mt-[9px] block font-mono text-[10px] uppercase tracking-[0.14em] text-signal">Click to replay step {it.actual_seq}</span>}

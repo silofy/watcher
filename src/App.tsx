@@ -66,7 +66,7 @@ function HeroLesson() {
     <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_290px] md:items-end">
       <div>
         <span className="label text-signal">The one lesson</span>
-        <p className="mt-3 text-balance font-display text-[34px] font-bold leading-[1.08] tracking-[-0.03em] text-fg">
+        <p className="mt-3 text-balance font-display text-[26px] font-bold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[34px]">
           {p ? (
             <>
               The way forward opened at step {p.unlock_seq}. <span className="text-loud">You took it at step {p.acted_seq}.</span>
@@ -137,7 +137,7 @@ export function App() {
       <DemoDriver />
       <header className="sticky top-0 z-10 bg-ink/90 backdrop-blur">
         <div className="border-b border-edge">
-          <div className="mx-auto flex min-h-16 max-w-6xl items-stretch justify-between gap-6 px-5">
+          <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-stretch justify-between gap-x-6 gap-y-2 px-5">
             <div className="flex items-stretch gap-7">
               <div className="flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-signal/15 text-signal">
@@ -179,96 +179,97 @@ export function App() {
         <LiveBridge />
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-5">
-        {view === "history" ? (
-          <History />
-        ) : view === "progress" ? (
-          <Progress />
-        ) : needsWriteup ? (
-          <WriteupGate />
-        ) : (
-          <div className="mx-auto flex max-w-4xl flex-col gap-6">
-            {/* 1. verdict band — identity + grade + stealth + rooted + platform, full width */}
-            <Rise i={0} id="identity">
-              <IdentityBar />
-            </Rise>
-
-            {/* live companion — the mid-run reference bento, shown only while the capture is underway.
-                Once the run resolves this disappears and the narrative below is the whole picture. */}
-            {recording && (
-              <Rise i={1} id="summary">
-                <LiveDashboard />
+      {/* `main` spans the full viewport width and clips overflow — the only clipping ancestor for
+          decorative full-bleed elements (e.g. IdentityBar's header AsciiField, which escapes the
+          `max-w-6xl` container via `left-[calc(50%-50vw)]`/`w-screen`) so they still reach the
+          viewport edges without ever causing a horizontal scrollbar. */}
+      <main className="overflow-x-clip">
+        <div className="mx-auto max-w-6xl px-5 py-5">
+          {view === "history" ? (
+            <History />
+          ) : view === "progress" ? (
+            <Progress />
+          ) : needsWriteup ? (
+            <WriteupGate />
+          ) : (
+            <div className="mx-auto flex max-w-4xl flex-col gap-6">
+              {/* 1. verdict band — identity + grade + stealth + rooted + platform, full width */}
+              <Rise i={0} id="identity">
+                <IdentityBar />
               </Rise>
-            )}
 
-            {/* 2. the one lesson — the hero takeaway, unmissable */}
-            <Rise i={2}>
-              <HeroLesson />
-            </Rise>
+              {/* live companion — the mid-run reference bento, shown only while the capture is underway.
+                  Once the run resolves this disappears and the narrative below is the whole picture. */}
+              {recording && (
+                <Rise i={1} id="summary">
+                  <LiveDashboard />
+                </Rise>
+              )}
 
-            {/* 3. what you'd do differently */}
-            <Rise i={3} id="path">
-              <PathComparison num={num.path} />
-            </Rise>
-
-            {/* 4. phase audit — the actionable per-phase spine (its own takeaway banner is suppressed,
-                since the hero above already leads with it) */}
-            <Rise i={4} id="audit">
-              <PhaseAudit hideTakeaway num={num.audit} />
-            </Rise>
-
-            {/* 4b. you vs. the ghost — the optimal line from where you stood, visible in the main
-                narrative (not buried in the collapsed drawer below). Guarded so old reports with no
-                ghost data render nothing here. */}
-            {report.ghost?.items?.length ? (
-              <Rise i={5} id="ghost">
-                <Section
-                  title="You vs. the Ghost"
-                  num={num.ghost}
-                  lead={{
-                    value: Math.round((report.ghost.time_lost_ms ?? 0) / 60000),
-                    unit: " min",
-                    caption: `lost to late pivots${report.ghost.human_wins ? ` · you beat the optimal line ${report.ghost.human_wins}×` : ""}`,
-                  }}
-                >
-                  <GhostCard />
-                </Section>
+              {/* 2. the one lesson — the hero takeaway, unmissable */}
+              <Rise i={2}>
+                <HeroLesson />
               </Rise>
-            ) : null}
 
-            {/* 4c. the grade — visible in the main narrative (not buried in the collapsed drawer
-                below), since a verdict this load-bearing shouldn't need a click to see. */}
-            <Rise i={6} id="grade">
-              <Assessment num={num.grade} />
-            </Rise>
+              {/* 3. what you'd do differently */}
+              <Rise i={3} id="path">
+                <PathComparison num={num.path} />
+              </Rise>
 
-            {/* 5. evidence & detail — the raw record, collapsed by default. `Collapse` is a native
-                <details>: its children stay in the DOM (just visually hidden) even when closed, so the
-                static export still carries every section's markup. */}
-            <Collapse
-              title="Evidence & detail"
-              subtitle="the raw record — timeline, stealth, frameworks, log, findings"
-              open={evidenceOpen}
-              onToggle={setEvidenceOpen}
-              summaryDataShot="evidence-drawer-summary"
-            >
-              <DeepDive />
-            </Collapse>
+              {/* 4. phase audit — the actionable per-phase spine (its own takeaway banner is suppressed,
+                  since the hero above already leads with it) */}
+              <Rise i={4} id="audit">
+                <PhaseAudit hideTakeaway num={num.audit} />
+              </Rise>
 
-            {/* 6. session window */}
-            <Collapse title="Session window" subtitle="session facts · retroactively trim the report">
-              <SessionFacts />
-              <TrimControl />
-            </Collapse>
+              {/* 4b. you vs. the ghost — the optimal line from where you stood, visible in the main
+                  narrative (not buried in the collapsed drawer below). Guarded so old reports with no
+                  ghost data render nothing here. */}
+              {report.ghost?.items?.length ? (
+                <Rise i={5} id="ghost">
+                  <Section
+                    title="You vs. the Ghost"
+                    num={num.ghost}
+                    lead={{
+                      value: Math.round((report.ghost.time_lost_ms ?? 0) / 60000),
+                      unit: " min",
+                      caption: `lost to late pivots${report.ghost.human_wins ? ` · you beat the optimal line ${report.ghost.human_wins}×` : ""}`,
+                    }}
+                  >
+                    <GhostCard />
+                  </Section>
+                </Rise>
+              ) : null}
 
-            <footer className="flex items-center justify-between py-6 text-xs text-faint">
-              <span className="mono">
-                schema v{report.schema_version} · {session.uuid.slice(0, 8)}
-              </span>
-              <span>The Watcher — capture safely, process privately, coach honestly.</span>
-            </footer>
-          </div>
-        )}
+              {/* 4c. the grade — visible in the main narrative (not buried in the collapsed drawer
+                  below), since a verdict this load-bearing shouldn't need a click to see. */}
+              <Rise i={6} id="grade">
+                <Assessment num={num.grade} />
+              </Rise>
+
+              {/* 5. evidence & detail — the raw record, collapsed by default. `Collapse` is a native
+                  <details>: its children stay in the DOM (just visually hidden) even when closed, so the
+                  static export still carries every section's markup. Subtitle removed (spec §5.1): a
+                  header is a label, not another sentence. */}
+              <Collapse title="Evidence & detail" open={evidenceOpen} onToggle={setEvidenceOpen} summaryDataShot="evidence-drawer-summary">
+                <DeepDive />
+              </Collapse>
+
+              {/* 6. session window */}
+              <Collapse title="Session window" subtitle="session facts · retroactively trim the report">
+                <SessionFacts />
+                <TrimControl />
+              </Collapse>
+
+              <footer className="flex items-center justify-between py-6 text-xs text-faint">
+                <span className="mono">
+                  schema v{report.schema_version} · {session.uuid.slice(0, 8)}
+                </span>
+                <span>The Watcher — capture safely, process privately, coach honestly.</span>
+              </footer>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

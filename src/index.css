@@ -56,11 +56,6 @@ body,
   height: 100%;
 }
 
-/* decorative fields bleed to the viewport edges; never let them cause a horizontal scrollbar */
-html {
-  overflow-x: clip;
-}
-
 body {
   margin: 0;
   background: var(--color-ink);

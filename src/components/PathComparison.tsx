@@ -75,12 +75,12 @@ function ChangeList({ steps }: { steps: RouteStep[] }) {
       ) : (
         <ul className="border-b border-edge">
           {dev.map((s) => (
-            <li key={s.objective} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-4 border-t border-edge py-3">
+            <li key={s.objective} className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 gap-y-1 border-t border-edge py-3 sm:grid-cols-[110px_minmax(0,1fr)_auto]">
               <span className="justify-self-start">
                 <Tag color={ROUTE[s.status].color}>{ROUTE[s.status].label}</Tag>
               </span>
               <span className="text-[15px] font-semibold text-fg">{humanizeObjective(s.objective)}</span>
-              <span className="text-[13px] text-muted">{fixText(s)}</span>
+              <span className="col-start-2 text-[13px] text-muted sm:col-start-auto">{fixText(s)}</span>
             </li>
           ))}
         </ul>
