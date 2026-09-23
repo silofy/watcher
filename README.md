@@ -104,19 +104,19 @@ Leading the report is one prominent, evidence-backed lesson, not a recap. It's t
 
 ![Intended-path comparison](docs/screenshots/path-comparison.png)
 
-Leads with how closely you retraced the intended path (**"you followed N% of the write-up's intended steps"**), then the breakdown: matched steps, alternative methods, out-of-order moves, and skips.
+Leads with how closely you retraced the intended path (**N% of the write-up's path followed**), then a route bar: the write-up's objectives in order, one cell each, so matched steps, alternative methods, out-of-order moves and skips show at a glance. Below it, **Change next time** lists only the deviations, each with its fix (for a skip, the tool the write-up used). The full path map is one click away.
 
 ### Phase audit
 
 ![Phase audit](docs/screenshots/phase-audit.png)
 
-Lighthouse-style, one card per MITRE phase. Each phase (Discovery → Initial Access → … → Privilege Escalation) gets an efficiency ring, the objectives reached, its ATT&CK techniques, and the highest-impact next moves, each with an estimated time saved.
+Lighthouse-style, one card per MITRE phase. Each phase (Discovery → Initial Access → … → Privilege Escalation) shows its efficiency score, the objectives reached and the time lost; expand it for its ATT&CK techniques and the highest-impact next moves, each with an estimated time saved.
 
 ### The Ghost
 
 ![The Ghost: you vs. the optimal-from-your-state line](docs/screenshots/ghost.png)
 
-Where a run has an intended path, **The Ghost** derives what the optimal line would have looked like from *your* findings at each moment. It isn't a live agent replaying the box; it's a deterministic diff between your actual sequence and that derived line. Most verdicts call out lost time (a **late pivot**, a **skip**), but it leads with the two that matter more: **ahead**, where you moved before the finding that "should" have unlocked the step had even surfaced, and **off-path win**, where you reached an objective by a route the write-up never mentions. Optional model narration can sharpen the wording per item (redacted to the objective, verdict, and timings, nothing else), but the deterministic note underneath always stands on its own. It's post-run coaching only: absent with no intended path, and it never feeds the letter grade.
+Where a run has an intended path, **The Ghost** derives what the optimal line would have looked like from *your* findings at each moment. It isn't a live agent replaying the box; it's a deterministic diff between your actual sequence and that derived line. Most verdicts call out lost time (a **late pivot**, a **skip**), but it leads with the two that matter more: **ahead**, where you moved before the finding that "should" have unlocked the step had even surfaced, and **off-path win**, where you reached an objective by a route the write-up never mentions. The result is one chart: a row per objective, marking where it became reachable and where you acted, so a run of late pivots reads as a staircase. Hover or focus a row for the detail, and click to replay that step. Optional model narration can sharpen the wording per item (redacted to the objective, verdict, and timings, nothing else), but the deterministic note underneath always stands on its own. It's post-run coaching only: absent with no intended path, and it never feeds the letter grade.
 
 ### Grade
 
