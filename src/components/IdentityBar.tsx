@@ -10,6 +10,8 @@ import { WriteupControl } from "./WriteupControl";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { LevelBar } from "./dither";
 import { ditherMask, ditherTrack } from "../lib/dither";
+import { AsciiField } from "./AsciiField";
+import { HEADER_MASK } from "../lib/ascii";
 import type { ReactNode } from "react";
 
 /** A 0–100 score's quality word, tiered to match tierColor (Good ≥ 65, Average ≥ 40, else Poor). */
@@ -93,64 +95,67 @@ export function IdentityBar() {
   const grade = computeGrade(report);
 
   return (
-    <div className="py-1" data-shot="verdict">
-      {/* identity + the headline grade */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3.5">
-          <MachineAvatar target={target} size={88} />
-          <div className="min-w-0">
-            {/* platform attribution — which service this run is from, read before the name itself */}
-            <div className="label text-faint">{platformLabel(target.platform)}</div>
-            <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{target.name}</h1>
-            <div className="mt-2">
-              <MetaLine target={target} retired={retired} />
+    <div className="relative py-1" data-shot="verdict">
+      <AsciiField mask={HEADER_MASK} alpha={0.34} className="-top-[70px] left-[calc(50%-50vw)] h-[calc(100%+100px)] w-screen" />
+      <div className="relative z-[1]">
+        {/* identity + the headline grade */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <MachineAvatar target={target} size={88} />
+            <div className="min-w-0">
+              {/* platform attribution — which service this run is from, read before the name itself */}
+              <div className="label text-faint">{platformLabel(target.platform)}</div>
+              <h1 className="font-display text-5xl font-bold leading-none tracking-tight text-fg">{target.name}</h1>
+              <div className="mt-2">
+                <MetaLine target={target} retired={retired} />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          {recording ? (
-            /* live: a status block instead of a premature verdict — where you are, right now */
-            <div
-              className="rounded-lg border px-4 py-2 text-right"
-              style={{
-                borderColor: "color-mix(in oklch, var(--color-loud) 32%, var(--color-edge))",
-                backgroundColor: "color-mix(in oklch, var(--color-loud) 12%, transparent)",
-              }}
-            >
-              <div className="label flex items-center justify-end gap-1.5" style={{ color: "var(--color-loud)" }}>
-                <span className="animate-pulse">●</span> Recording
+          <div className="flex shrink-0 items-center gap-3">
+            {recording ? (
+              /* live: a status block instead of a premature verdict — where you are, right now */
+              <div
+                className="rounded-lg border px-4 py-2 text-right"
+                style={{
+                  borderColor: "color-mix(in oklch, var(--color-loud) 32%, var(--color-edge))",
+                  backgroundColor: "color-mix(in oklch, var(--color-loud) 12%, transparent)",
+                }}
+              >
+                <div className="label flex items-center justify-end gap-1.5" style={{ color: "var(--color-loud)" }}>
+                  <span className="animate-pulse">●</span> Recording
+                </div>
+                <div className="font-display text-3xl font-bold leading-none text-fg">{currentPhase}</div>
+                <div className="label mt-1 tabular-nums text-faint">
+                  <AnimatedNumber value={cmdCount} /> cmd{cmdCount === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)}
+                </div>
               </div>
-              <div className="font-display text-3xl font-bold leading-none text-fg">{currentPhase}</div>
-              <div className="label mt-1 tabular-nums text-faint">
-                <AnimatedNumber value={cmdCount} /> cmd{cmdCount === 1 ? "" : "s"} · {fmtDuration(timeline.totalMs)}
-              </div>
-            </div>
-          ) : (
-            /* finished: the two headline scores, each tinted by its quality tier */
-            <>
-              <ScoreReadout
-                label="Stealth"
-                value={<AnimatedNumber value={Math.round(metrics.stealth_score)} />}
-                sub={`/100 · ${tierWord(metrics.stealth_score)}`}
-                color={tierColor(metrics.stealth_score)}
-                level={metrics.stealth_score}
-              />
-              <ScoreReadout
-                label="Grade"
-                value={grade.letter}
-                sub={`${Math.round(grade.score)} / 100`}
-                color={gradeColor(grade.letter)}
-                level={grade.score}
-              />
-            </>
-          )}
+            ) : (
+              /* finished: the two headline scores, each tinted by its quality tier */
+              <>
+                <ScoreReadout
+                  label="Stealth"
+                  value={<AnimatedNumber value={Math.round(metrics.stealth_score)} />}
+                  sub={`/100 · ${tierWord(metrics.stealth_score)}`}
+                  color={tierColor(metrics.stealth_score)}
+                  level={metrics.stealth_score}
+                />
+                <ScoreReadout
+                  label="Grade"
+                  value={grade.letter}
+                  sub={`${Math.round(grade.score)} / 100`}
+                  color={gradeColor(grade.letter)}
+                  level={grade.score}
+                />
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* writeup reference — a minimal accordion under a divider (flags/metrics now live in the run
-          summary bento below, so the old verdict band was pure duplication) */}
-      <div className="mt-4 border-t border-edge">
-        <WriteupControl />
+        {/* writeup reference — a minimal accordion under a divider (flags/metrics now live in the run
+            summary bento below, so the old verdict band was pure duplication) */}
+        <div className="mt-4 border-t border-edge">
+          <WriteupControl />
+        </div>
       </div>
     </div>
   );

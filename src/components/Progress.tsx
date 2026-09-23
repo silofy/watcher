@@ -3,6 +3,8 @@ import { useReport } from "../store/report";
 import { progressSeries, progressSummary, progressPath, progressDots, type ProgressPoint } from "../lib/progress";
 import { platformLabel } from "../lib/platform";
 import { Section, tierColor } from "./ui";
+import { AsciiField } from "./AsciiField";
+import { EMPTY_MASK } from "../lib/ascii";
 
 // chart geometry — a fixed logical size, scaled to the container by the responsive <svg>
 const W = 600;
@@ -112,9 +114,10 @@ export function Progress() {
   if (points.length < 2) {
     return (
       <Section title="Progress" subtitle="longitudinal trend across runs">
-        <div className="rounded-lg border border-dashed border-edge bg-panel px-6 py-16 text-center">
-          <div className="font-display text-lg text-muted">Not enough runs yet</div>
-          <p className="mx-auto mt-2 max-w-[44ch] text-sm text-faint">
+        <div className="relative overflow-hidden rounded-lg border border-dashed border-edge px-6 py-16 text-center">
+          <AsciiField mask={EMPTY_MASK} alpha={0.22} className="inset-0 h-full w-full" />
+          <div className="relative font-display text-lg text-muted">Not enough runs yet</div>
+          <p className="relative mx-auto mt-2 max-w-[44ch] text-sm text-faint">
             Run a couple of boxes to see your trend — grade, coverage, and methodology over time.
           </p>
         </div>
