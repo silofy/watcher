@@ -117,12 +117,12 @@ export function Assessment({ num }: { num?: string } = {}) {
             width of its section — only the rendered size is capped, the viewBox geometry (cx/cy/r in
             radar.ts) is untouched. */}
         <svg viewBox="0 0 240 230" className="mx-auto h-auto w-[294px] max-w-full">
-          {[0.25, 0.5, 0.75, 1].map((ring) => (
-            <polygon key={ring} points={axes.map((_, i) => point(i, ring, n).join(",")).join(" ")} fill="none" stroke="var(--color-edge)" strokeWidth={1} />
-          ))}
+          {/* the frame is a track, not a mesh — dotted like every other headroom mark (sparse = track):
+              only the 100 boundary, plus dotted spokes to read each axis. No inner rings. */}
+          <polygon points={axes.map((_, i) => point(i, 1, n).join(",")).join(" ")} fill="none" stroke="var(--color-faint)" strokeWidth={1} strokeDasharray="1 3" />
           {axes.map((_, i) => {
             const [x, y] = point(i, 1, n);
-            return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-edge)" strokeWidth={1} />;
+            return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-edge)" strokeWidth={1} strokeDasharray="1 3" strokeOpacity={0.6} />;
           })}
           <polygon points={valuePoly} fill="var(--color-alt)" fillOpacity={0.18} stroke="var(--color-alt)" strokeWidth={2} />
           {/* vertices colored by tier — independence turns red when it trips the gate */}
@@ -141,9 +141,6 @@ export function Assessment({ num }: { num?: string } = {}) {
               </text>
             );
           })}
-          {/* center medallion — masks the converging axis lines + polygon fill so the grade reads as a
-              clean verdict instead of getting lost in the mesh. Drawn over the radar, under the text. */}
-          <circle cx={CX} cy={CY} r={29} fill={`color-mix(in oklch, ${gc} 12%, var(--color-ink))`} stroke={gc} strokeOpacity={0.55} strokeWidth={1.5} />
           {/* the grade itself, at the center of its own breakdown */}
           <text x={CX} y={CY - 3} fontSize="34" fontWeight={700} fill={gc} textAnchor="middle" dominantBaseline="middle" className="font-display">
             {grade.letter}
