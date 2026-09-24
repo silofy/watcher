@@ -113,9 +113,10 @@ export function appendixSection(report: WatcherReport): string {
   const episodes = [...(report.episodes ?? [])].sort((a, b) => a.seq - b.seq);
   const t0 = episodes[0]?.started_at_ms ?? 0;
   const log = episodes.map((e) => `| ${e.seq} | ${e.started_at_ms ? fmtClock(e.started_at_ms - t0) : "—"} | \`${e.cmd}\` |`).join("\n");
+  const SECRET_KINDS = new Set(["cred", "hash"]);
   const ledgerRows = groupFindingsByKind(report.findings ?? [])
     .filter(([kind]) => kind === "port" || kind === "service" || kind === "cred")
-    .flatMap(([kind, fs]: [string, Finding[]]) => fs.map((f) => `| ${kind} | ${f.masked ? "••••" : f.value} |`));
+    .flatMap(([kind, fs]: [string, Finding[]]) => fs.map((f) => `| ${kind} | ${SECRET_KINDS.has(kind) ? "••••" : f.value} |`));
   const loadout = new Map<string, number>();
   for (const e of episodes) loadout.set(e.binary, (loadout.get(e.binary) ?? 0) + 1);
   const tools = [...loadout.entries()].sort((a, b) => b[1] - a[1]).map(([b, n]) => `| \`${b}\` | ${n} |`).join("\n");

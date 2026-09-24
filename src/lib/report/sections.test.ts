@@ -35,4 +35,18 @@ describe("sections", () => {
     const md = appendixSection(report) + findingsSection(deriveReportFindings(report));
     expect(md).not.toMatch(/HTB\{[^}]/); // no real flag body
   });
+
+  it("appendix ledger masks cred/hash regardless of masked flag", () => {
+    const testReport: WatcherReport = {
+      ...report,
+      findings: [
+        { id: "test-cred", kind: "cred", value: "password=SuperSecret1", source_seq: 1, masked: false },
+        { id: "test-port", kind: "port", value: "22", source_seq: 1 },
+      ],
+    };
+    const appendix = appendixSection(testReport);
+    expect(appendix).toContain("••••"); // credential is masked
+    expect(appendix).not.toContain("SuperSecret1"); // raw secret does not appear
+    expect(appendix).toContain("22"); // port value appears unmasked
+  });
 });
