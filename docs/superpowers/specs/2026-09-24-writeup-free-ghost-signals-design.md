@@ -66,9 +66,10 @@ false-positive guard).
    `null` only when both are empty).
 
 Wiring in `src/lib/pipeline/ingest.ts:206` currently passes a partial
-`{ golden_dag, episodes, findings }`. The slow-line detector needs `analyzePrivesc`,
-which reads the whole report, so this call is widened to pass the assembled report
-object. `report.ghost` is still set at `ingest.ts:236` from the return value.
+`{ golden_dag, episodes, findings }`. All three detectors — including `analyzePrivesc`,
+which reads only `report.episodes` and `report.findings` — are satisfied by that partial,
+so **no ingest change is needed**; `computeGhost` keeps its signature and `report.ghost`
+is still set at `ingest.ts:236` from the return value.
 
 ### Data-model facts (discovered during planning)
 
@@ -170,8 +171,8 @@ is relaxed to "golden objective or a detected run signal."
   responsibility: turn proven run facts into Ghost items.
 - **Create** `src/lib/ghost/signals.test.ts`.
 - **Modify** `src/lib/ghost/ghost.ts` — remove the `null`-on-empty-golden early return;
-  add merge + de-dupe + recompute.
-- **Modify** `src/lib/pipeline/ingest.ts:206` — pass the assembled report.
+  add merge + de-dupe + recompute. (`ingest.ts` is unchanged — the partial it already
+  passes satisfies every detector.)
 - **Modify** `src/lib/audits.ts` — three labels in `humanizeObjective`.
 - **Modify** `src/types/report.ts` — relax the `Ghost` doc-comment only.
 
