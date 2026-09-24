@@ -66,11 +66,26 @@ false-positive guard).
    `null` only when both are empty).
 
 Wiring in `src/lib/pipeline/ingest.ts:206` currently passes a partial
-`{ golden_dag, episodes, findings }`. Two detectors need more (`metrics`, full episode
-output), so this call is widened to pass the assembled report object. `report.ghost` is
-still set at `ingest.ts:236` from the return value.
+`{ golden_dag, episodes, findings }`. The slow-line detector needs `analyzePrivesc`,
+which reads the whole report, so this call is widened to pass the assembled report
+object. `report.ghost` is still set at `ingest.ts:236` from the return value.
 
-### The four detectors (v1)
+### Data-model facts (discovered during planning)
+
+Two facts about the pipeline shaped the detector rules below:
+
+- **`used_by_seq` is unreliable under redaction.** `extractFindings`
+  (`src/lib/pipeline/findings.ts`) links `used_by_seq` by matching a finding's *value* in
+  later command text. Under the default `full` redaction profile a credential's value is
+  masked, so a credential that *was* used still shows `used_by_seq: []`. A detector that
+  keys on "empty `used_by_seq`" would false-positive on every redacted run. The cred
+  detector therefore uses episode-level proof only (below), never `used_by_seq`.
+- **No `service`/`version` findings exist.** `extractFindings` produces only `port`,
+  `url`, `hash`, `cred`, `vuln`, `flag`. Service+version data lives only as free text in
+  each episode's `output_digest`. This is why the known-vuln-service detector is deferred
+  (see non-goals) — it needs digest parsing + a curated CVE map, which is its own spec.
+
+### The three detectors (v1)
 
 Each maps onto an existing `GhostVerdict`, carries a synthetic `objective` slug, and
 writes a deterministic `note`.
@@ -78,13 +93,17 @@ writes a deterministic `note`.
 | Detector | slug | verdict | `unlock_seq` | `actual_seq` | Proof required (else: no item) |
 |---|---|---|---|---|---|
 | Privesc slow-line | `escalate_via_confirmed_path` | `late_pivot` | `slow_line.available_seq` | `slow_line.rooted_seq` | `analyzePrivesc(report).slow_line != null` |
-| Credential not reused | `reuse_found_cred` | `skipped` | cred finding `source_seq` | `null` | a `cred` finding with empty/absent `used_by_seq` **and** a later episode existed where it could have been tried |
-| Enumerated, never audited | `audit_smb_shares` | `skipped` | the listing episode `seq` | `null` | an anonymous/null SMB listing succeeded (episode + `service`/`share` finding) **and** no later share-permission-audit command ran |
-| Known-vuln service | `investigate_vuln_service` | `skipped` | service/version finding `source_seq` | `null` | a `service`/`version` finding matches a curated CVE-map entry **and** no later search/investigation of it ran |
+| Credential found, never used | `reuse_found_cred` | `skipped` | cred finding `source_seq` | `null` | a `cred` finding exists **and no** later episode (seq > source_seq) runs an authentication-surface binary — i.e. the run dumped creds and never attempted to pivot with them |
+| Enumerated, never audited | `audit_smb_shares` | `skipped` | the listing episode `seq` | `null` | an anonymous/null SMB listing succeeded (an `smbclient -L -N` / null-session listing episode, exit 0) **and** no later share-permission-audit command (`smbmap`, `crackmapexec/netexec --shares`, `smbcacls`) ran |
 
 `lag_ms` is set only for the `late_pivot` slow-line item, computed the same way
 `ghost.ts` computes late-pivot lag (elapsed at `actual_seq` minus elapsed at
 `unlock_seq`). `skipped` items have `lag_ms = 0`.
+
+The credential detector is deliberately conservative: it stays silent whenever any
+authentication was attempted after the credential was found, because under redaction the
+run cannot prove *which* credential a later auth used. It fires only for the
+unambiguous, provable case (creds found, no pivot attempted at all).
 
 Detector detail:
 
@@ -92,41 +111,39 @@ Detector detail:
   `slow_line` is present, emit one `late_pivot` item using `available_seq` /
   `rooted_seq`; the note names the confirmed vector from `slow_line.path.title`. No new
   privesc logic; this detector only translates an existing result into a `GhostItem`.
-- **Credential not reused** — a `cred` finding whose `used_by_seq` is empty or missing.
-  Guard: only emit if at least one episode after `source_seq` was a plausible
-  authentication surface (an ssh/su/login/service-auth binary), so "found a flag-adjacent
-  string on the last command" never fires. One item per unused cred, capped at the most
-  recent N (N=2) to avoid noise.
-- **Enumerated, never audited** — an anonymous/null listing episode that succeeded
-  (detected from the episode's binary + the `service`/`share` findings it produced) with
-  no later audit command against those shares. This mirrors the run's own
-  already-computed "next step you skipped" coaching signal; where that coaching step
-  exists it is the authority for whether the audit was skipped.
-- **Known-vuln service** — a `service`/`version` finding matched against a **curated,
-  committed** service→CVE map (`src/lib/analysis/service-cves.ts`), in the same spirit as
-  privesc's kernel/sudo NVD ranges: public facts, re-expressed, each entry a
-  `{ product, versionRange, cve, note }`. Emit only when no later episode searched or
-  investigated that service. The map ships small (a handful of high-signal, unambiguous
-  entries) precisely to keep false positives near zero; it grows like the privesc
-  rulebook.
+- **Credential found, never used** — a `cred` finding exists and **no** later episode
+  (seq > the cred's `source_seq`) runs an authentication-surface binary. It does **not**
+  consult `used_by_seq` (unreliable under redaction, above). One item, on the earliest
+  such cred. The auth-surface set is broad on purpose (`ssh`, `su`, `smbclient` with
+  `-U`, `evil-winrm`, `crackmapexec`, `netexec`, `mysql`, `psql`, `ftp`, `rdesktop`,
+  `xfreerdp`, `winrm`, `psexec.py`, `wmiexec.py`), so any plausible pivot attempt keeps
+  the detector silent — it fires only when nothing auth-like happened after creds surfaced.
+- **Enumerated, never audited** — an anonymous/null SMB listing episode that succeeded
+  (binary `smbclient` with `-L` and a null-session flag `-N`/`-U ""`, exit 0/undefined),
+  with no later share-permission-audit command (`smbmap`, `crackmapexec`/`netexec` with
+  `--shares`, or `smbcacls`). This mirrors the run's own already-computed "next step you
+  skipped" coaching signal.
 
 ### De-duplication
 
-A signal item is dropped when it restates a golden objective:
+A signal item is dropped when it restates a golden objective. Because `GhostItem`
+carries no tactic or finding id (and the schema is unchanged), de-dup uses a
+slug→tactic map internal to `signals.ts` (`SIGNAL_TACTIC`) plus the golden objectives'
+own tactics (read from `report.golden_dag` by slug):
 
-- **Same finding:** a golden objective whose `finding_refs` include the signal's source
-  finding id ⇒ drop the signal.
-- **Same tactic + adjacent unlock:** a golden objective sharing the signal's tactic with
-  an `unlock_seq` within a small window (±2 running episodes) of the signal's
-  `unlock_seq` ⇒ drop the signal.
+- **Same slug:** a golden objective whose `objective` equals the signal's slug ⇒ drop.
+- **Same tactic + adjacent unlock:** a golden objective sharing the signal's tactic
+  (`SIGNAL_TACTIC[slug]` vs the objective's `tactic`) whose `unlock_seq` is within ±2
+  running episodes of the signal's `unlock_seq` ⇒ drop.
 
 Golden always wins. Example: the Abducted fixture's golden path already contains
-`audit_share_permissions`, so the "enumerated, never audited" signal for that same share
-is suppressed. With no golden path, nothing is dropped.
+`audit_share_permissions` (tactic `TA0007`), so the `audit_smb_shares` signal
+(`SIGNAL_TACTIC` = `TA0007`) at the adjacent listing seq is suppressed. With no golden
+path, nothing is dropped.
 
 ### Downstream touch-points
 
-- **`humanizeObjective` (`src/lib/audits.ts:144`)** — add explicit labels for the four
+- **`humanizeObjective` (`src/lib/audits.ts:144`)** — add explicit labels for the three
   synthetic slugs (it already sentence-cases unknown slugs, but explicit labels read
   better: e.g. `reuse_found_cred` → "reuse a found credential"). This is the only edit
   needed for `one-lesson.ts` and `headline.ts` to render signal items well; both already
@@ -149,29 +166,24 @@ is relaxed to "golden objective or a detected run signal."
 ## File structure
 
 - **Create** `src/lib/ghost/signals.ts` — `computeSignalGhost(report): GhostItem[]`, the
-  four detectors, and their deterministic notes. One clear responsibility: turn proven
-  run facts into Ghost items.
-- **Create** `src/lib/analysis/service-cves.ts` — the curated service→CVE map + a pure
-  `matchServiceCve(product, version)` lookup. Isolated so the map grows without touching
-  detector logic.
-- **Create** `src/lib/ghost/signals.test.ts`, `src/lib/analysis/service-cves.test.ts`.
+  three detectors, `SIGNAL_TACTIC`, and their deterministic notes. One clear
+  responsibility: turn proven run facts into Ghost items.
+- **Create** `src/lib/ghost/signals.test.ts`.
 - **Modify** `src/lib/ghost/ghost.ts` — remove the `null`-on-empty-golden early return;
   add merge + de-dupe + recompute.
 - **Modify** `src/lib/pipeline/ingest.ts:206` — pass the assembled report.
-- **Modify** `src/lib/audits.ts` — four labels in `humanizeObjective`.
+- **Modify** `src/lib/audits.ts` — three labels in `humanizeObjective`.
 - **Modify** `src/types/report.ts` — relax the `Ghost` doc-comment only.
 
 ## Testing (TDD)
 
 - **Per detector, both directions.** Proof present → item emitted with the exact
   verdict/`unlock_seq`/`actual_seq`; proof absent → **no item** (the false-positive
-  guard, the most important assertion). Specifically: a `cred` with a non-empty
-  `used_by_seq` emits nothing; a null-session run where shares *were* audited emits
-  nothing; a service with no CVE-map match emits nothing; no `slow_line` emits nothing.
-- **`service-cves.ts` unit** — in-range version matches its CVE, out-of-range and
-  unknown products do not.
+  guard, the most important assertion). Specifically: a cred followed by an `ssh`/`su`
+  attempt emits nothing (only creds-with-no-pivot fires); a null-session run where shares
+  *were* audited emits nothing; a report with no `slow_line` emits nothing.
 - **Merge/de-dup** — golden `audit_share_permissions` present ⇒ overlapping signal
-  suppressed; absent ⇒ signal appears. Same-finding and same-tactic+adjacent rules each
+  suppressed; absent ⇒ signal appears. Same-slug and same-tactic+adjacent rules each
   covered.
 - **No-golden end-to-end** — the Abducted (or RootMe) fixture with `golden_dag` stripped,
   run through `computeGhost`: today returns `null`; now returns a non-null result whose
@@ -180,11 +192,19 @@ is relaxed to "golden objective or a detected run signal."
 - **Regression** — existing `ghost.test.ts` golden-path assertions pass unchanged,
   proving the merge left the write-up path intact.
 
+## Deferred to a follow-up
+
+- **Known-vuln-service detector** (`investigate_vuln_service`). Highest-value, but it
+  needs (a) parsing `<product> <version>` out of episode `output_digest` text, since no
+  `service`/`version` findings exist, and (b) a curated, committed service→CVE map
+  (`src/lib/analysis/service-cves.ts`, exact-version entries like vsftpd 2.3.4 /
+  ProFTPD 1.3.5, public NVD facts). Both carry more false-positive risk than the three v1
+  detectors and deserve their own spec+plan.
+
 ## Global constraints
 
 - Deterministic; never feeds the letter grade (coaching only), same invariant as the
   golden Ghost and privesc.
-- No copied GPL/unlicensed source. CVE-map facts are public (NVD), re-expressed in
-  TypeScript, like the existing privesc rulebook.
+- No copied GPL/unlicensed source (the deferred CVE map would re-express public NVD facts).
 - No new dependencies.
 - `schema_version` stays `"1.4"`; no `GhostItem`/`Ghost` shape change.
