@@ -1,0 +1,132 @@
+name: Release
+
+# Push a tag like v0.1.0 (or v0.1.0-rc.1 for a pre-release) to build and publish:
+#   - the capture agent for Linux (x86_64/aarch64, static musl), macOS (universal) and Windows
+#   - the desktop app installers via tauri-action (unsigned for now; see README)
+#   - SHA256SUMS, which install.sh / install.ps1 verify against
+# The release is created as a draft and only published once every asset is uploaded, so
+# /releases/latest never points at a half-built release.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.ref_name }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: create
+        run: |
+          flags="--draft --verify-tag --title $TAG --generate-notes"
+          case "$TAG" in *-*) flags="$flags --prerelease";; esac
+          gh release create "$TAG" $flags
+          echo "id=$(gh release view "$TAG" --json databaseId -q .databaseId)" >> "$GITHUB_OUTPUT"
+
+  capture:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, asset: watcher-capture-linux-x86_64 }
+          - { os: ubuntu-latest, target: aarch64-unknown-linux-musl, asset: watcher-capture-linux-aarch64 }
+          - { os: macos-latest, target: universal, asset: watcher-capture-macos-universal }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, asset: watcher-capture-windows-x86_64.exe }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target == 'universal' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}
+
+      # Linux: zig as the cross linker gives fully static musl binaries for both arches from one runner,
+      # so the agent runs on Pwnbox / Kali / Parrot / any distro with no glibc-version surprises.
+      - if: runner.os == 'Linux'
+        uses: mlugg/setup-zig@v2
+      - if: runner.os == 'Linux'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
+      - if: runner.os == 'Linux'
+        run: cargo zigbuild --locked --release --target ${{ matrix.target }} --manifest-path crates/capture/Cargo.toml
+
+      - if: runner.os == 'macOS'
+        run: |
+          for t in aarch64-apple-darwin x86_64-apple-darwin; do
+            cargo build --locked --release --target $t --manifest-path crates/capture/Cargo.toml
+          done
+
+      - if: runner.os == 'Windows'
+        run: cargo build --locked --release --target ${{ matrix.target }} --manifest-path crates/capture/Cargo.toml
+
+      - name: Stage + upload
+        run: |
+          out=crates/capture/target
+          case "${{ matrix.target }}" in
+            universal) lipo -create -output "${{ matrix.asset }}" \
+                         $out/aarch64-apple-darwin/release/watcher-capture $out/x86_64-apple-darwin/release/watcher-capture ;;
+            *windows*) cp "$out/${{ matrix.target }}/release/watcher-capture.exe" "${{ matrix.asset }}" ;;
+            *)         cp "$out/${{ matrix.target }}/release/watcher-capture" "${{ matrix.asset }}" ;;
+          esac
+          gh release upload "$TAG" "${{ matrix.asset }}" --clobber
+
+  app:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, args: "" }
+          - { os: macos-latest, args: "--target universal-apple-darwin" }
+          - { os: windows-latest, args: "" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      # Unsigned builds. To sign later, add APPLE_CERTIFICATE / APPLE_SIGNING_IDENTITY / APPLE_ID /
+      # APPLE_PASSWORD / APPLE_TEAM_ID (macOS) and a Windows cert as repo secrets and pass them here.
+      - uses: tauri-apps/tauri-action@v0
+        with:
+          releaseId: ${{ needs.draft.outputs.release_id }}
+          args: ${{ matrix.args }}
+
+  publish:
+    needs: [draft, capture, app]
+    runs-on: ubuntu-latest
+    steps:
+      - name: SHA256SUMS
+        run: |
+          mkdir assets && cd assets
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY"
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS -R "$GITHUB_REPOSITORY" --clobber
+      - name: Publish the draft
+        run: gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --draft=false

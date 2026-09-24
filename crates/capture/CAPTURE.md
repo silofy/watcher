@@ -48,21 +48,20 @@ or use Path B inside the box for per-command boundaries.
 Pwnbox is delivered as a **VNC remote desktop** (`vnc.htb-cloud.com`), so there's no local terminal
 to watch. Instead, run the agent **inside** Pwnbox and import the result.
 
-1. Get the agent into Pwnbox. A **prebuilt Linux x86_64 binary** is committed at
-   `crates/capture/dist/watcher-capture-linux-x86_64` — just transfer that file (HTB file transfer / scp),
-   no building required:
+1. Install the agent inside Pwnbox. Pwnbox has internet, so it's one line: it downloads the static
+   Linux binary from the latest release, verifies its checksum, and installs `watcher-capture`:
 
    ```
-   chmod +x watcher-capture-linux-x86_64
+   curl -fsSL https://raw.githubusercontent.com/silofy/watcher/main/install.sh | sh
    ```
 
-   To rebuild it from Windows (no WSL/Docker), run `crates/capture/build-linux.ps1` — it cross-compiles via
-   cargo-zigbuild. To build *inside* Pwnbox instead, `crates/capture/build-in-pwnbox.sh` installs Rust and
-   compiles from source.
+   Prefer to build it yourself? `crates/capture/build-in-pwnbox.sh` installs Rust and compiles from
+   source inside Pwnbox, and `crates/capture/build-linux.ps1` cross-compiles the Linux binary from
+   Windows via cargo-zigbuild.
 2. Capture into the export dir the Watcher pulls from, tagging the machine you're on:
 
    ```
-   ./watcher-capture --export ~/.watcher-exports/checkpoint.json --machine Checkpoint --os Windows --difficulty Medium
+   watcher-capture --export ~/.watcher-exports/checkpoint.json --machine Checkpoint --os Windows --difficulty Medium
    ```
 
    Hack as normal; type `exit` to finish.

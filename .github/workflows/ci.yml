@@ -1,0 +1,61 @@
+name: CI
+
+# Gate for every PR and push to main: the web app (typecheck + vitest) and the Rust capture-side
+# crates. src-tauri isn't tested here — it needs the full desktop toolchain; release.yml builds it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  rust:
+    # Linux (openpty) and Windows (ConPTY) take different PTY paths in the capture agent.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            crates/core
+            crates/capture
+            crates/store
+            crates/daemon
+      # crates/store builds a vendored OpenSSL; its Configure needs a full Perl. Under the bash shell,
+      # Git's minimal MSYS perl wins on PATH and lacks Locale::Maketext::Simple, so point openssl-src
+      # at the runner's Strawberry Perl. Windows-only: set-but-empty would break the Linux build.
+      - if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'OPENSSL_SRC_PERL=C:/Strawberry/perl/bin/perl.exe' >> "$GITHUB_ENV"
+      - name: cargo test
+        shell: bash
+        run: |
+          for c in core capture store daemon; do
+            echo "::group::crates/$c"
+            cargo test --locked --manifest-path "crates/$c/Cargo.toml"
+            echo "::endgroup::"
+          done

@@ -41,9 +41,34 @@ Everything runs on your machine. No account, no telemetry, no cloud.
 
 ## Install
 
-### 1. See a report in your browser
+### 1. Download the desktop app
 
-No toolchain required.
+Grab the installer for your OS from the **[latest release](https://github.com/silofy/watcher/releases/latest)**: `.dmg` (macOS, Intel + Apple silicon), `.msi` / `.exe` (Windows), `.AppImage` / `.deb` / `.rpm` (Linux).
+
+The builds aren't code-signed yet, so your OS will warn on first launch:
+
+- **macOS:** right-click the app → **Open** → **Open** (once; after that it launches normally).
+- **Windows:** SmartScreen → **More info** → **Run anyway**.
+
+Every file in a release is listed in its `SHA256SUMS` if you want to verify a download by hand.
+
+### 2. Install the capture agent
+
+One line, no Rust toolchain. It downloads the prebuilt binary for your OS and CPU, verifies it against the release's `SHA256SUMS`, and installs `watcher-capture`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/silofy/watcher/main/install.sh | sh     # Linux · macOS · Pwnbox
+```
+
+```powershell
+irm https://raw.githubusercontent.com/silofy/watcher/main/install.ps1 | iex         # Windows
+```
+
+The Linux binaries are fully static (x86_64 and aarch64), so the same file runs on Pwnbox, Kali, Parrot or any distro. See [Capture your own runs](#capture-your-own-runs) for what to do next.
+
+### Or: just look at a report in your browser
+
+No install at all. Open the [live demos](#demos), or run the report UI locally:
 
 ```sh
 npm install
@@ -52,9 +77,7 @@ npm run dev
 
 Open **http://localhost:5173**. The History tab includes two real-content demos (HTB Abducted, THM RootMe); click **▶ Watch live demo** on either to stream the full run live, then review the graded report. Append `?demo=abducted` or `?demo=rootme` to auto-play. You can also open a prebuilt `report.html`, or generate one with `npm run export` → `dist/report.html`.
 
-### 2. Run the full desktop app
-
-Adds live capture and local AI. This one builds from source, so it needs a toolchain.
+### Or: build from source
 
 ```sh
 npm run doctor        # checks Rust + platform libraries, and prints the fix for anything missing
@@ -177,22 +200,27 @@ Once you've logged a couple of runs, the **Progress** tab (next to History) plot
 
 ## Capture your own runs
 
+With the capture agent [installed](#2-install-the-capture-agent):
+
 ```sh
-npm run capture -- --machine <box>
+watcher-capture --attach --platform htb --target <box>
 ```
 
-Run it from the repo root. It builds the capture agent the first time, then streams each command into the app live; type `exit` to stop. Pass `--platform <htb|thm|offsec|immersive|local> --target <name>` to name the target neutrally instead of `--machine`.
-
-<details><summary>Advanced: run the binary directly (no Node)</summary>
+It streams each command into the running app live; type `exit` to stop. `--platform` is one of `htb`, `thm`, `offsec`, `immersive` or `local`. Playing in **Pwnbox** (no local terminal to watch)? Install the agent inside Pwnbox with the same one-liner and capture to a file the app pulls in over SSH:
 
 ```sh
-cd crates/capture && cargo build --release
-./target/release/watcher-capture --attach --machine <box>   # Windows: .\target\release\watcher-capture.exe
+watcher-capture --export ~/.watcher-exports/run.json --platform htb --target <box>
+```
+
+<details><summary>From a source checkout instead</summary>
+
+```sh
+npm run capture -- --platform htb --target <box>   # builds the agent the first time, then runs it
 ```
 
 </details>
 
-The in-app **Install** tab walks through both capture paths (your own VM over VPN, or in Pwnbox). Full guide: **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
+The app's setup wizard walks through both capture paths (your own VM over VPN, or in Pwnbox). Full guide: **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
 
 ## Record your web traffic (optional)
 
