@@ -86,3 +86,28 @@ describe("computeGhost", () => {
     expect(computeGhost(r)).toEqual(computeGhost(r));
   });
 });
+
+function gEp(seq: number, binary: string, cmd: string, extra: Partial<Episode> = {}): Episode {
+  return { seq, binary, cmd, duration_ms: 0, gap_before_ms: 0, actor: "human_active", tactic: "TA0007", ...extra };
+}
+
+describe("computeGhost with write-up-free signals", () => {
+  it("returns a non-null Ghost from signals alone when there is no golden path", () => {
+    const r = { golden_dag: [], episodes: [gEp(4, "smbclient", "smbclient -L //h/ -N", { exit_code: 0 })], findings: [] } as unknown as WatcherReport;
+    const g = computeGhost(r);
+    expect(g).not.toBeNull();
+    expect(g!.items.map((i) => i.objective)).toContain("audit_smb_shares");
+  });
+
+  it("suppresses a signal that a golden objective already covers", () => {
+    const golden: GoldenObjective[] = [{ objective: "audit_share_permissions", tactic: "TA0007", satisfied_by: [], user_satisfied_by_seq: 5 }];
+    const r = { golden_dag: golden, episodes: [gEp(4, "smbclient", "smbclient -L //h/ -N", { exit_code: 0 }), gEp(5, "x", "x")], findings: [] } as unknown as WatcherReport;
+    const g = computeGhost(r);
+    expect(g!.items.map((i) => i.objective)).not.toContain("audit_smb_shares");
+  });
+
+  it("returns null when neither golden nor signals produce items", () => {
+    const r = { golden_dag: [], episodes: [gEp(1, "nmap", "nmap host")], findings: [] } as unknown as WatcherReport;
+    expect(computeGhost(r)).toBeNull();
+  });
+});

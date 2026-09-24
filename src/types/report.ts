@@ -215,7 +215,7 @@ export interface NoiseBaseline {
 /** Verdict of a golden objective vs. the deterministic ghost trajectory (schema v1.4). */
 export type GhostVerdict = "on_time" | "late_pivot" | "skipped" | "ahead" | "off_path_win";
 
-/** Per-objective ghost diff entry (schema v1.4). */
+/** Per-objective ghost diff entry — a golden objective or a detected run signal (schema v1.4). */
 export interface GhostItem {
   objective: string;
   verdict: GhostVerdict;

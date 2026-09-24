@@ -138,6 +138,9 @@ const OBJECTIVE_LABELS: Record<string, string> = {
   escalate_to_root: "Escalate to root",
   capture_root_flag: "Capture the root flag",
   test_credential_reuse_ssh: "Test credential reuse over SSH",
+  reuse_found_cred: "Reuse a found credential",
+  audit_smb_shares: "Audit the SMB shares",
+  escalate_via_confirmed_path: "Escalate via the confirmed path",
 };
 
 /** A readable objective name: a mapped label, else title-cased from the slug. */
