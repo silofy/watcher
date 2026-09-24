@@ -161,10 +161,14 @@ Defaults to the demo fixture and `dist/report.md`. Prints the output path and a 
 ## Testing (TDD)
 
 - **`library.ts`** — a known CVE/CWE/vector key returns its template; an unknown key returns null.
-- **`findings.ts`** — the Abducted fixture yields the expected findings (print-injection RCE via
-  CVE-2026-4480, password reuse, Samba wide-links, writable systemd → root), de-duplicated and
-  severity-ordered; each carries evidence + reproduction drawn from real episodes; a weakness with
-  no library match produces a fallback finding with `severity: "unset"`.
+- **`findings.ts`** — the Abducted fixture yields exactly two findings from the three sources —
+  the print-injection RCE (CVE-2026-4480, from a `vuln` finding) and the writable-systemd-unit
+  path to root (from the one `confirmed` privesc path at seq 24) — severity-ordered, each carrying
+  evidence + reproduction drawn from real episodes. A source-surfaced weakness with no library
+  match produces a fallback finding with `severity: "unset"` (tested with a synthetic CVE the seed
+  library doesn't contain). This is verified against the fixture: `analyzePrivesc` returns exactly
+  one confirmed path (`systemd`, seq 24), there is one `vuln` finding, and no episode carries a CWE
+  tag.
 - **`sections.ts` / `draft.ts`** — the Markdown contains every required top-level heading; the
   findings section has one entry per derived finding; the walkthrough is phase-grouped; the appendix
   tables render. **Redaction assertion:** the draft contains no unredacted credential or flag — it
@@ -174,6 +178,16 @@ Defaults to the demo fixture and `dist/report.md`. Prints the output path and a 
   narrate step (deterministic passthrough); with a stub provider, only the prose fields change.
 - **`export-report.tsx`** — smoke: running it on the demo fixture writes a non-empty `report.md`
   containing the header and a Findings section.
+
+## Known limitation (v1) — weakness coverage
+
+Findings come only from the three existing sources (CVEs, privesc paths, CWE tags). Weaknesses
+the run demonstrates but that none of those three surface — e.g. **credential reuse** across
+services and **Samba wide-links** in the Abducted run — do not become findings in v1. Detecting
+them reliably needs new detectors and is brittle against redacted output (the reused password is
+masked; wide-links only appears as free text in an `output_digest`), so it is deferred to a
+follow-up "report weakness detectors" feature rather than rushed in here. v1 is honest about what
+it can prove; the walkthrough and appendix still narrate the full path, including those steps.
 
 ## Global constraints
 
