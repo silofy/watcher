@@ -1,5 +1,7 @@
 import type { WatcherReport, Episode } from "../../types/report";
 import type { GhostDiffItem } from "./ghost";
+import { analyzePrivesc } from "../analysis/privesc";
+import type { PrivescResult } from "../analysis/privesc";
 
 /** Signal slug → MITRE tactic, used by de-duplication against golden objectives. */
 export const SIGNAL_TACTIC: Record<string, string> = {
@@ -97,9 +99,30 @@ export function detectEnumNotAudited(report: WatcherReport): GhostDiffItem[] {
   }];
 }
 
+/** Pure translator: a privesc slow_line + episodes → one late_pivot GhostDiffItem. */
+export function slowLineItem(slow: NonNullable<PrivescResult["slow_line"]>, episodes: Episode[]): GhostDiffItem {
+  const elapsed = elapsedBySeq(episodes);
+  const lag = Math.max(0, (elapsed.get(slow.rooted_seq) ?? 0) - (elapsed.get(slow.available_seq) ?? 0));
+  return {
+    objective: "escalate_via_confirmed_path",
+    verdict: "late_pivot",
+    unlock_seq: slow.available_seq,
+    actual_seq: slow.rooted_seq,
+    lag_ms: lag,
+    note: `A confirmed root path (${slow.path.title}) was observable at step ${slow.available_seq}; you rooted at step ${slow.rooted_seq} by a slower route.`,
+  };
+}
+
+/** Privesc slow-line: adapts analyzePrivesc's slow_line signal into a Ghost item. */
+export function detectPrivescSlowLine(report: WatcherReport): GhostDiffItem[] {
+  const pr = analyzePrivesc(report);
+  return pr.slow_line ? [slowLineItem(pr.slow_line, report.episodes ?? [])] : [];
+}
+
 const DETECTORS: ((report: WatcherReport) => GhostDiffItem[])[] = [
   detectCredNotReused,
   detectEnumNotAudited,
+  detectPrivescSlowLine,
 ];
 
 /** All write-up-free signal items for a report (pre-dedupe). */

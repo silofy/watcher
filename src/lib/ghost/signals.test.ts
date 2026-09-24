@@ -93,3 +93,20 @@ describe("detectEnumNotAudited", () => {
     expect(detectEnumNotAudited(r)).toEqual([]);
   });
 });
+
+import { slowLineItem, detectPrivescSlowLine } from "./signals";
+
+describe("privesc slow-line", () => {
+  it("slowLineItem translates a slow_line into a late_pivot with computed lag", () => {
+    const episodes = [ep(11, "ls", "ls -la /etc"), ep(16, "cat", "cat root.txt", { gap_before_ms: 60000, duration_ms: 0 })];
+    const item = slowLineItem({ available_seq: 11, rooted_seq: 16, path: { title: "writable systemd dir" } } as any, episodes);
+    expect(item).toMatchObject({ objective: "escalate_via_confirmed_path", verdict: "late_pivot", unlock_seq: 11, actual_seq: 16 });
+    expect(item.lag_ms).toBeGreaterThan(0);
+    expect(item.note).toContain("writable systemd dir");
+  });
+
+  it("detectPrivescSlowLine emits nothing when there is no privesc signal", () => {
+    const r = report([ep(1, "nmap", "nmap host")], []);
+    expect(detectPrivescSlowLine(r)).toEqual([]);
+  });
+});
