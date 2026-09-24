@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectCredNotReused, computeSignalGhost } from "./signals";
+import { detectCredNotReused, detectEnumNotAudited, computeSignalGhost } from "./signals";
 import type { WatcherReport, Episode, Finding } from "../../types/report";
 
 function ep(seq: number, binary: string, cmd: string, extra: Partial<Episode> = {}): Episode {
@@ -72,5 +72,24 @@ describe("detectCredNotReused", () => {
     const items = detectCredNotReused(r);
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ objective: "reuse_found_cred", verdict: "skipped" });
+  });
+});
+
+describe("detectEnumNotAudited", () => {
+  it("fires on a null SMB listing with no later share audit", () => {
+    const r = report([ep(4, "smbclient", "smbclient -L //host/ -N", { exit_code: 0 }), ep(5, "cat", "cat notes")], []);
+    const items = detectEnumNotAudited(r);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ objective: "audit_smb_shares", verdict: "skipped", unlock_seq: 4, actual_seq: null });
+  });
+
+  it("stays silent when shares were later audited (smbmap)", () => {
+    const r = report([ep(4, "smbclient", "smbclient -L //host/ -N", { exit_code: 0 }), ep(6, "smbmap", "smbmap -H host")], []);
+    expect(detectEnumNotAudited(r)).toEqual([]);
+  });
+
+  it("stays silent when there was no null listing", () => {
+    const r = report([ep(1, "nmap", "nmap -sCV host")], []);
+    expect(detectEnumNotAudited(r)).toEqual([]);
   });
 });

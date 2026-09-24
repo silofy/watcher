@@ -63,8 +63,43 @@ export function detectCredNotReused(report: WatcherReport): GhostDiffItem[] {
   }];
 }
 
+function isNullSmbListing(ep: Episode): boolean {
+  return ep.binary === "smbclient"
+    && /(^|\s)-L(\s|$)/.test(ep.cmd)
+    && (/(^|\s)-N(\s|$)/.test(ep.cmd) || /-U\s*(""|'')/.test(ep.cmd))
+    && (ep.exit_code == null || ep.exit_code === 0);
+}
+
+function isShareAudit(ep: Episode): boolean {
+  const b = ep.binary;
+  if (b === "smbmap" || b === "smbcacls") return true;
+  if ((b === "crackmapexec" || b === "netexec") && /--shares/.test(ep.cmd)) return true;
+  return false;
+}
+
+/**
+ * Enumerated, never audited: an anonymous/null SMB listing succeeded but the shares' permissions
+ * were never audited. Mirrors the run's own "next step you skipped" coaching signal.
+ */
+export function detectEnumNotAudited(report: WatcherReport): GhostDiffItem[] {
+  const episodes = report.episodes ?? [];
+  const listing = episodes.find(isNullSmbListing);
+  if (!listing) return [];
+  const audited = episodes.some((e) => e.seq > listing.seq && isShareAudit(e));
+  if (audited) return [];
+  return [{
+    objective: "audit_smb_shares",
+    verdict: "skipped",
+    unlock_seq: listing.seq,
+    actual_seq: null,
+    lag_ms: 0,
+    note: `An anonymous SMB listing succeeded at step ${listing.seq}, but you never audited the shares' permissions (smbmap / crackmapexec --shares).`,
+  }];
+}
+
 const DETECTORS: ((report: WatcherReport) => GhostDiffItem[])[] = [
   detectCredNotReused,
+  detectEnumNotAudited,
 ];
 
 /** All write-up-free signal items for a report (pre-dedupe). */
