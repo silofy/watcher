@@ -7,10 +7,19 @@ import type { WatcherReport } from "../../types/report";
 const report = demo as unknown as WatcherReport;
 
 describe("sections", () => {
-  it("header names the target and states redaction", () => {
+  it("header names the target and warns of unredacted detail under the full profile", () => {
+    expect(report.redaction_profile).toBe("full");
     const h = headerSection(report);
     expect(h).toContain("# Abducted");
-    expect(h.toLowerCase()).toContain("redact");
+    expect(h).toMatch(/do not share/i);
+    expect(h).not.toMatch(/are masked/i);
+  });
+
+  it("header states a masked-for-sharing guarantee under the public_safe profile", () => {
+    const publicSafeReport: WatcherReport = { ...report, redaction_profile: "public_safe" };
+    const h = headerSection(publicSafeReport);
+    expect(h).toMatch(/masked/i);
+    expect(h).not.toMatch(/do not share/i);
   });
 
   it("findings section has one ### entry per finding with the required fields", () => {

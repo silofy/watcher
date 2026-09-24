@@ -20,12 +20,16 @@ export function headerSection(report: WatcherReport): string {
   const start = report.session?.started_at ?? "";
   const end = report.session?.ended_at ?? "";
   const profile = report.redaction_profile ?? "full";
+  const redactionNote =
+    profile === "public_safe"
+      ? `> Redacted for sharing (profile \`${profile}\`): credentials and flags are masked.`
+      : `> ⚠️ Full, unredacted detail (profile \`${profile}\`) — this draft may contain real credentials and flags. Do not share it; regenerate from a \`public_safe\` report to redact.`;
   return [
     `# ${name} — Penetration Test Report`,
     "",
     `**Target:** ${name}${platform ? ` (${platform}${diff ? `, ${diff}` : ""})` : ""}  `,
     `**Engagement window:** ${start} → ${end}  `,
-    `> Evidence is redacted per the run's redaction profile (\`${profile}\`); credentials and flags are masked.`,
+    redactionNote,
   ].join("\n");
 }
 
