@@ -31,7 +31,11 @@ function isAuthAttempt(ep: Episode): boolean {
   const b = ep.binary;
   if (AUTH_BINARIES.has(b)) return true;
   if (b === "smbclient" && /(^|\s)-U(\s|=)/.test(ep.cmd)) return true;
-  if ((b === "curl" || b === "wget") && /(-u\s|--user)/.test(ep.cmd)) return true;
+  if (b === "curl" || b === "wget") {
+    if (/(^|\s)-u(\s|=|[^\s=-])/.test(ep.cmd)) return true;      // -u <x> or -u=<x> or -uX (attached)
+    if (/(^|\s)--user(?!-agent)(=|\s|$)/.test(ep.cmd)) return true; // --user / --user= but not --user-agent
+    return false;
+  }
   return false;
 }
 

@@ -39,4 +39,38 @@ describe("detectCredNotReused", () => {
     const r = report([ep(5, "cat", "cat creds")], [cred(5)]);
     expect(computeSignalGhost(r).map((i) => i.objective)).toContain("reuse_found_cred");
   });
+
+  it("stays silent when curl -uadmin:pass is used after the cred (attached short form)", () => {
+    const r = report([ep(5, "cat", "cat creds"), ep(9, "curl", "curl -uadmin:pass http://target")], [cred(5)]);
+    expect(detectCredNotReused(r)).toEqual([]);
+  });
+
+  it("stays silent when curl --user user:pass is used after the cred", () => {
+    const r = report([ep(5, "cat", "cat creds"), ep(9, "curl", "curl --user user:pass http://target")], [cred(5)]);
+    expect(detectCredNotReused(r)).toEqual([]);
+  });
+
+  it("stays silent when curl -u=user:pass (equals form) is used after the cred", () => {
+    const r = report([ep(5, "cat", "cat creds"), ep(9, "curl", "curl -u=user:pass http://target")], [cred(5)]);
+    expect(detectCredNotReused(r)).toEqual([]);
+  });
+
+  it("fires when curl --user-agent is used (not an auth attempt) but no real auth", () => {
+    const r = report([ep(5, "cat", "cat creds"), ep(9, "curl", "curl --user-agent=Firefox http://target")], [cred(5)]);
+    const items = detectCredNotReused(r);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ objective: "reuse_found_cred", verdict: "skipped" });
+  });
+
+  it("stays silent when wget with -u flag is used after the cred", () => {
+    const r = report([ep(5, "cat", "cat creds"), ep(9, "wget", "wget -u user:pass http://target")], [cred(5)]);
+    expect(detectCredNotReused(r)).toEqual([]);
+  });
+
+  it("fires when wget --user-agent is used (not an auth attempt) but no real auth", () => {
+    const r = report([ep(5, "cat", "cat creds"), ep(9, "wget", "wget --user-agent=Lynx http://target")], [cred(5)]);
+    const items = detectCredNotReused(r);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ objective: "reuse_found_cred", verdict: "skipped" });
+  });
 });
