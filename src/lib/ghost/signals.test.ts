@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { detectCredNotReused, detectEnumNotAudited, computeSignalGhost } from "./signals";
-import type { WatcherReport, Episode, Finding } from "../../types/report";
+import { detectCredNotReused, detectEnumNotAudited, computeSignalGhost, slowLineItem, detectPrivescSlowLine, dedupeSignals } from "./signals";
+import type { WatcherReport, Episode, Finding, GoldenObjective } from "../../types/report";
+import type { GhostDiffItem } from "./ghost";
 
 function ep(seq: number, binary: string, cmd: string, extra: Partial<Episode> = {}): Episode {
   return { seq, binary, cmd, duration_ms: 0, gap_before_ms: 0, actor: "human_active", tactic: "TA0007", ...extra };
@@ -94,8 +95,6 @@ describe("detectEnumNotAudited", () => {
   });
 });
 
-import { slowLineItem, detectPrivescSlowLine } from "./signals";
-
 describe("privesc slow-line", () => {
   it("slowLineItem translates a slow_line into a late_pivot with computed lag", () => {
     const episodes = [ep(11, "ls", "ls -la /etc"), ep(16, "cat", "cat root.txt", { gap_before_ms: 60000, duration_ms: 0 })];
@@ -108,5 +107,37 @@ describe("privesc slow-line", () => {
   it("detectPrivescSlowLine emits nothing when there is no privesc signal", () => {
     const r = report([ep(1, "nmap", "nmap host")], []);
     expect(detectPrivescSlowLine(r)).toEqual([]);
+  });
+});
+
+const sig = (objective: string, unlock_seq: number): GhostDiffItem =>
+  ({ objective, verdict: "skipped", unlock_seq, actual_seq: null, lag_ms: 0, note: "" });
+
+describe("dedupeSignals", () => {
+  it("returns all signals when there are no golden items", () => {
+    const s = [sig("audit_smb_shares", 4)];
+    expect(dedupeSignals(s, [], [], [])).toEqual(s);
+  });
+
+  it("drops a signal that shares a golden objective's slug", () => {
+    const golden: GoldenObjective[] = [{ objective: "audit_smb_shares", tactic: "TA0007", satisfied_by: [] }];
+    const goldenItems = [sig("audit_smb_shares", 4)];
+    expect(dedupeSignals([sig("audit_smb_shares", 4)], goldenItems, golden, [])).toEqual([]);
+  });
+
+  it("drops a signal with the same tactic and an adjacent unlock seq", () => {
+    const golden: GoldenObjective[] = [{ objective: "audit_share_permissions", tactic: "TA0007", satisfied_by: [] }];
+    const goldenItems = [sig("audit_share_permissions", 5)];
+    const episodes = [ep(4, "smbclient", "smbclient -L //h/ -N"), ep(5, "x", "x")];
+    // audit_smb_shares is TA0007; golden unlock 5 is adjacent to signal unlock 4 → dropped
+    expect(dedupeSignals([sig("audit_smb_shares", 4)], goldenItems, golden, episodes)).toEqual([]);
+  });
+
+  it("keeps a signal when the golden objective is a different tactic / far away", () => {
+    const golden: GoldenObjective[] = [{ objective: "capture_root_flag", tactic: "TA0004", satisfied_by: [] }];
+    const goldenItems = [sig("capture_root_flag", 30)];
+    const episodes = Array.from({ length: 30 }, (_, i) => ep(i + 1, "x", "x"));
+    const s = [sig("audit_smb_shares", 4)];
+    expect(dedupeSignals(s, goldenItems, golden, episodes)).toEqual(s);
   });
 });

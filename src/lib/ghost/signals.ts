@@ -1,4 +1,4 @@
-import type { WatcherReport, Episode } from "../../types/report";
+import type { WatcherReport, Episode, GoldenObjective } from "../../types/report";
 import type { GhostDiffItem } from "./ghost";
 import { analyzePrivesc } from "../analysis/privesc";
 import type { PrivescResult } from "../analysis/privesc";
@@ -128,4 +128,39 @@ const DETECTORS: ((report: WatcherReport) => GhostDiffItem[])[] = [
 /** All write-up-free signal items for a report (pre-dedupe). */
 export function computeSignalGhost(report: WatcherReport): GhostDiffItem[] {
   return DETECTORS.flatMap((d) => d(report));
+}
+
+/**
+ * Drop signal items that restate a golden objective. GhostDiffItem carries no tactic, so a signal's
+ * tactic comes from SIGNAL_TACTIC and each golden item's tactic from its GoldenObjective (by slug).
+ * Rules: same slug, or same tactic with an adjacent unlock (≤2 running episodes apart). Golden wins.
+ */
+export function dedupeSignals(
+  signals: GhostDiffItem[],
+  goldenItems: GhostDiffItem[],
+  golden: GoldenObjective[],
+  episodes: Episode[],
+): GhostDiffItem[] {
+  if (!goldenItems.length) return signals;
+  const bySlug = new Map(golden.map((o) => [o.objective, o]));
+  const running = [...episodes]
+    .filter((e) => e.actor !== "think_pause" && e.actor !== "idle")
+    .sort((a, b) => a.seq - b.seq);
+  const runningBetween = (a: number, b: number) =>
+    running.filter((e) => e.seq > Math.min(a, b) && e.seq < Math.max(a, b)).length;
+  const goldenMeta = goldenItems.map((gi) => ({
+    slug: gi.objective,
+    tactic: bySlug.get(gi.objective)?.tactic,
+    unlock: gi.unlock_seq ?? null,
+  }));
+  return signals.filter((s) => {
+    const tactic = SIGNAL_TACTIC[s.objective];
+    for (const g of goldenMeta) {
+      if (g.slug === s.objective) return false;
+      if (tactic && g.tactic === tactic && g.unlock != null && s.unlock_seq != null && runningBetween(g.unlock, s.unlock_seq) <= 2) {
+        return false;
+      }
+    }
+    return true;
+  });
 }
