@@ -224,6 +224,21 @@ npm run capture -- --platform htb --target <box>   # builds the agent the first 
 
 The app's setup wizard walks through both capture paths (your own VM over VPN, or in Pwnbox). Full guide: **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
 
+## Draft a report
+
+Turn a graded run into an OSCP/CPTS-style report draft in Markdown — findings with severity,
+evidence and remediation, a walkthrough, and an appendix, all built from the run's own record:
+
+```sh
+npm run report                      # drafts the bundled demo → dist/report.md
+npm run report -- --report <path>   # draft from your own report JSON
+```
+
+It's deterministic and offline. Paste the Markdown into your exam template, or run it through any
+Markdown→PDF tool. Findings come from what the run proves it exploited (CVEs, privilege-escalation
+paths, weakness classes); evidence and reproduction are the real commands, redacted per your
+redaction profile.
+
 ## Record your web traffic (optional)
 
 Half of many boxes happens in a browser: a login form, a tampered parameter, a file upload. With **Burp Suite** running and its **MCP Server** extension enabled, add `--web` to any capture and The Watcher folds those HTTP exchanges into the *same* run as your terminal commands, graded on the same timeline. A UNION-tampered parameter counts as SQLi (**CWE-89**), an IDOR as **CWE-639**, a `../` traversal as **CWE-22**. A small `plugins/burp-bridge/` process reads Burp's proxy history over MCP and streams the exchanges in; they land on the attack timeline and Live Ops right alongside `sqlmap`.

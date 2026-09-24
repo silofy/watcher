@@ -10,6 +10,7 @@
     "build": "tsc -b && vite build",
     "export": "vite build && vite-node scripts/export-html.tsx",
     "ingest": "vite-node scripts/ingest-capture.tsx",
+    "report": "vite-node scripts/export-report.tsx",
     "report:from-store": "vite-node scripts/ingest-capture.tsx --from-store",
     "conformance": "vite-node scripts/conformance.tsx",
     "platform:conformance": "vitest run src/lib/platform/conformance.test.ts",
