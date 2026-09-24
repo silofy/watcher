@@ -113,6 +113,8 @@ jobs:
       # Unsigned builds. To sign later, add APPLE_CERTIFICATE / APPLE_SIGNING_IDENTITY / APPLE_ID /
       # APPLE_PASSWORD / APPLE_TEAM_ID (macOS) and a Windows cert as repo secrets and pass them here.
       - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # tauri-action reads GITHUB_TOKEN, not the gh CLI's GH_TOKEN
         with:
           releaseId: ${{ needs.draft.outputs.release_id }}
           args: ${{ matrix.args }}
