@@ -45,6 +45,12 @@ jobs:
             crates/capture
             crates/store
             crates/daemon
+      # crates/store builds a vendored OpenSSL; its Configure needs a full Perl. Under the bash shell,
+      # Git's minimal MSYS perl wins on PATH and lacks Locale::Maketext::Simple, so point openssl-src
+      # at the runner's Strawberry Perl. Windows-only: set-but-empty would break the Linux build.
+      - if: runner.os == 'Windows'
+        shell: bash
+        run: echo 'OPENSSL_SRC_PERL=C:/Strawberry/perl/bin/perl.exe' >> "$GITHUB_ENV"
       - name: cargo test
         shell: bash
         run: |
