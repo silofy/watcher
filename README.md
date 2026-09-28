@@ -245,6 +245,16 @@ Half of many boxes happens in a browser: a login form, a tampered parameter, a f
 
 It's **off by default** and does nothing until you pass `--web`. When on, it only ingests traffic for Burp's in-scope target, and auth headers, cookies, and bearer/JWT/API-key tokens are stripped before anything is stored or rendered. If Burp or its MCP server isn't reachable, the flag prints a one-line hint and your terminal capture runs exactly as before; the web path never blocks a run. Full setup: **[docs/web-capture.md](docs/web-capture.md)**.
 
+## Grade a defensive investigation
+
+Score a blue-team response to an incident, given an attacker's capture and the analyst's session:
+
+```sh
+npm run ingest:defense -- --incident <attacker capture> --run <analyst session>
+```
+
+Scores five metrics: Coverage (detection scope), Reconstruction (evidence gathering), Time-to-detect (alerting delay), Scoping (blast radius), and Discipline (triage discipline).
+
 ## How it works
 
 A small Rust agent captures your shell through a normal PTY (ConPTY on Windows, openpty on Unix), with **no eBPF, ptrace, or kernel hooks**. The capture is processed **deterministically** (segmentation, MITRE tagging, golden-path diff, metrics) into one versioned JSON report (`schema/watcher-report.schema.json`) that the UI renders. An optional model, either local Ollama or an opt-in cloud model, only sharpens the coaching text; it never changes the numbers.
