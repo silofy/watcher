@@ -19,4 +19,19 @@ describe("investigationGhost", () => {
     expect(g.items.find((i) => i.objective === "persistence")!.verdict).toBe("skipped");
     expect(typeof g.time_lost_ms).toBe("number");
   });
+
+  it("returns items in ascending source_seq order regardless of input artifact order", () => {
+    const descInc: Incident = { target_scope: "x", entities: [], artifacts: [
+      { id: "a2", label: "persistence", phase: "privilege-escalation", technique: "", indicators: [], entities: [], weight: 5, depends_on: [], source_seq: 25 },
+      { id: "a1", label: "injection", phase: "execution", technique: "", indicators: [], entities: [], weight: 6, depends_on: [], source_seq: 7 },
+    ]};
+    const res: InvestigationResult = { incident: descInc, advancing_seqs: [], noise_seqs: [],
+      hits: [
+        { artifact_id: "a1", found: true, found_by_seq: 1, found_at_ms: 0, matched_indicator: "x" },
+        { artifact_id: "a2", found: true, found_by_seq: 2, found_at_ms: 0, matched_indicator: "x" },
+      ] };
+    const g = investigationGhost(res);
+    expect(g.items[0].unlock_seq).toBe(7);
+    expect(g.items[1].unlock_seq).toBe(25);
+  });
 });

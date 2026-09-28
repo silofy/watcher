@@ -10,7 +10,7 @@ export function investigationGhost(result: InvestigationResult): GhostResult {
   const { incident, hits } = result;
   const byId = new Map<string, ArtifactHit>(hits.map((h) => [h.artifact_id, h]));
   const seqOf = (id: string) => byId.get(id)?.found_by_seq ?? null;
-  const items: GhostDiffItem[] = incident.artifacts.map((a) => {
+  const items: GhostDiffItem[] = [...incident.artifacts].sort((a, b) => a.source_seq - b.source_seq).map((a) => {
     const h = byId.get(a.id)!;
     let verdict: GhostDiffItem["verdict"];
     if (!h.found) verdict = "skipped";
