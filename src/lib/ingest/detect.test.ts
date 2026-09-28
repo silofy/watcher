@@ -37,4 +37,11 @@ describe("reportFromCapture", () => {
   it("returns null when nothing recognizes the input", () => {
     expect(reportFromCapture("not a capture")).toBeNull();
   });
+
+  it("grades host imports against the methodology ladder, and skips it for web", () => {
+    // host run (transcript) gets the 7-objective canonical ladder so coverage is meaningful
+    expect(reportFromCapture(transcript, "run.jsonl")!.golden_dag?.length).toBe(7);
+    // web run (HAR) has no host golden attached — its rubric is a follow-up
+    expect(reportFromCapture(har)!.golden_dag?.length ?? 0).toBe(0);
+  });
 });

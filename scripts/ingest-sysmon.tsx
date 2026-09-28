@@ -17,6 +17,7 @@ import addFormats from "ajv-formats";
 import schema from "../schema/watcher-report.schema.json";
 import { sysmonToRawCommands } from "../src/lib/ingest/sysmon";
 import { assembleReport } from "../src/lib/pipeline/ingest";
+import { HOST_METHODOLOGY } from "../src/lib/golden/methodology";
 import type { GoldenObjective, Session } from "../src/types/report";
 
 function arg(name: string, fallback: string): string {
@@ -36,7 +37,7 @@ const outPath = resolve(arg("out", "dist/report-from-sysmon.json"));
 const goldenPath = arg("golden", "");
 const golden: GoldenObjective[] = goldenPath
   ? (JSON.parse(readFileSync(resolve(goldenPath), "utf8")) as GoldenObjective[])
-  : [];
+  : HOST_METHODOLOGY.map((o) => ({ ...o }));
 
 const raw = sysmonToRawCommands(readFileSync(resolve(eventsPath), "utf8"));
 if (raw.length === 0) throw new Error(`no ProcessCreate (Event ID 1) events found in ${eventsPath}`);

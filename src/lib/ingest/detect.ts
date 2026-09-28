@@ -12,6 +12,7 @@
 import type { RawCommand } from "../pipeline/types";
 import type { Session, WatcherReport } from "../../types/report";
 import { assembleReport } from "../pipeline/ingest";
+import { HOST_METHODOLOGY } from "../golden/methodology";
 import { harToRawCommands } from "./http-proxy";
 import { sysmonToRawCommands } from "./sysmon";
 import { claudeCodeToRawCommands } from "./claude-code";
@@ -74,5 +75,8 @@ export function reportFromCapture(text: string, filename = ""): WatcherReport | 
     shell: d.shell,
     source: "plugin",
   };
-  return assembleReport(d.raw, { golden: [], session, redaction_profile: "full" });
+  // No authored golden on an import: grade host runs against the canonical methodology
+  // ladder so coverage is meaningful instead of 0. Web runs need their own rubric (skip).
+  const golden = d.kind === "http-proxy" ? [] : HOST_METHODOLOGY.map((o) => ({ ...o }));
+  return assembleReport(d.raw, { golden, session, redaction_profile: "full" });
 }
