@@ -5,7 +5,7 @@ import { fmtClock } from "../format";
 import { groupFindingsByKind } from "../findings-view";
 
 export function severityLabel(s: Severity): string {
-  return s === "unset" ? "— set severity" : s[0].toUpperCase() + s.slice(1);
+  return s === "unset" ? "unset (set severity)" : s[0].toUpperCase() + s.slice(1);
 }
 
 function fence(lines: string[]): string {
@@ -23,9 +23,9 @@ export function headerSection(report: WatcherReport): string {
   const redactionNote =
     profile === "public_safe"
       ? `> Redacted for sharing (profile \`${profile}\`): credentials and flags are masked.`
-      : `> ⚠️ Full, unredacted detail (profile \`${profile}\`) — this draft may contain real credentials and flags. Do not share it; regenerate from a \`public_safe\` report to redact.`;
+      : `> ⚠️ Full, unredacted detail (profile \`${profile}\`). This draft may contain real credentials and flags. Do not share it; regenerate from a \`public_safe\` report to redact.`;
   return [
-    `# ${name} — Penetration Test Report`,
+    `# ${name}: Penetration Test Report`,
     "",
     `**Target:** ${name}${platform ? ` (${platform}${diff ? `, ${diff}` : ""})` : ""}  `,
     `**Engagement window:** ${start} → ${end}  `,
@@ -64,7 +64,7 @@ export function methodologySection(report: WatcherReport): string {
   return [
     "## Methodology",
     "",
-    "The engagement was recorded end-to-end and analysed against three frameworks — MITRE ATT&CK (technique), the Unified Kill Chain (ordering), and CWE (weakness class).",
+    "The engagement was recorded end-to-end and analysed against three frameworks: MITRE ATT&CK (technique), the Unified Kill Chain (ordering), and CWE (weakness class).",
     phases.length ? `Phases exercised: ${phases.join(" → ")}.` : "",
   ].filter(Boolean).join("\n");
 }
@@ -81,9 +81,9 @@ export function findingsSection(findings: ReportFinding[]): string {
       `**Weakness**: ${idpart}  `,
       `**Affected**: ${f.affected}`,
       "",
-      `**Description** — ${f.description}`,
+      `**Description**: ${f.description}`,
       "",
-      `**Impact** — ${f.impact}`,
+      `**Impact**: ${f.impact}`,
       "",
       "**Evidence**",
       f.evidence.map((e) => `- \`#${e.seq}\` \`${e.cmd}\`\n${fence([e.output || "(no captured output)"])}`).join("\n"),
@@ -91,7 +91,7 @@ export function findingsSection(findings: ReportFinding[]): string {
       "**Steps to reproduce**",
       fence(f.reproduction.length ? f.reproduction : ["(see the walkthrough)"]),
       "",
-      `**Remediation** — ${f.remediation}`,
+      `**Remediation**: ${f.remediation}`,
       "",
       "**References**",
       refs,
@@ -108,7 +108,7 @@ export function walkthroughSection(report: WatcherReport): string {
   for (const e of episodes) {
     const label = labelByTactic.get(e.tactic) ?? e.tactic;
     if (label !== current) { out.push(`### ${label}`, ""); current = label; }
-    out.push(`- \`#${e.seq}\` \`${e.cmd}\`${e.output_digest ? ` — ${e.output_digest}` : ""}`);
+    out.push(`- \`#${e.seq}\` \`${e.cmd}\`${e.output_digest ? `: ${e.output_digest}` : ""}`);
   }
   return out.join("\n");
 }

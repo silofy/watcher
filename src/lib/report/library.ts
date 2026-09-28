@@ -28,7 +28,7 @@ const BY_CVE: Record<string, FindingTemplate> = {
     severity: "critical",
     cwe: "CWE-78",
     description: "The Samba print path forwards the print-job description through the shell without escaping, so a crafted job name is executed as a command on the server.",
-    impact: "Unauthenticated remote command execution as the Samba service account — an initial foothold on the host.",
+    impact: "Unauthenticated remote command execution as the Samba service account, giving an initial foothold on the host.",
     remediation: "Patch Samba to a fixed release; disable the print$ / spooler services if unused; never pass untrusted job metadata to a shell.",
     references: ["https://nvd.nist.gov/vuln/detail/CVE-2026-4480"],
   },
