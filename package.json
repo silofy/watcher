@@ -13,6 +13,7 @@
     "ingest:claude-code": "vite-node scripts/ingest-claude-code.tsx",
     "ingest:http-proxy": "vite-node scripts/ingest-http-proxy.tsx",
     "ingest:sysmon": "vite-node scripts/ingest-sysmon.tsx",
+    "ingest:defense": "vite-node scripts/ingest-defense.tsx",
     "report": "vite-node scripts/export-report.tsx",
     "report:from-store": "vite-node scripts/ingest-capture.tsx --from-store",
     "conformance": "vite-node scripts/conformance.tsx",
