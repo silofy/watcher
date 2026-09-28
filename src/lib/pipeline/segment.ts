@@ -78,7 +78,7 @@ export function segmentEpisodes(
         gap_before_ms: gap,
         exit_code: null,
         actor,
-        output_digest: actor === "idle" ? "walked away" : "long pause — reasoning or stuck",
+        output_digest: actor === "idle" ? "walked away" : "long pause - reasoning or stuck",
         tactic: prior.tactic,
         confidence: 0,
         noise_weight: 0,
