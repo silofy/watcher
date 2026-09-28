@@ -16,11 +16,18 @@ import { ditherMask } from "../lib/dither";
  *
  *  Notes are deterministic by default; if a local/cloud model is configured (same opt-in path as
  *  the per-step coaching in DeviationTimeline), `narrateGhost` sharpens them post-hoc — a rules-only
- *  setup (NullProvider) never changes what's rendered. */
-export function GhostCard() {
-  const ghost = useReport((s) => s.report.ghost);
+ *  setup (NullProvider) never changes what's rendered.
+ *
+ *  Accepts an optional `ghost`/`total` override so the defense debrief (whose ghost is already a
+ *  finished `GhostResult` off the investigation, not the offense report on the store) can reuse this
+ *  same view instead of duplicating it; omitted, it reads the active offense report exactly as
+ *  before. */
+export function GhostCard({ ghost: ghostProp, total: totalProp }: { ghost?: GhostResult | null; total?: number } = {}) {
+  const ghostFromStore = useReport((s) => s.report.ghost);
   const reveal = useReport((s) => s.reveal);
-  const total = useReport((s) => s.report.episodes.length);
+  const totalFromStore = useReport((s) => s.report.episodes.length);
+  const ghost = ghostProp !== undefined ? ghostProp : ghostFromStore;
+  const total = totalProp !== undefined ? totalProp : totalFromStore;
   const items = ghost?.items ?? [];
   const [narrated, setNarrated] = useState<Map<string, string>>(new Map());
 

@@ -25,6 +25,9 @@ import { shouldShowNudge } from "./lib/onboarding";
 import { ScanEye } from "./components/icons";
 import { ditherMask } from "./lib/dither";
 import { StepStrip } from "./components/StepStrip";
+import { DefenseRubric } from "./components/DefenseRubric";
+import type { OneLesson } from "./lib/one-lesson";
+import type { DefenseReport } from "./lib/defense/types";
 
 function Rise({ i, className, id, children }: { i: number; className?: string; id?: string; children: ReactNode }) {
   return (
@@ -56,12 +59,12 @@ function Tab({ id, label }: { id: "debrief" | "history" | "progress"; label: str
  *  (see one-lesson.ts for the priority order). Renders nothing when none of those apply — e.g. a
  *  clean run, an old report, or a live capture still in progress — rather than show an empty or
  *  recap-only hero. `PhaseAudit`'s own "Key takeaway" banner stays suppressed via `hideTakeaway`. */
-function HeroLesson() {
+function HeroLesson({ lesson: lessonProp, total: totalProp }: { lesson?: OneLesson | null; total?: number } = {}) {
   const { report, reveal } = useReport();
-  const lesson = pickOneLesson(report);
+  const lesson = lessonProp !== undefined ? lessonProp : pickOneLesson(report);
   if (!lesson) return null;
   const p = lesson.pivot;
-  const total = report.episodes.length;
+  const total = totalProp !== undefined ? totalProp : report.episodes.length;
   const body = (
     <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_290px] md:items-end">
       <div>
@@ -95,8 +98,89 @@ function HeroLesson() {
   );
 }
 
+/** Found/missed breakdown of the incident's artifacts — the defense analogue of the offense
+ *  objective list, relabeled for coverage of what the analyst should have caught. */
+function ArtifactBreakdown({ report }: { report: DefenseReport }) {
+  const { incident, result } = report;
+  const hitById = new Map(result.hits.map((h) => [h.artifact_id, h]));
+  const found = result.hits.filter((h) => h.found).length;
+  const total = result.hits.length;
+  return (
+    <Section
+      title="Artifact coverage"
+      subtitle="what the incident left behind vs. what the investigation caught"
+      lead={{ value: found, unit: ` / ${total}`, caption: "artifacts found" }}
+    >
+      <div className="divide-y divide-edge/50">
+        {incident.artifacts.map((a) => {
+          const hit = hitById.get(a.id);
+          const foundIt = !!hit?.found;
+          return (
+            <div key={a.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+              <span className="min-w-0 truncate text-muted" title={a.label}>
+                {a.label}
+              </span>
+              <span className="mono shrink-0 text-xs" style={{ color: foundIt ? "var(--color-match)" : "var(--color-skipped)" }}>
+                {foundIt ? `found · step ${hit?.found_by_seq ?? "?"}` : "missed"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
+/** The defense (blue-team) debrief — mirrors the offense narrative's shape (facts, one lesson,
+ *  ghost, grade) but sourced from a `DefenseReport`: the incident-artifact coverage stands in for
+ *  objectives, and the 5-metric rubric (`DefenseRubric`) stands in for the offense grade panel. */
+function DefenseDebrief({ report }: { report: DefenseReport }) {
+  const total = report.result.hits.length;
+  return (
+    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      <Rise i={2}>
+        <HeroLesson lesson={report.lesson} total={total} />
+      </Rise>
+
+      {report.ghost.items.length ? (
+        <Rise i={5} id="ghost">
+          <Section
+            title="You vs. the Ghost"
+            lead={{
+              value: Math.round((report.ghost.time_lost_ms ?? 0) / 60000),
+              unit: " min",
+              caption: `lost to late finds${report.ghost.human_wins ? ` · you beat the optimal line ${report.ghost.human_wins}×` : ""}`,
+            }}
+          >
+            <GhostCard ghost={report.ghost} total={total} />
+          </Section>
+        </Rise>
+      ) : null}
+
+      <Rise i={6} id="grade">
+        <Section title="Grade" subtitle="how your score breaks down — the defensive rubric">
+          <DefenseRubric grade={report.grade} />
+        </Section>
+      </Rise>
+
+      <Rise i={7}>
+        <ArtifactBreakdown report={report} />
+      </Rise>
+
+      <Collapse title="Session window" subtitle="session facts">
+        <SessionFacts session={report.session} totalMs={Date.parse(report.session.ended_at) - Date.parse(report.session.started_at)} />
+      </Collapse>
+
+      <footer className="flex items-center justify-between py-6 text-xs text-faint">
+        <span className="mono">defense debrief · {report.session.uuid.slice(0, 8)}</span>
+        <span>The Watcher — capture safely, process privately, coach honestly.</span>
+      </footer>
+    </div>
+  );
+}
+
 export function App() {
-  const { report, view, gateDismissed, revealNonce, onboardingOpen, openOnboarding, setOnboardingStep, sessionCards } = useReport();
+  const { report, view, gateDismissed, revealNonce, onboardingOpen, openOnboarding, setOnboardingStep, sessionCards, defenseReport } = useReport();
   const { session } = report;
   const needsWriteup = report.golden_dag.length === 0 && !gateDismissed;
   const recording = isLiveRecording(report);
@@ -189,6 +273,8 @@ export function App() {
             <History />
           ) : view === "progress" ? (
             <Progress />
+          ) : defenseReport ? (
+            <DefenseDebrief report={defenseReport} />
           ) : needsWriteup ? (
             <WriteupGate />
           ) : (

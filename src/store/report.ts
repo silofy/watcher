@@ -20,6 +20,8 @@ import { isLiveRecording } from "../lib/live";
 import { assembleReport } from "../lib/pipeline/ingest";
 import { DEMOS, demoById, isDemoId, LEGACY_DEMO_ID } from "../lib/demo/registry";
 import { ONBOARDED_KEY, ONBOARDED_VALUE, shouldOpenOnboarding, clampStep } from "../lib/onboarding";
+import type { DefenseReport } from "../lib/defense/types";
+import defenseFixture from "../../fixtures/session-defense.json";
 
 /**
  * The normalized store. The report blob is resolved from, in order:
@@ -82,6 +84,15 @@ const SESSIONS = loadSessions();
 const REPORTS: Record<string, WatcherReport> = {};
 for (const s of SESSIONS) REPORTS[s.id] = s.report;
 
+/** Defense fixtures (`mode: "defense"`) never enter the offense pipeline — they're held and
+ *  rendered separately (see `defenseReport` on the store and the debrief branch in App.tsx). */
+function isDefenseReport(x: unknown): x is DefenseReport {
+  return !!x && typeof x === "object" && (x as { mode?: unknown }).mode === "defense";
+}
+
+const DEFENSE_REPORTS: Record<string, DefenseReport> = {};
+if (isDefenseReport(defenseFixture)) DEFENSE_REPORTS[`defense:${defenseFixture.session.uuid}`] = defenseFixture;
+
 export interface SessionCard {
   id: string;
   machine: MachineMeta;
@@ -102,6 +113,8 @@ export interface SessionCard {
   demo: boolean;
   breadth: number;
   methodology: number | null;
+  /** Set for a defense (blue-team) debrief — opens the defense branch instead of the offense one. */
+  mode?: "defense";
 }
 
 function toCard(id: string, r: WatcherReport): SessionCard {
@@ -126,6 +139,33 @@ function toCard(id: string, r: WatcherReport): SessionCard {
     demo: isDemoId(id),
     breadth: r.metrics.technique_breadth ?? 0,
     methodology: r.metrics.methodology_coverage_pct ?? null,
+  };
+}
+
+function toDefenseCard(id: string, d: DefenseReport): SessionCard {
+  const asWatcher = { session: d.session } as WatcherReport;
+  const total = d.result.hits.length;
+  const found = d.result.hits.filter((h) => h.found).length;
+  return {
+    id,
+    machine: machineOf(asWatcher),
+    target: targetOf(asWatcher),
+    target_scope: d.session.target_scope,
+    started_at: d.session.started_at,
+    ended_at: d.session.ended_at,
+    source: d.session.source,
+    rooted: false,
+    grade: d.grade.score,
+    letter: d.grade.letter,
+    coverage: total ? Math.round((found / total) * 100) : 0,
+    efficiency: total ? Math.round((found / total) * 100) : 0,
+    episodes: total,
+    recording: false,
+    isLatest: false,
+    demo: false,
+    breadth: 0,
+    methodology: null,
+    mode: "defense",
   };
 }
 
@@ -154,7 +194,11 @@ function injectedCards(): SessionCard[] {
 }
 
 function cardsFrom(): SessionCard[] {
-  const cards = [...injectedCards(), ...Object.entries(REPORTS).map(([id, r]) => toCard(id, r))];
+  const cards = [
+    ...injectedCards(),
+    ...Object.entries(REPORTS).map(([id, r]) => toCard(id, r)),
+    ...Object.entries(DEFENSE_REPORTS).map(([id, d]) => toDefenseCard(id, d)),
+  ];
   const latestId = [...cards].sort((a, b) => Date.parse(b.ended_at) - Date.parse(a.ended_at))[0]?.id;
   return cards.map((c) => ({ ...c, isLatest: c.id === latestId }));
 }
@@ -178,6 +222,10 @@ interface ReportState extends Derived {
   gateDismissed: boolean;
   /** The active session's full report; `report` is the (possibly trimmed) view. */
   fullReport: WatcherReport;
+  /** Set when the active session is a defense (blue-team) debrief — never run through the offense
+   *  pipeline. `report`/`fullReport`/derived offense state are left stale (and unused) while this is
+   *  set; the debrief container branches on it before touching any of them. */
+  defenseReport: DefenseReport | null;
   /** Retroactive session window as an inclusive seq range, or null for the full session. */
   trimSeq: [number, number] | null;
 
@@ -302,6 +350,7 @@ export const useReport = create<ReportState>((set, get) => ({
   view: "debrief",
   gateDismissed: false,
   fullReport: DEFAULT_ENTRY.report,
+  defenseReport: null,
   trimSeq: null,
   ...derive(DEFAULT_ENTRY.report),
 
@@ -337,13 +386,21 @@ export const useReport = create<ReportState>((set, get) => ({
     set({ onboardingDone: done });
   },
   switchSession: (id) => {
+    const banner = get().liveBanner;
+    const d = DEFENSE_REPORTS[id];
+    if (d) {
+      // A defense debrief never runs through the offense pipeline — `fullReport`/derived offense
+      // state are left as-is (stale, but unused: the debrief container branches on `defenseReport`
+      // before reading any of them).
+      set({ activeId: id, view: "debrief", defenseReport: d, trimSeq: null, ...RESET, gateDismissed: true, liveBanner: banner?.id === id ? null : banner, writeup: null, demo: null });
+      return;
+    }
     const r = REPORTS[id];
     if (!r) return;
-    const banner = get().liveBanner;
     // Explicitly opening a session (from History, the live banner, etc.) goes straight to the debrief —
     // never re-prompt for a write-up here. The gate is for the initial landing; you can still add a
     // reference path from inside the debrief (Reference path → Add write-up).
-    set({ activeId: id, view: "debrief", fullReport: r, trimSeq: null, ...derive(r), ...RESET, gateDismissed: true, liveBanner: banner?.id === id ? null : banner, writeup: null, demo: isDemoId(id) ? get().demo : null });
+    set({ activeId: id, view: "debrief", fullReport: r, defenseReport: null, trimSeq: null, ...derive(r), ...RESET, gateDismissed: true, liveBanner: banner?.id === id ? null : banner, writeup: null, demo: isDemoId(id) ? get().demo : null });
   },
 
   applyGoldenDag: (golden, meta) => {

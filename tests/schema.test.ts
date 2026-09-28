@@ -19,6 +19,9 @@ describe("watcher-report schema", () => {
   for (const f of files) {
     it(`validates ${f}`, () => {
       const doc = JSON.parse(readFileSync(join(dir, f), "utf8"));
+      // Defense (blue-team) debriefs are a DefenseReport, not a WatcherReport — a different shape
+      // entirely (see src/lib/defense/types.ts), so this schema doesn't apply to them.
+      if ((doc as { mode?: string }).mode === "defense") return;
       const ok = validate(doc);
       if (!ok) console.error(f, validate.errors);
       expect(ok).toBe(true);

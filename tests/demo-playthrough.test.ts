@@ -40,8 +40,9 @@ describe("demo playthrough (Abducted)", () => {
     const card = s.sessionCards.find((c) => c.id === ABDUCTED.id);
     expect(card?.demo).toBe(true);
     expect(card?.machine.name).toBe("Abducted");
-    // History is exactly the curated demos — no dev/sample fixtures leak in.
-    expect(s.sessionCards.every((c) => c.demo)).toBe(true);
+    // History is exactly the curated demos plus any defense (blue-team) debrief — no dev/sample
+    // fixtures leak in.
+    expect(s.sessionCards.filter((c) => c.mode !== "defense").every((c) => c.demo)).toBe(true);
     expect(new Set(s.sessionCards.map((c) => c.machine.name))).toEqual(new Set(["Abducted", "RootMe"]));
   });
 

