@@ -230,7 +230,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
         id: `${tactic}-detour`,
         kind: "insight",
         title: `${detours.length} dead-end ${detours.length === 1 ? "command" : "commands"} in this phase`,
-        detail: detours.length === 1 ? `\`${detours[0].cmd}\` produced no new attack surface.` : "Commands that produced no new attack surface — skippable next time.",
+        detail: detours.length === 1 ? `\`${detours[0].cmd}\` produced no new attack surface.` : "Commands that produced no new attack surface, skippable next time.",
         savings_ms: detours.reduce((a, e) => a + activeMs(e), 0),
         evidence_seq: detours[0].seq,
       });
@@ -240,7 +240,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
         id: `${tactic}-loop`,
         kind: "insight",
         title: `${loops.length} repeated ${loops.length === 1 ? "attempt" : "attempts"} (loops)`,
-        detail: "The same approach retried after failing — a signal to change tack sooner.",
+        detail: "The same approach retried after failing, a signal to change tack sooner.",
         savings_ms: loops.reduce((a, e) => a + activeMs(e), 0),
         evidence_seq: loops[0].seq,
       });
@@ -249,7 +249,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       insights.push({
         id: `${tactic}-stuck`,
         kind: "insight",
-        title: `Long stalls — ${Math.round(waste.stuck_ms / 60000)} min of think-time above your baseline`,
+        title: `Long stalls: ${Math.round(waste.stuck_ms / 60000)} min of think-time above your baseline`,
         detail: "Extended pauses beyond your usual pace; often where a hint or a step back would help.",
         savings_ms: waste.stuck_ms,
       });
@@ -324,7 +324,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       kind: "insight",
       title: "Commands inside your SSH session weren't captured",
       detail:
-        "A long interactive `ssh` session was recorded as a single block — the enumeration, privesc, and flag reads you ran on the box aren't in this debrief. Run remote commands non-interactively (`ssh host 'cmd'`), or let the capture agent tap the session, for per-command detail.",
+        "A long interactive `ssh` session was recorded as a single block: the enumeration, privesc, and flag reads you ran on the box aren't in this debrief. Run remote commands non-interactively (`ssh host 'cmd'`), or let the capture agent tap the session, for per-command detail.",
       evidence_seq: bigSsh.seq,
       category: "Tactics",
     });
@@ -359,8 +359,8 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
     const item: AuditItem = {
       id: "focus-rabbit-hole",
       kind: "insight",
-      title: `Rabbit hole: ${attempts} low-yield \`${worst.binary}\` attempts — step back and enumerate`,
-      detail: "Sustained low-yield attempts on the same tool with no new lead — a signal to pause and re-enumerate rather than keep grinding.",
+      title: `Rabbit hole: ${attempts} low-yield \`${worst.binary}\` attempts, step back and enumerate`,
+      detail: "Sustained low-yield attempts on the same tool with no new lead, a signal to pause and re-enumerate rather than keep grinding.",
       savings_ms: worst.wasted_ms,
       evidence_seq: worst.start_seq,
     };
@@ -373,7 +373,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
     general.push({
       id: "recovery-slow",
       kind: "insight",
-      title: `Slow recovery from stuck moments — median ${Math.round(recovery.median_ms / 60000)} min to get back on track`,
+      title: `Slow recovery from stuck moments: median ${Math.round(recovery.median_ms / 60000)} min to get back on track`,
       detail: "After a dead end or a loop, it took a while before the next real advance. Time-box detours more tightly: if a path isn't paying off in a few minutes, switch approaches.",
     });
   }
@@ -392,7 +392,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
     privescInsights.push({
       id: "privesc-slow-line",
       kind: "insight",
-      title: `A confirmed root path (${path.title}) was on the table at step ${available_seq} — you rooted at step ${rooted_seq}`,
+      title: `A confirmed root path (${path.title}) was on the table at step ${available_seq}; you rooted at step ${rooted_seq}`,
       detail: `The enumeration you'd already run exposed a known-good path to root (${path.title}): \`${path.abuse.split("\n")[0]}\`. You reached root by a longer line instead. When a confirmed escalation is visible, take it before chasing others.`,
       savings_ms: wastedMs > 0 ? wastedMs : undefined,
       evidence_seq: available_seq,
@@ -414,7 +414,7 @@ export function buildPhaseAudits(report: WatcherReport): { phases: PhaseAudit[];
       id: "privesc-clean-take",
       kind: "pass",
       title: `Spotted and used the confirmed privesc path (${top.title}) directly`,
-      detail: `You identified a known-good root path from your own enumeration and acted on it without thrashing — the discipline this whole audit rewards.`,
+      detail: `You identified a known-good root path from your own enumeration and acted on it without thrashing, the discipline this whole audit rewards.`,
       evidence_seq: top.evidence_seq,
       category: "PrivEsc",
     });

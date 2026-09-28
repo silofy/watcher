@@ -37,14 +37,14 @@ export function pickOneLesson(report: WatcherReport): OneLesson | null {
 
   const miss = topUnmetCheck(report);
   if (miss) {
-    return { text: `${miss.label} — ${miss.hint}`, evidence_seq: miss.evidence_seq };
+    return { text: `${miss.label}: ${miss.hint}`, evidence_seq: miss.evidence_seq };
   }
 
   const holes = computeFocus(report).rabbit_holes;
   if (holes.length) {
     const worst = holes.reduce((a, b) => (b.wasted_ms > a.wasted_ms ? b : a));
     return {
-      text: `You spent a run of low-yield \`${worst.binary}\` attempts — step back and enumerate before forcing a path.`,
+      text: `You spent a run of low-yield \`${worst.binary}\` attempts. Step back and enumerate before forcing a path.`,
       evidence_seq: worst.start_seq,
     };
   }

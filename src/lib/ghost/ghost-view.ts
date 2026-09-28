@@ -36,11 +36,11 @@ export function verdictMeta(verdict: GhostVerdict): VerdictMeta {
 export function connectorLabel(verdict: GhostVerdict): string | null {
   switch (verdict) {
     case "late_pivot":
-      return "Unlocked earlier — you acted on it later.";
+      return "Unlocked earlier; you acted on it later.";
     case "ahead":
-      return "You acted before the optimal line unlocked it — ahead.";
+      return "You acted before the optimal line unlocked it, ahead.";
     case "off_path_win":
-      return "Reached via your own route — off the intended path.";
+      return "Reached via your own route, off the intended path.";
     case "on_time":
     case "skipped":
       return null;

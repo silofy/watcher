@@ -63,7 +63,7 @@ export function finalizeLiveReport(r: WatcherReport, sshSessions: SshSessionInpu
 
   const lead: CoachingStep = {
     action: r.recording
-      ? `Recording — ${episodes.length} command(s) captured across ${breadth} technique(s).`
+      ? `Recording: ${episodes.length} command(s) captured across ${breadth} technique(s).`
       : `${episodes.length} commands captured across ${breadth} ATT&CK technique(s).`,
     why: "",
     category: "Recap",

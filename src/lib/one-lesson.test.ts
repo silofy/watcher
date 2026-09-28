@@ -84,7 +84,7 @@ describe("pickOneLesson priority", () => {
       ],
     });
     const lesson = pickOneLesson(r)!;
-    expect(lesson.text).toBe("SMB enumeration — SMB is open — enumerate it (`enum4linux-ng`, `smbclient -L`).");
+    expect(lesson.text).toBe("SMB enumeration: SMB is open: enumerate it (`enum4linux-ng`, `smbclient -L`).");
     expect(lesson.evidence_seq).toBe(0);
   });
 
