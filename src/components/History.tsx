@@ -4,6 +4,7 @@ import { MachineAvatar } from "./MachineAvatar";
 import { DIFFICULTY_COLOR } from "../lib/machine";
 import { targetOf, platformLabel } from "../lib/platform";
 import type { WatcherReport } from "../types/report";
+import { reportFromCapture } from "../lib/ingest/detect";
 import { Check } from "./icons";
 
 function gradeColor(letter: string): string {
@@ -104,17 +105,30 @@ export function History() {
       Date.parse(b.ended_at) - Date.parse(a.ended_at),
   );
 
+  function open(rep: WatcherReport) {
+    ingestLiveReport(rep);
+    switchSession(`${targetOf(rep).platform}:${rep.session.uuid}`);
+  }
+
   async function importFile(file: File | undefined) {
     if (!file) return;
     setErr(null);
+    const text = (await file.text()).replace(/^﻿/, "");
+    // A raw capture (Claude Code transcript, HAR, or Sysmon export) — run the adapter.
     try {
-      const rep = JSON.parse((await file.text()).replace(/^﻿/, "")) as WatcherReport;
-      if (!rep?.session?.uuid || !Array.isArray(rep.episodes)) throw new Error("shape");
-      ingestLiveReport(rep);
-      switchSession(`${targetOf(rep).platform}:${rep.session.uuid}`);
+      const fromCapture = reportFromCapture(text, file.name);
+      if (fromCapture) return open(fromCapture);
     } catch {
-      setErr(`"${file.name}" isn't a Watcher session JSON — it should be a report exported by the capture agent.`);
+      /* fall through to the report-JSON path */
     }
+    // An already-assembled Watcher report JSON (from the agent / Pwnbox).
+    try {
+      const rep = JSON.parse(text) as WatcherReport;
+      if (rep?.session?.uuid && Array.isArray(rep.episodes)) return open(rep);
+    } catch {
+      /* not JSON */
+    }
+    setErr(`"${file.name}" isn't a recognized session. Import a Watcher report JSON, a Claude Code transcript (.jsonl), a HAR file, or a Sysmon export.`);
   }
 
   return (
@@ -130,7 +144,7 @@ export function History() {
         void importFile(e.dataTransfer.files[0]);
       }}
     >
-      <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => void importFile(e.target.files?.[0])} />
+      <input ref={fileRef} type="file" accept="application/json,.json,.har,.jsonl,.ndjson" className="hidden" onChange={(e) => void importFile(e.target.files?.[0])} />
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-3">
           <h2 className="label text-muted">Engagement history</h2>
@@ -140,19 +154,19 @@ export function History() {
           type="button"
           onClick={() => fileRef.current?.click()}
           className="label rounded-full border border-signal/50 px-3 py-1.5 text-signal transition-colors hover:bg-signal/15"
-          title="Load a session JSON captured by the agent (or dropped from Pwnbox)"
+          title="Import a run: a Watcher report JSON, a Claude Code transcript (.jsonl), a HAR export, or a Sysmon log"
         >
           Import session ↑
         </button>
       </div>
-      {drag && <div className="mb-4 rounded-lg border-2 border-dashed border-signal bg-signal/10 px-6 py-8 text-center text-sm text-signal">Drop a session JSON to load it</div>}
+      {drag && <div className="mb-4 rounded-lg border-2 border-dashed border-signal bg-signal/10 px-6 py-8 text-center text-sm text-signal">Drop a report JSON, Claude Code transcript, HAR, or Sysmon export to grade it</div>}
       {err && <p className="mb-4 text-xs text-detour">{err}</p>}
 
       {cards.length === 0 ? (
         <div className="rounded-lg border border-dashed border-edge bg-panel px-6 py-16 text-center">
           <div className="font-display text-lg text-muted">No runs yet</div>
           <p className="mx-auto mt-2 max-w-[44ch] text-sm text-faint">
-            Capture a session with the agent — or <span className="text-signal">Import</span> a session JSON (drag it anywhere here) to load a run you captured elsewhere, like Pwnbox.
+            Capture a session with the agent, or <span className="text-signal">Import</span> a run (drag it anywhere here): a Watcher report JSON, a Claude Code transcript, a HAR export, or a Sysmon log.
           </p>
         </div>
       ) : (

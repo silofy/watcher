@@ -46,12 +46,22 @@ function pathOf(url: string): string {
   }
 }
 
+/** Decode base64 in either a browser (atob) or Node (Buffer) — the adapter runs in both. */
+function fromBase64(s: string): string {
+  if (typeof atob === "function") {
+    const bin = atob(s);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+  return Buffer.from(s, "base64").toString("utf8");
+}
+
 /** HAR content.text may be base64 (encoding: "base64"); decode when we can, else mark it. */
 function bodyText(content?: { text?: string; mimeType?: string; encoding?: string }): string | undefined {
   if (!content || content.text == null) return undefined;
   if (content.encoding === "base64") {
     try {
-      return Buffer.from(content.text, "base64").toString("utf8");
+      return fromBase64(content.text);
     } catch {
       return "[binary body]";
     }
