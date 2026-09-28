@@ -25,6 +25,12 @@ function firstWord(s: string): string {
  */
 export function equivalenceIndex(ep: Episode, objective: GoldenObjective): number {
   if (ep.tactic !== objective.tactic) return -1;
+  // Technique-based match: web/EDR objectives key on the ATT&CK technique rather than a CLI tool.
+  // Guarded by `techniques` being present, so tool-based (host) objectives are unaffected.
+  if (objective.techniques?.length) {
+    const tech = (ep.technique ?? "").toUpperCase();
+    if (tech && objective.techniques.some((t) => t.toUpperCase() === tech)) return 0;
+  }
   const cmdTokens = ep.cmd.toLowerCase().split(/\s+/).filter(Boolean);
   const binary = ep.binary.toLowerCase();
   for (let i = 0; i < objective.satisfied_by.length; i++) {

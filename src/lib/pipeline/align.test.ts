@@ -14,6 +14,21 @@ const ep = (over: Partial<Episode>): Episode => ({
   ...over,
 });
 
+describe("equivalenceIndex — technique match (web/EDR objectives)", () => {
+  const webObj: GoldenObjective = { objective: "exploit_web_app", tactic: "TA0001", satisfied_by: [], techniques: ["T1190"] };
+  it("matches when the episode's technique is listed and the tactic agrees", () => {
+    expect(equivalenceIndex(ep({ tactic: "TA0001", technique: "T1190", binary: "GET" }), webObj)).toBe(0);
+  });
+  it("does not match on technique when the tactic differs", () => {
+    expect(equivalenceIndex(ep({ tactic: "TA0007", technique: "T1190", binary: "GET" }), webObj)).toBe(-1);
+  });
+  it("leaves tool-based objectives (no techniques) unchanged", () => {
+    const hostObj: GoldenObjective = { objective: "enum", tactic: "TA0007", satisfied_by: ["nmap"] };
+    expect(equivalenceIndex(ep({ tactic: "TA0007", technique: "T1190", binary: "nmap", cmd: "nmap x" }), hostObj)).toBe(0);
+    expect(equivalenceIndex(ep({ tactic: "TA0007", technique: "T1190", binary: "curl", cmd: "curl x" }), hostObj)).toBe(-1);
+  });
+});
+
 describe("equivalenceIndex (deterministic stand-in for the LLM judgment)", () => {
   const obj: GoldenObjective = { objective: "enum", tactic: "TA0007", satisfied_by: ["nmap", "rustscan"] };
   it("matches the primary tool at index 0", () => {

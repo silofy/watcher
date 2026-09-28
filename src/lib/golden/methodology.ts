@@ -27,6 +27,19 @@ export const HOST_METHODOLOGY: GoldenObjective[] = [
   { objective: "escalate_to_root", tactic: "TA0004", satisfied_by: ["su", "sudo", "ssh", "systemctl", "docker", "python", "python3", "bash", "gcc", "chmod", "msfconsole", ".rootbash"], depends_on: ["enumerate_privesc"] },
 ];
 
+/**
+ * Web engagement ladder for HTTP-proxy (HAR) runs. Web episodes key on ATT&CK
+ * technique (their "binary" is just the HTTP method), so these objectives match by
+ * technique — see the guarded branch in pipeline/align.ts. Techniques mirror what
+ * the pipeline tags web traffic with (recon, wordlist discovery, exploit, brute force).
+ */
+export const WEB_METHODOLOGY: GoldenObjective[] = [
+  { objective: "map_attack_surface", tactic: "TA0007", satisfied_by: [], techniques: ["T1595", "T1046"], depends_on: [] },
+  { objective: "content_discovery", tactic: "TA0007", satisfied_by: [], techniques: ["T1595.003", "T1083"], depends_on: ["map_attack_surface"] },
+  { objective: "attack_authentication", tactic: "TA0001", satisfied_by: [], techniques: ["T1110", "T1078"], depends_on: ["map_attack_surface"] },
+  { objective: "exploit_web_app", tactic: "TA0001", satisfied_by: [], techniques: ["T1190"], depends_on: ["content_discovery"] },
+];
+
 /** True when the run is predominantly web traffic (needs a web rubric, not this one). */
 function isWebRun(report: WatcherReport): boolean {
   if ((report.session?.context_path ?? "").toLowerCase().startsWith("web")) return true;
@@ -41,6 +54,6 @@ function isWebRun(report: WatcherReport): boolean {
  * ladder for host-context runs, and [] for web runs (their rubric is a follow-up).
  */
 export function methodologyGolden(report: WatcherReport): GoldenObjective[] {
-  if (isWebRun(report)) return [];
-  return HOST_METHODOLOGY.map((o) => ({ ...o }));
+  const ladder = isWebRun(report) ? WEB_METHODOLOGY : HOST_METHODOLOGY;
+  return ladder.map((o) => ({ ...o }));
 }

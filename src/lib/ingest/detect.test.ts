@@ -42,6 +42,6 @@ describe("reportFromCapture", () => {
     // host run (transcript) gets the 7-objective canonical ladder so coverage is meaningful
     expect(reportFromCapture(transcript, "run.jsonl")!.golden_dag?.length).toBe(7);
     // web run (HAR) has no host golden attached — its rubric is a follow-up
-    expect(reportFromCapture(har)!.golden_dag?.length ?? 0).toBe(0);
+    expect(reportFromCapture(har)!.golden_dag?.length).toBe(4);
   });
 });

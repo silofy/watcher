@@ -144,6 +144,7 @@
           "objective": { "type": "string" },
           "tactic": { "type": "string", "pattern": "^TA[0-9]{4}$" },
           "satisfied_by": { "type": "array", "items": { "type": "string" }, "description": "Tools/methods that satisfy this objective." },
+          "techniques": { "type": "array", "items": { "type": "string" }, "description": "ATT&CK techniques that also satisfy this objective (technique-keyed, for web/EDR objectives)." },
           "depends_on": { "type": "array", "items": { "type": "string" }, "description": "Objective ids that are true prerequisites." },
           "user_satisfied_by_seq": { "type": ["integer", "null"], "description": "Episode seq that satisfied this objective, or null if skipped." },
           "status": { "type": "string", "enum": ["untouched", "attempted", "reached", "proven"] },

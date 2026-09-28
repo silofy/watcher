@@ -17,6 +17,7 @@ import addFormats from "ajv-formats";
 import schema from "../schema/watcher-report.schema.json";
 import { harToRawCommands } from "../src/lib/ingest/http-proxy";
 import { assembleReport } from "../src/lib/pipeline/ingest";
+import { WEB_METHODOLOGY } from "../src/lib/golden/methodology";
 import type { GoldenObjective, Session } from "../src/types/report";
 
 function arg(name: string, fallback: string): string {
@@ -36,7 +37,7 @@ const outPath = resolve(arg("out", "dist/report-from-http-proxy.json"));
 const goldenPath = arg("golden", "");
 const golden: GoldenObjective[] = goldenPath
   ? (JSON.parse(readFileSync(resolve(goldenPath), "utf8")) as GoldenObjective[])
-  : [];
+  : WEB_METHODOLOGY.map((o) => ({ ...o }));
 
 const raw = harToRawCommands(readFileSync(resolve(harPath), "utf8"));
 if (raw.length === 0) throw new Error(`no HTTP entries found in ${harPath}`);

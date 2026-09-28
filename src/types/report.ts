@@ -123,6 +123,9 @@ export interface GoldenObjective {
   objective: string;
   tactic: string;
   satisfied_by: string[];
+  /** Optional ATT&CK techniques that also satisfy this objective (for web/EDR objectives whose
+   *  episodes key on technique rather than a CLI tool). When absent, matching is tool-based as before. */
+  techniques?: string[];
   depends_on?: string[];
   user_satisfied_by_seq?: number | null;
   status?: ObjectiveStatus;
