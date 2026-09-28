@@ -1,5 +1,7 @@
 import type { WatcherReport } from "../../types/report";
 import type { LlmProvider } from "../llm/provider";
+import { HUMANIZE_STYLE } from "../llm/style";
+import { stripAiTells } from "../ingest/text-filter";
 import { deriveReportFindings, type ReportFinding } from "./findings";
 
 /**
@@ -21,14 +23,16 @@ export async function narrateReport(
       "Rewrite the prose of a penetration-test report for clarity and a professional tone.",
       "Return JSON { summary: string, descriptions: { <finding id>: string } }.",
       "Do not invent facts, CVEs, or severities. Keep every claim supported by the input.",
+      HUMANIZE_STYLE,
       JSON.stringify({ findings: payload }),
     ].join("\n");
     const res = (await provider.generateJson(prompt)) as { summary?: string; descriptions?: Record<string, string> } | null;
     if (!res) return { findings };
+    // Deterministic backstop: strip any AI-tell punctuation the model emitted anyway.
     const polished = findings.map((f) =>
-      res.descriptions?.[f.id] ? { ...f, description: res.descriptions[f.id] } : f,
+      res.descriptions?.[f.id] ? { ...f, description: stripAiTells(res.descriptions[f.id]) } : f,
     );
-    return { findings: polished, summary: res.summary };
+    return { findings: polished, summary: res.summary ? stripAiTells(res.summary) : res.summary };
   } catch {
     return { findings };
   }

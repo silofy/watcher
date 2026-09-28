@@ -12,6 +12,8 @@
  */
 import type { GhostDiffItem, GhostResult } from "./ghost";
 import type { LlmProvider } from "../llm/provider";
+import { HUMANIZE_STYLE } from "../llm/style";
+import { stripAiTells } from "../ingest/text-filter";
 
 const TEMPERATURE = 0.2;
 
@@ -43,7 +45,8 @@ export function buildNarratePrompt(items: GhostDiffItem[]): string {
     "skipped it, or won it off the intended path.",
     "For EACH objective below, write ONE short, specific line (max 20 words) restating its verdict for",
     "a human reader. No flattery, no filler, no markdown. Do not invent facts beyond what's given.",
-    "Return ONLY JSON matching the schema — exactly one entry per objective.",
+    "Return ONLY JSON matching the schema, exactly one entry per objective.",
+    HUMANIZE_STYLE,
     "",
     "Objectives:",
     ...lines,
@@ -63,7 +66,8 @@ export async function narrateGhost(result: GhostResult, provider: LlmProvider): 
 
   const notes = new Map<string, string>();
   for (const n of arr) {
-    if (typeof n?.objective === "string" && typeof n?.note === "string" && n.note.trim()) notes.set(n.objective, n.note.trim());
+    // Deterministic backstop: strip any AI-tell punctuation the model emitted anyway.
+    if (typeof n?.objective === "string" && typeof n?.note === "string" && n.note.trim()) notes.set(n.objective, stripAiTells(n.note.trim()));
   }
   if (notes.size === 0) return result;
 
