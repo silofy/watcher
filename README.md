@@ -34,7 +34,7 @@ Everything runs on your machine. No account, no telemetry, no cloud.
 - **The Ghost.** The optimal line derived from *your own* findings, showing where you went ahead, off-path, or pivoted too late — and, even with no write-up, the missed opportunities your own run proves: a credential you found but never used, an access you opened but never audited, a faster privilege-escalation path than the one you took.
 - **Where you lost time.** Dead-ends, loops, and stalls, measured against your own pace and pinned to the phase they happened in.
 - **Compared to the write-up.** How much of the intended path you retraced: matched steps, alternatives, out-of-order moves, and skips.
-- **Terminal capture, any platform.** A userspace PTY agent with no eBPF, ptrace, or kernel hooks.
+- **Grade a run from any source.** A userspace PTY agent (no eBPF, ptrace, or kernel hooks) for live terminal capture, plus import adapters that grade a Claude Code agent transcript, an HTTP proxy's HAR export, or a Sysmon/EDR log. One grading engine, many sources.
 - **Optional web capture.** Drive the target through Burp and `--web` folds graded HTTP attacks (SQLi, IDOR, traversal) onto the same timeline.
 - **Progress across runs.** Grade, coverage, and methodology charted over your history.
 - **Local-first.** Deterministic scoring. An optional local (Ollama) or opt-in cloud model only sharpens the wording, never the numbers.
@@ -223,6 +223,19 @@ npm run capture -- --platform htb --target <box>   # builds the agent the first 
 </details>
 
 The app's setup wizard walks through both capture paths (your own VM over VPN, or in Pwnbox). Full guide: **[crates/capture/CAPTURE.md](crates/capture/CAPTURE.md)**.
+
+## Capture sources
+
+A live terminal is one way in, not the only one. The Watcher grades a run from any of these sources, each feeding the same pipeline, and every imported run is tagged with its source in the debrief:
+
+| Source | How | What it grades |
+| --- | --- | --- |
+| Terminal (PTY) | `watcher-capture` (above) | your live keystrokes on the box |
+| Claude Code | `npm run ingest:claude-code -- --transcript <session.jsonl>` | a run an AI agent drove, from its transcript |
+| HTTP proxy | `npm run ingest:http-proxy -- --har <capture.har>` | web traffic exported as HAR from Burp, ZAP, mitmproxy, or a browser |
+| Sysmon / EDR | `npm run ingest:sysmon -- --events <sysmon.json>` | a run reconstructed from the host's own telemetry |
+
+Prefer the app? Open **History → Import session** (or drag a file onto it) and drop a Claude Code transcript, a HAR file, a Sysmon export, or a Watcher report JSON; it grades in the browser and opens the debrief. A run imported without a write-up is graded against a canonical methodology ladder (host or web), so coverage is meaningful rather than zero.
 
 ## Draft a report
 
