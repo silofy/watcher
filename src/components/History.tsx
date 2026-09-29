@@ -147,7 +147,7 @@ export function History() {
       <input ref={fileRef} type="file" accept="application/json,.json,.har,.jsonl,.ndjson" className="hidden" onChange={(e) => void importFile(e.target.files?.[0])} />
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-3">
-          <h2 className="label text-muted">Engagement history</h2>
+          <h2 className="section-title">Engagement history</h2>
           <span className="text-xs text-faint">{cards.length} runs · click to open the debrief</span>
         </div>
         <button

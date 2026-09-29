@@ -35,7 +35,7 @@ const CELL_STYLE = {
 /** The lesson's figure: a bucketed strip of cells: mint where it opened, coral dither for the wait, coral where you acted. */
 export function StepStrip({ unlock, acted, total }: { unlock: number; acted: number; total: number }) {
   const cells = stepCells(unlock, acted, total);
-  const big = "mt-1.5 block font-display text-[30px] font-bold leading-none tracking-[-0.03em]";
+  const big = "mt-1.5 block font-display text-[22px] font-bold leading-none tracking-[-0.03em]";
   return (
     <div role="img" aria-label={`Unlocked at step ${unlock}, acted at step ${acted}`}>
       <div className="label flex items-baseline justify-between">
@@ -51,7 +51,6 @@ export function StepStrip({ unlock, acted, total }: { unlock: number; acted: num
           <i key={i} className="block" style={CELL_STYLE[kind]} />
         ))}
       </div>
-      <p className="mt-2 text-xs text-muted">{acted - unlock} steps where the next move was already on the table</p>
     </div>
   );
 }

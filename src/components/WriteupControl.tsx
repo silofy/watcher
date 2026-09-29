@@ -123,9 +123,9 @@ export function WriteupControl() {
 
   return (
     <details className="group border-b border-edge">
-      <summary className="flex cursor-pointer list-none items-center gap-2 py-2.5">
+      <summary className="-mx-2 flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-2.5 transition-colors hover:bg-panel-2/60 [&::-webkit-details-marker]:hidden">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="flex items-center gap-1.5 text-faint">
+          <span className="flex items-center gap-1.5 text-muted transition-colors group-hover:text-fg">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
@@ -133,7 +133,7 @@ export function WriteupControl() {
               <line x1="16" y1="17" x2="8" y2="17" />
               <line x1="10" y1="9" x2="8" y2="9" />
             </svg>
-            <span className="label">Writeup reference</span>
+            <span className="section-title">Writeup reference</span>
           </span>
           {writeup ? (
             <span className="flex items-center gap-1.5 text-sm">
@@ -147,7 +147,7 @@ export function WriteupControl() {
             </span>
           )}
         </div>
-        <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs text-faint">
+        <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md border border-edge-bright px-2.5 py-1 text-xs font-medium text-muted transition-colors group-hover:border-signal group-hover:text-fg">
           {writeup ? "Replace" : "Add to compare"}
           <ChevronDown className="transition-transform group-open:rotate-180" />
         </span>

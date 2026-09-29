@@ -80,8 +80,8 @@ export function Section({
   lead?: SectionLead;
 }) {
   const titleEl = title && (
-    <h2 className={`label ${srTitle ? "sr-only" : ""}`}>
-      {num && <span className="mr-3 text-signal">{num}</span>}
+    <h2 className={`section-title ${srTitle ? "sr-only" : ""}`}>
+      {num && <span className="mr-3 font-bold text-signal">{num}</span>}
       {title}
     </h2>
   );
@@ -97,9 +97,9 @@ export function Section({
         className={`group/sec relative ${i != null ? "rise" : ""} ${className}`}
         style={i != null ? ({ "--i": i } as CSSProperties) : undefined}
       >
-        <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 py-1 [&::-webkit-details-marker]:hidden">
+        <summary className="-mx-2 flex cursor-pointer list-none items-baseline justify-between gap-4 rounded-md px-2 py-1.5 transition-colors hover:bg-panel-2/60 [&::-webkit-details-marker]:hidden">
           <div className="flex items-baseline gap-2.5">
-            <ChevronDown className="text-faint transition-transform duration-200 group-open/sec:rotate-180" />
+            <ChevronDown className="text-muted transition-transform duration-200 group-hover/sec:text-fg group-open/sec:rotate-180" />
             {titleEl}
             {subEl}
           </div>
@@ -173,9 +173,9 @@ export function Collapse({
       className={`group/sec relative ${className}`}
       onToggle={controlled ? (e) => onToggle?.((e.currentTarget as HTMLDetailsElement).open) : undefined}
     >
-      <summary data-shot={summaryDataShot} className="flex cursor-pointer list-none items-baseline gap-2.5 py-1 [&::-webkit-details-marker]:hidden">
-        <ChevronDown className="text-faint transition-transform duration-200 group-open/sec:rotate-180" />
-        <h2 className="label">{title}</h2>
+      <summary data-shot={summaryDataShot} className="-mx-2 flex cursor-pointer list-none items-baseline gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-panel-2/60 [&::-webkit-details-marker]:hidden">
+        <ChevronDown className="text-muted transition-transform duration-200 group-hover/sec:text-fg group-open/sec:rotate-180" />
+        <h2 className="section-title">{title}</h2>
         {subtitle && <InfoTip text={subtitle} />}
       </summary>
       <div className="mt-2 h-px bg-edge" />

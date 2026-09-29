@@ -57,8 +57,8 @@ if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
  * it onto a page-background-filled canvas `PAD` px larger on each side, entirely in the browser. This
  * also inherits `locator.screenshot()`'s native handling of elements taller than the viewport.
  */
-async function shoot(page, shot, file) {
-  const locator = page.locator(`[data-shot="${shot}"]`);
+async function shootSel(page, selector, file) {
+  const locator = page.locator(selector);
   await locator.waitFor({ state: "visible", timeout: 10_000 });
   await page.waitForTimeout(SETTLE_MS); // let SVG transitions (radar, gauges, score rings) settle
 
@@ -89,6 +89,11 @@ async function shoot(page, shot, file) {
   console.log(`  wrote docs/screenshots/${file}`);
 }
 
+/** Shoot by a `data-shot` anchor — a convenience over shootSel for the narrative sections. */
+async function shoot(page, shot, file) {
+  return shootSel(page, `[data-shot="${shot}"]`, file);
+}
+
 step("launching Chromium and capturing the debrief");
 const browser = await chromium.launch();
 try {
@@ -107,25 +112,26 @@ try {
   await shoot(page, "ghost", "ghost.png");
   await shoot(page, "grade", "grade.png");
 
-  // 2. open the Evidence & detail drawer — everything below lives inside it
-  step("opening the Evidence & detail drawer");
-  await page.click('[data-shot="evidence-drawer-summary"]');
-  await page.waitForSelector('[data-shot="deepdive-timeline"]', { state: "visible", timeout: 10_000 });
-  await page.waitForTimeout(SETTLE_MS);
-
-  // 3. Deep dive tabs — click the tab button (stable id="deep-dive-tab-<id>"), then shoot its panel.
-  // Findings has a data-shot anchor too (for future use) but no README image to regenerate here.
-  const tabs = [
-    { tab: "frameworks", shot: "deepdive-frameworks", file: "frameworks.png" },
-    { tab: "timeline", shot: "deepdive-timeline", file: "attack-timeline.png" },
-    { tab: "stealth", shot: "deepdive-stealth", file: "stealth.png" },
-    { tab: "deviation", shot: "deepdive-deviation", file: "deviation-timeline.png" },
-    { tab: "log", shot: "deepdive-log", file: "command-log.png" },
+  // 2. detail views — no longer pooled in a drawer; each is docked inline under the beat it explains
+  // (see App.tsx), so shoot each by its section-wrapper id. All are visible without any interaction.
+  const details = [
+    { sel: "#timeline", file: "attack-timeline.png" },
+    { sel: "#deviation", file: "deviation-timeline.png" },
+    { sel: "#stealth", file: "stealth.png" },
+    { sel: "#frameworks", file: "frameworks.png" },
   ];
-  for (const { tab, shot, file } of tabs) {
-    await page.click(`#deep-dive-tab-${tab}`);
-    await shoot(page, shot, file);
+  for (const { sel, file } of details) {
+    await shootSel(page, sel, file);
   }
+
+  // 3. the command log is the one still-collapsed drill-down — open its <details>, then shoot it.
+  step("opening the Command log");
+  await page.evaluate(() => {
+    const d = document.querySelector("#log details");
+    if (d) d.open = true;
+  });
+  await page.waitForTimeout(SETTLE_MS);
+  await shootSel(page, "#log", "command-log.png");
 
   console.log("\ndone — regenerated docs/screenshots/*.png against the redesigned debrief.");
   console.log("note: docs/screenshots/live-ops.gif is NOT covered by this script (see scripts/SCREENSHOTS.md).");

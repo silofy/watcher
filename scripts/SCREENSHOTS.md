@@ -37,26 +37,27 @@ This chains three steps (each also runnable on its own):
 `node scripts/screenshots.mjs` can also be run on its own — it re-runs steps 1 and 2 itself via
 `child_process` first, so it's self-sufficient even outside the `screenshots` npm script.
 
-## Capture anchors (`data-shot`)
+## Capture targets
 
-Presentation-only `data-shot="…"` attributes mark the elements the script targets — inert otherwise,
-safe to leave in place:
+The narrative sections are shot by their presentation-only `data-shot="…"` anchors (inert otherwise,
+safe to leave in place). The docked detail views — no longer pooled in an "Evidence & detail" drawer,
+but inline under the beat each explains — are shot by their stable section-wrapper `id` instead. All
+are visible without interaction except the Command log, which the script opens first.
 
-| `data-shot`             | Component               | Written to                            |
+| Selector                | Component               | Written to                            |
 | ------------------------ | ------------------------ | -------------------------------------- |
-| `verdict`                | `IdentityBar`             | `docs/screenshots/identity.png`        |
-| `path`                   | `PathComparison`          | `docs/screenshots/path-comparison.png` |
-| `phase-audit`            | `PhaseAudit`              | `docs/screenshots/phase-audit.png`     |
-| `ghost`                  | `GhostCard`               | `docs/screenshots/ghost.png`           |
-| `grade`                  | `Assessment`              | `docs/screenshots/grade.png`           |
-| `one-lesson`             | `App.tsx`'s `HeroLesson`  | *(anchor only — not currently captured; no README image yet)* |
-| `evidence-drawer-summary`| `Collapse`'s `<summary>` (App.tsx's "Evidence & detail") | *(click target, to open the drawer)* |
-| `deepdive-timeline`      | `DeepDive` tab panel      | `docs/screenshots/attack-timeline.png` |
-| `deepdive-stealth`       | `DeepDive` tab panel      | `docs/screenshots/stealth.png`         |
-| `deepdive-deviation`     | `DeepDive` tab panel      | `docs/screenshots/deviation-timeline.png` |
-| `deepdive-frameworks`    | `DeepDive` tab panel      | `docs/screenshots/frameworks.png`      |
-| `deepdive-findings`      | `DeepDive` tab panel      | *(anchor only — no README image yet)*  |
-| `deepdive-log`           | `DeepDive` tab panel      | `docs/screenshots/command-log.png`     |
+| `[data-shot="verdict"]`  | `IdentityBar`             | `docs/screenshots/identity.png`        |
+| `[data-shot="path"]`     | `PathComparison`          | `docs/screenshots/path-comparison.png` |
+| `[data-shot="phase-audit"]` | `PhaseAudit`           | `docs/screenshots/phase-audit.png`     |
+| `[data-shot="ghost"]`    | `GhostCard`               | `docs/screenshots/ghost.png`           |
+| `[data-shot="grade"]`    | `Assessment`              | `docs/screenshots/grade.png`           |
+| `[data-shot="one-lesson"]` | `App.tsx`'s `HeroLesson` | *(anchor only — not currently captured; no README image yet)* |
+| `#timeline`              | `AttackTimeline`          | `docs/screenshots/attack-timeline.png` |
+| `#deviation`             | `DeviationTimeline`       | `docs/screenshots/deviation-timeline.png` |
+| `#stealth`               | `StealthReport`           | `docs/screenshots/stealth.png`         |
+| `#frameworks`            | `FrameworkAxes`           | `docs/screenshots/frameworks.png`      |
+| `#findings`              | `Findings`                | *(docked under §01 — no README image yet)* |
+| `#log`                   | `CommandReplay` (`Collapse`, opened first) | `docs/screenshots/command-log.png` |
 
 ## What this does NOT cover
 

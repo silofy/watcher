@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { useReport } from "./store/report";
 import { PhaseAudit } from "./components/PhaseAudit";
 import { IdentityBar } from "./components/IdentityBar";
@@ -6,7 +6,12 @@ import { Assessment } from "./components/Assessment";
 import { SessionFacts } from "./components/SessionFacts";
 import { TrimControl } from "./components/TrimControl";
 import { Collapse, Section } from "./components/ui";
-import { DeepDive } from "./components/DeepDive";
+import { AttackTimeline } from "./components/AttackTimeline";
+import { StealthReport } from "./components/StealthReport";
+import { DeviationTimeline } from "./components/DeviationTimeline";
+import { FrameworkAxes } from "./components/FrameworkAxes";
+import { Findings } from "./components/Findings";
+import { CommandReplay } from "./components/CommandReplay";
 import { GhostCard } from "./components/GhostCard";
 import { PathComparison } from "./components/PathComparison";
 import { History } from "./components/History";
@@ -66,7 +71,7 @@ function HeroLesson({ lesson: lessonProp, total: totalProp }: { lesson?: OneLess
   const p = lesson.pivot;
   const total = totalProp !== undefined ? totalProp : report.episodes.length;
   const body = (
-    <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_290px] md:items-end">
+    <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_290px] md:items-center">
       <div>
         <span className="label text-signal">The one lesson</span>
         <p className="mt-3 text-balance font-display text-[26px] font-bold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[34px]">
@@ -83,7 +88,7 @@ function HeroLesson({ lesson: lessonProp, total: totalProp }: { lesson?: OneLess
       {p && total > 0 && <StepStrip unlock={p.unlock_seq} acted={p.acted_seq} total={total} />}
     </div>
   );
-  const cls = "block w-full border-y border-edge py-7 text-left";
+  const cls = "block w-full rounded-lg border border-edge bg-panel px-6 py-7 text-left";
   if (lesson.evidence_seq == null) {
     return (
       <div data-shot="one-lesson" className={cls}>
@@ -92,7 +97,7 @@ function HeroLesson({ lesson: lessonProp, total: totalProp }: { lesson?: OneLess
     );
   }
   return (
-    <button type="button" data-shot="one-lesson" onClick={() => reveal(lesson.evidence_seq!)} className={`${cls} transition-colors hover:bg-panel/60`} title={`Replay step ${lesson.evidence_seq}`}>
+    <button type="button" data-shot="one-lesson" onClick={() => reveal(lesson.evidence_seq!)} className={`${cls} transition-colors hover:border-edge-bright hover:bg-panel-2`} title={`Replay step ${lesson.evidence_seq}`}>
       {body}
     </button>
   );
@@ -180,36 +185,13 @@ function DefenseDebrief({ report }: { report: DefenseReport }) {
 }
 
 export function App() {
-  const { report, view, gateDismissed, revealNonce, onboardingOpen, openOnboarding, setOnboardingStep, sessionCards, defenseReport } = useReport();
+  const { report, view, gateDismissed, onboardingOpen, openOnboarding, setOnboardingStep, sessionCards, defenseReport } = useReport();
   const { session } = report;
   const needsWriteup = report.golden_dag.length === 0 && !gateDismissed;
   const recording = isLiveRecording(report);
 
   const hasRealCapture = sessionCards.some((c) => !c.demo);
   const showNudge = !onboardingOpen && shouldShowNudge({ onboarded: true, hasRealCapture });
-
-  // The Evidence drawer starts closed; a deep-link reveal (a "step N ↗" click from PhaseAudit,
-  // coaching, or GhostCard) must force it open so DeepDive's log-tab-and-scroll effect has a
-  // visible panel to scroll — otherwise the scroll is a no-op inside a closed <details>.
-  const [evidenceOpen, setEvidenceOpen] = useState(false);
-
-  // `revealNonce` is global on the store and never resets on session switch (App mounts once,
-  // with no key), so it stays > 0 for the tab's whole life once any reveal has fired. Force-closed
-  // on every session change so a fresh (or re-opened) report never inherits a prior session's
-  // force-opened drawer.
-  useEffect(() => {
-    setEvidenceOpen(false);
-  }, [report.session.uuid]);
-
-  // Open only on a genuine reveal within the current session — i.e. an actual increment of
-  // `revealNonce`, not merely a render where it happens to already be > 0 (initial mount, or a
-  // session switch that leaves the nonce unchanged from before).
-  const lastRevealNonce = useRef(revealNonce);
-  useEffect(() => {
-    const prev = lastRevealNonce.current;
-    lastRevealNonce.current = revealNonce;
-    if (revealNonce > 0 && revealNonce !== prev) setEvidenceOpen(true);
-  }, [revealNonce]);
 
   const hasGhost = !!report.ghost?.items?.length;
   const num = { path: "01", audit: "02", ghost: "03", grade: hasGhost ? "04" : "03" };
@@ -278,7 +260,7 @@ export function App() {
           ) : needsWriteup ? (
             <WriteupGate />
           ) : (
-            <div className="mx-auto flex max-w-4xl flex-col gap-6">
+            <div className="mx-auto flex max-w-4xl flex-col gap-10">
               {/* 1. verdict band — identity + grade + stealth + rooted + platform, full width */}
               <Rise i={0} id="identity">
                 <IdentityBar />
@@ -297,22 +279,38 @@ export function App() {
                 <HeroLesson />
               </Rise>
 
+              {/* The debrief spine is the four numbered beats (path → phases → ghost → grade); each
+                  detail view is now docked directly beneath the beat it explains, instead of pooled in
+                  one "Evidence & detail" drawer at the foot of the page. The views are already their own
+                  <Section>s (titles previously hidden with srTitle for the tab bar) — surfaced here. */}
+
               {/* 3. what you'd do differently */}
               <Rise i={3} id="path">
                 <PathComparison num={num.path} />
               </Rise>
 
+              {/* └ findings — the evidence the run produced, behind the objectives above */}
+              <Rise i={4} id="findings">
+                <Section title="Findings" subtitle="the evidence your run produced — cross-referenced by the objectives above">
+                  <Findings />
+                </Section>
+              </Rise>
+
               {/* 4. phase audit — the actionable per-phase spine (its own takeaway banner is suppressed,
                   since the hero above already leads with it) */}
-              <Rise i={4} id="audit">
+              <Rise i={5} id="audit">
                 <PhaseAudit hideTakeaway num={num.audit} />
               </Rise>
 
-              {/* 4b. you vs. the ghost — the optimal line from where you stood, visible in the main
-                  narrative (not buried in the collapsed drawer below). Guarded so old reports with no
-                  ghost data render nothing here. */}
+              {/* └ the attack timeline — how the phases above unfolded, command by command */}
+              <Rise i={6} id="timeline">
+                <AttackTimeline />
+              </Rise>
+
+              {/* 4b. you vs. the ghost — the optimal line from where you stood. Guarded so old reports
+                  with no ghost data render nothing here. */}
               {report.ghost?.items?.length ? (
-                <Rise i={5} id="ghost">
+                <Rise i={7} id="ghost">
                   <Section
                     title="You vs. the Ghost"
                     num={num.ghost}
@@ -327,19 +325,34 @@ export function App() {
                 </Rise>
               ) : null}
 
-              {/* 4c. the grade — visible in the main narrative (not buried in the collapsed drawer
-                  below), since a verdict this load-bearing shouldn't need a click to see. */}
-              <Rise i={6} id="grade">
+              {/* └ where the time went — the deviations behind the time the ghost lost above */}
+              <Rise i={8} id="deviation">
+                <DeviationTimeline />
+              </Rise>
+
+              {/* 4c. the grade — the explainable rubric verdict */}
+              <Rise i={9} id="grade">
                 <Assessment num={num.grade} />
               </Rise>
 
-              {/* 5. evidence & detail — the raw record, collapsed by default. `Collapse` is a native
-                  <details>: its children stay in the DOM (just visually hidden) even when closed, so the
-                  static export still carries every section's markup. Subtitle removed (spec §5.1): a
-                  header is a label, not another sentence. */}
-              <Collapse title="Evidence & detail" open={evidenceOpen} onToggle={setEvidenceOpen} summaryDataShot="evidence-drawer-summary">
-                <DeepDive />
-              </Collapse>
+              {/* └ stealth & noise — the loudness behind the stealth dimension of the grade above */}
+              <Rise i={10} id="stealth">
+                <StealthReport />
+              </Rise>
+
+              {/* └ frameworks — the kill-chain/weakness coverage behind breadth & progression */}
+              <Rise i={11} id="frameworks">
+                <FrameworkAxes />
+              </Rise>
+
+              {/* the raw record — the full command log, collapsed as the drill-down. It stays the
+                  deep-link target: CommandReplay finds this #log wrapper, opens the <details> inside,
+                  and centers the revealed row itself (see CommandReplay's reveal effect). */}
+              <div id="log">
+                <Collapse title="Command log" subtitle="the full command-by-command record — the deep-link target">
+                  <CommandReplay />
+                </Collapse>
+              </div>
 
               {/* 6. session window */}
               <Collapse title="Session window" subtitle="session facts · retroactively trim the report">
