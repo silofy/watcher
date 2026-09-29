@@ -93,8 +93,11 @@ export function PivotStrip({ items, total, notes, onReveal }: { items: GhostItem
             >
               <rect x={-10} y={y + 1} width={W + 10} height={RH - 2} fill={on ? "var(--color-panel-2)" : "transparent"} />
               {on && <rect x={-10} y={y + 1} width={2} height={RH - 2} fill={v.color} />}
-              <text x={0} y={cy + 4} fontSize={13} fill={r.verdict === "late_pivot" ? "var(--color-fg)" : "var(--color-muted)"}>
-                {truncate(humanizeObjective(r.objective), 26)}
+              {/* Standardized with the grade rubric's metric list: 14px, muted base, brighten to fg on
+                  hover. The one deliberate exception is a late-pivot row, which stays bright-white — the
+                  same "this is the row to learn from" signal the tally legend above encodes. */}
+              <text x={0} y={cy + 4} fontSize={14} fill={r.verdict === "late_pivot" || on ? "var(--color-fg)" : "var(--color-muted)"}>
+                {truncate(humanizeObjective(r.objective), 24)}
               </text>
               <Marks r={r} cy={cy} x={x} end={span} lateFill={`url(#${lateId})`} skipFill={`url(#${skipId})`} />
             </g>
