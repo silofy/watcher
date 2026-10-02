@@ -1,0 +1,98 @@
+.TH WATCHER\-CAPTURE 1 "2026" "The Watcher" "User Commands"
+.SH NAME
+watcher\-capture \- record a shell session for The Watcher's graded debrief
+.SH SYNOPSIS
+.B watcher\-capture
+.B \-\-attach
+.RB [ \-\-platform
+.IR platform ]
+.RB [ \-\-target
+.IR box ]
+.RB [ \-\-web ]
+.br
+.B watcher\-capture
+.B \-\-export
+.I file
+.RB [ \-\-platform
+.IR platform ]
+.RB [ \-\-target
+.IR box ]
+.SH DESCRIPTION
+.B watcher\-capture
+records the commands you run against a target \(em every command, its output and
+the gaps between them \(em by driving your shell through a userspace PTY (openpty on
+Unix, ConPTY on Windows).
+It uses
+.B no eBPF, ptrace or kernel hooks
+and needs no root.
+The capture is turned into a graded debrief by The Watcher: a per\-phase audit across
+MITRE ATT&CK, the Unified Kill Chain and CWE.
+.PP
+In
+.B \-\-attach
+mode the session streams into the running Watcher app live.
+In
+.B \-\-export
+mode it is written to a session file you can later drop into the app \(em useful on a
+cloud box such as HTB Pwnbox, where the file is pulled back over SSH.
+Processing is deterministic and happens on your machine; nothing is uploaded.
+.SH OPTIONS
+.TP
+.B \-\-attach
+Stream the session into the running Watcher app as you work. Type
+.B exit
+to stop capturing.
+.TP
+.BI \-\-export " file"
+Write the session to
+.I file
+instead of streaming. Hack as normal; type
+.B exit
+to finish, then import the file into the app.
+.TP
+.BI \-\-platform " platform"
+The training platform:
+.BR htb ", " thm ", " offsec ", " immersive " or " local .
+.TP
+.BI \-\-target " box"
+The box or target name, recorded with the session.
+.TP
+.B \-\-web
+Also fold HTTP attacks from Burp Suite (via its MCP Server) onto the same timeline.
+Off by default; in\-scope traffic only, with auth headers, cookies and tokens stripped
+before anything is stored. See
+.B docs/web\-capture.md
+in the project.
+.TP
+.BI \-\-machine " name"
+Override the recorded machine/host label.
+.TP
+.BI \-\-context " path"
+Set the working\-context path recorded with the session.
+.SH EXAMPLES
+.PP
+Capture a Hack The Box run live:
+.PP
+.RS
+.EX
+watcher\-capture \-\-attach \-\-platform htb \-\-target blurry
+.EE
+.RE
+.PP
+Capture to a file inside Pwnbox for later import:
+.PP
+.RS
+.EX
+watcher\-capture \-\-export ~/.watcher\-exports/run.json \-\-platform htb \-\-target blurry
+.EE
+.RE
+.SH FILES
+.TP
+.B ~/.watcher\-exports/
+Default location suggested for exported session files.
+.SH SEE ALSO
+Project documentation and the desktop app:
+.UR https://github.com/silofy/watcher
+.UE
+.SH AUTHOR
+silofy. The Watcher is distributed under the AGPL\-3.0\-only license.

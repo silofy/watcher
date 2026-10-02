@@ -23,3 +23,23 @@ uuid = { version = "1", features = ["v4"] }
 crossterm = "0.28"
 # ISO-8601 timestamps for the exported session report (no system-tz needed beyond UTC clock).
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+# ── Debian packaging (cargo-deb) ──────────────────────────────────────────────
+# Produces a .deb for the capture agent only — no GUI/WebKit deps. Built against
+# musl (see ../../build-deb.sh) so the single static binary runs on Kali, Parrot/
+# Pwnbox and Debian regardless of glibc version, with no runtime Depends.
+# The binary itself is added automatically by cargo-deb (from [[bin]]), honouring
+# --target, so `assets` only ships the man page. Repo LICENSE is the whole file.
+[package.metadata.deb]
+maintainer = "silofy <noreply@silofy.dev>"
+copyright = "2026 silofy — AGPL-3.0-only"
+license-file = ["../../LICENSE", "0"]
+section = "utils"
+priority = "optional"
+extended-description = """\
+Records a shell session through a userspace PTY (openpty on Unix) and exports a \
+graded-debrief capture for The Watcher. No eBPF, ptrace or kernel hooks. Streams \
+to the running app live, or writes a session file for later import."""
+assets = [
+  ["watcher-capture.1", "usr/share/man/man1/", "644"],
+]
