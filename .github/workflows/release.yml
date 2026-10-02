@@ -83,6 +83,22 @@ jobs:
           esac
           gh release upload "$TAG" "${{ matrix.asset }}" --clobber
 
+      # Linux also ships a .deb (the static musl binary + man page, no runtime deps),
+      # so the agent is `dpkg -i`-installable on Kali / Parrot / Pwnbox / Debian, and the
+      # apt repo (see packaging/apt/) is built from these same assets.
+      - name: Package + upload .deb (Linux)
+        if: runner.os == 'Linux'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb
+      - name: Build .deb
+        if: runner.os == 'Linux'
+        run: |
+          cargo deb --no-build --manifest-path crates/capture/Cargo.toml --target ${{ matrix.target }}
+          deb=$(ls crates/capture/target/${{ matrix.target }}/debian/*.deb)
+          echo "built $deb"
+          gh release upload "$TAG" "$deb" --clobber
+
   app:
     needs: draft
     strategy:

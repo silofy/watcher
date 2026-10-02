@@ -1,0 +1,100 @@
+# Signed apt repository for the watcher-capture agent.
+#
+# This workflow belongs in a DEDICATED repo (e.g. silofy/watcher-apt), NOT in
+# silofy/watcher — that repo's GitHub Pages already serves the demos, and a repo
+# only gets one Pages site. Running it here would clobber the demos.
+#
+# It pulls the latest .deb assets from silofy/watcher's releases (built by
+# release.yml), assembles a reprepro repo, signs it, and publishes it to this
+# repo's Pages at https://<owner>.github.io/<repo>/.
+#
+# ── One-time setup in the dedicated repo ──────────────────────────────────────
+#   1. Copy this file to .github/workflows/apt-repo.yml and conf/distributions
+#      (from packaging/apt/conf/distributions) to the repo root.
+#   2. Generate a signing key and add its ARMORED PRIVATE key as the secret
+#      APT_GPG_PRIVATE_KEY:
+#        gpg --batch --quick-gen-key "The Watcher apt <you@example.com>" default sign never
+#        gpg --armor --export-secret-keys <keyid>   # paste into the secret
+#   3. Settings → Pages → Source = "GitHub Actions".
+#   4. Run the workflow (Actions tab → Run workflow), or let a release trigger it
+#      (add a repository_dispatch from silofy/watcher, or rely on the daily schedule).
+#
+# ── Users then install with ───────────────────────────────────────────────────
+#   curl -fsSL https://<owner>.github.io/<repo>/watcher-archive-keyring.asc \
+#     | sudo tee /usr/share/keyrings/watcher.asc >/dev/null
+#   echo "deb [signed-by=/usr/share/keyrings/watcher.asc] https://<owner>.github.io/<repo> stable main" \
+#     | sudo tee /etc/apt/sources.list.d/watcher.list
+#   sudo apt update && sudo apt install watcher-capture
+
+name: Publish apt repo
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [watcher-release]
+  schedule:
+    - cron: "17 6 * * *" # daily fallback so a new release is picked up without a manual run
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  SOURCE_REPO: silofy/watcher # where the .deb release assets come from
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: sudo apt-get update && sudo apt-get install -y reprepro
+
+      - name: Import signing key
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "${APT_GPG_PRIVATE_KEY:-}" ]; then
+            echo "::error::APT_GPG_PRIVATE_KEY secret is not set — see this file's header." && exit 1
+          fi
+          echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+          KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+          echo "KEYID=$KEYID" >> "$GITHUB_ENV"
+
+      - name: Fetch latest .deb assets
+        run: |
+          mkdir -p debs
+          gh release download --repo "$SOURCE_REPO" --pattern '*.deb' --dir debs
+          ls -l debs
+
+      - name: Assemble + sign the repo
+        run: |
+          mkdir -p public/conf
+          sed "s/__SIGN_KEY__/$KEYID/" conf/distributions > public/conf/distributions
+          for d in debs/*.deb; do reprepro -b public includedeb stable "$d"; done
+          gpg --armor --export "$KEYID" > public/watcher-archive-keyring.asc
+          # db/ and conf/ are build state, not for clients
+          rm -rf public/db public/conf
+          echo "published:" && find public -maxdepth 2 -type f | sort
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

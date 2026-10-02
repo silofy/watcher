@@ -1,0 +1,8 @@
+Origin: The Watcher
+Label: watcher-capture
+Suite: stable
+Codename: stable
+Architectures: amd64 arm64
+Components: main
+Description: The Watcher capture agent — signed apt repository
+SignWith: __SIGN_KEY__
