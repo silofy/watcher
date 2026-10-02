@@ -1,0 +1,24 @@
+Source: watcher-capture
+Section: utils
+Priority: optional
+Maintainer: silofy <noreply@silofy.dev>
+Build-Depends: debhelper-compat (= 13), cargo, rustc
+Standards-Version: 4.6.2
+Homepage: https://github.com/silofy/watcher
+Vcs-Git: https://github.com/silofy/watcher.git
+Vcs-Browser: https://github.com/silofy/watcher
+Rules-Requires-Root: no
+
+Package: watcher-capture
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: record a shell session for The Watcher's graded debrief
+ watcher-capture records the commands you run against a target - every command,
+ its output and the gaps between them - by driving your shell through a userspace
+ PTY (openpty on Unix). It uses no eBPF, ptrace or kernel hooks, and needs no
+ root.
+ .
+ The capture becomes a graded debrief in The Watcher: a per-phase audit across
+ MITRE ATT&CK, the Unified Kill Chain and CWE. It streams into the running app
+ live, or writes a session file for later import. Processing is deterministic and
+ happens on your machine; nothing is uploaded.

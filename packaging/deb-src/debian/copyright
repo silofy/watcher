@@ -1,0 +1,34 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: watcher-capture
+Upstream-Contact: silofy <noreply@silofy.dev>
+Source: https://github.com/silofy/watcher
+
+Files: *
+Copyright: 2026 silofy
+License: AGPL-3.0-only
+
+Files: vendor/*
+Copyright: see each crate's own license metadata under vendor/<crate>/
+Comment:
+ Rust dependencies are vendored for an offline build. They carry their own
+ (mostly MIT/Apache-2.0) licenses; regenerate the full per-crate list with
+ `cargo license` (or `cargo deny`) and expand this stanza before submitting
+ to Kali/Debian, which require every bundled crate's license to be recorded.
+License: Expat and Apache-2.0 and others
+
+License: AGPL-3.0-only
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU Affero General Public License version 3 as published by
+ the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+ .
+ On Debian systems the full text of the GNU Affero General Public License
+ version 3 is in /usr/share/common-licenses/AGPL-3.
+
+License: Expat and Apache-2.0 and others
+ The vendored crates are under their individual licenses (predominantly the Expat
+ (MIT) and Apache-2.0 licenses). See vendor/<crate>/ for each; this placeholder
+ must be expanded into one stanza per distinct license before upload.

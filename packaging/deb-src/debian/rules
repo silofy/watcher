@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+# Build the capture agent offline from vendored crates (make-source.sh runs
+# `cargo vendor` and writes .cargo/config.toml into the source tree). There is no
+# Cargo.toml at the source root, so debhelper does not autodetect the cargo
+# buildsystem — these overrides drive the build explicitly.
+
+export CARGO_HOME = $(CURDIR)/debian/cargo-home
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release --offline --locked --manifest-path crates/capture/Cargo.toml
+
+override_dh_auto_install:
+	install -D -m0755 crates/capture/target/release/watcher-capture \
+	  debian/watcher-capture/usr/bin/watcher-capture
+
+# No test suite is run at package-build time (offline, no network fixtures).
+override_dh_auto_test:
+
+override_dh_auto_clean:
+	rm -rf crates/capture/target debian/cargo-home
