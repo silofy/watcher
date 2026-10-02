@@ -33,12 +33,44 @@ The Watcher records the commands you run against a target — on Hack The Box, T
 
 **Desktop app** — grab the installer for your OS from the **[latest release](https://github.com/silofy/watcher/releases/latest)** (`.dmg`, `.msi`/`.exe`, `.AppImage`/`.deb`/`.rpm`). Builds aren't signed yet: on macOS right-click → **Open**, on Windows SmartScreen → **More info** → **Run anyway**. Each release lists `SHA256SUMS` to verify a download.
 
-**Capture agent** — one line, no Rust toolchain (downloads the prebuilt binary and verifies it against the release's `SHA256SUMS`):
+### Capture agent
+
+One static binary (musl), no Rust toolchain, no runtime deps — it runs on Kali, Parrot and HTB Pwnbox alike. Install it one of three ways:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/silofy/watcher/main/install.sh | sh   # Linux · macOS · Pwnbox
-irm https://raw.githubusercontent.com/silofy/watcher/main/install.ps1 | iex        # Windows
+# 1. One-line installer — downloads the prebuilt binary, verifies it against SHA256SUMS, installs to ~/.local/bin
+curl -fsSL https://raw.githubusercontent.com/silofy/watcher/main/install.sh | sh    # Kali · Parrot · Pwnbox · macOS
+irm https://raw.githubusercontent.com/silofy/watcher/main/install.ps1 | iex         # Windows
 ```
+
+```sh
+# 2. Debian package — grab watcher-capture_<ver>_amd64.deb (or _arm64.deb) from the latest release:
+#    https://github.com/silofy/watcher/releases/latest
+sudo dpkg -i watcher-capture_*.deb
+```
+
+```sh
+# 3. apt (once the signed repo is published — see packaging/apt/)
+curl -fsSL https://silofy.github.io/watcher-apt/watcher-archive-keyring.asc | sudo tee /usr/share/keyrings/watcher.asc >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/watcher.asc] https://silofy.github.io/watcher-apt stable main" | sudo tee /etc/apt/sources.list.d/watcher.list
+sudo apt update && sudo apt install watcher-capture
+```
+
+Then capture, which differs by where you're working:
+
+- **Kali or Parrot (your own VM, over VPN)** — capture live; each command streams straight into the desktop app:
+
+  ```sh
+  watcher-capture --attach --platform htb --target <box>
+  ```
+  If `~/.local/bin` isn't on your `PATH`, the installer prints the one line to add it. Add `--web` to fold in Burp traffic (see [Usage](#usage)).
+
+- **HTB Pwnbox (cloud)** — the browser-streamed VM has no local desktop app, so install the agent *inside* Pwnbox, capture to a file, and open it on your own machine:
+
+  ```sh
+  watcher-capture --export ~/.watcher-exports/run.json --platform htb --target <box>
+  ```
+  Then drop `run.json` into **History → Import session** in the app (it can also pull the file over SSH automatically — the setup wizard walks you through it).
 
 **Just look at a report** — no install: open the [live demos](#demos), or `npm install && npm run dev` → <http://localhost:5173>.
 
