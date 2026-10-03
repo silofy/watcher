@@ -12,6 +12,7 @@ import { DeviationTimeline } from "./components/DeviationTimeline";
 import { FrameworkAxes } from "./components/FrameworkAxes";
 import { Findings } from "./components/Findings";
 import { CommandReplay } from "./components/CommandReplay";
+import { ReportDraft } from "./components/ReportDraft";
 import { GhostCard } from "./components/GhostCard";
 import { PathComparison } from "./components/PathComparison";
 import { History } from "./components/History";
@@ -343,6 +344,12 @@ export function App() {
               {/* └ frameworks — the kill-chain/weakness coverage behind breadth & progression */}
               <Rise i={11} id="frameworks">
                 <FrameworkAxes />
+              </Rise>
+
+              {/* the deliverable — the OSCP/CPTS-style report, drafted from the run and rendered here
+                  (the same output as `npm run report`), so the report step is visible in-app. */}
+              <Rise i={12} id="report">
+                <ReportDraft />
               </Rise>
 
               {/* the raw record — the full command log, collapsed as the drill-down. It stays the

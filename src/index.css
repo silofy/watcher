@@ -103,6 +103,33 @@ body {
     font-feature-settings: "tnum";
   }
 
+  /* rendered Markdown of the drafted report (ReportDraft.tsx). Scoped so it never leaks into the
+     rest of the debrief; mirrors the editorial-dark type scale. */
+  .md-report {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-muted);
+  }
+  .md-report > :first-child { margin-top: 0; }
+  .md-report h1 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-fg); margin: 1.4em 0 0.5em; }
+  .md-report h2 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-fg); margin: 1.5em 0 0.5em; padding-bottom: 0.3em; border-bottom: 1px solid var(--color-edge); }
+  .md-report h3 { font-size: 0.9rem; font-weight: 600; color: var(--color-fg); margin: 1.2em 0 0.4em; }
+  .md-report p { margin: 0.6em 0; }
+  .md-report strong { color: var(--color-fg); font-weight: 600; }
+  .md-report a { color: var(--color-signal); text-decoration: underline; text-decoration-style: dotted; }
+  .md-report ul, .md-report ol { margin: 0.6em 0; padding-left: 1.4em; }
+  .md-report ul { list-style: disc; }
+  .md-report ol { list-style: decimal; }
+  .md-report li { margin: 0.25em 0; }
+  .md-report hr { border: 0; border-top: 1px solid var(--color-edge); margin: 1.5em 0; }
+  .md-report code { font-family: var(--font-mono); font-size: 0.8125rem; background: var(--color-panel-2); padding: 0.1em 0.4em; border-radius: 4px; color: var(--color-fg); }
+  .md-report pre { margin: 0.8em 0; padding: 0.8em 1em; overflow-x: auto; background: color-mix(in oklch, var(--color-ink) 60%, transparent); border: 1px solid var(--color-edge); border-radius: 6px; }
+  .md-report pre code { background: none; padding: 0; font-size: 0.8125rem; line-height: 1.55; }
+  .md-report table { width: 100%; border-collapse: collapse; margin: 0.9em 0; font-size: 0.8125rem; }
+  .md-report th { text-align: left; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.65rem; color: var(--color-faint); padding: 0.5em 0.6em; border-bottom: 1px solid var(--color-edge); }
+  .md-report td { padding: 0.5em 0.6em; border-bottom: 1px solid color-mix(in oklch, var(--color-edge) 50%, transparent); vertical-align: top; }
+  .md-report blockquote { margin: 0.8em 0; padding-left: 1em; border-left: 2px solid var(--color-edge-bright); color: var(--color-faint); }
+
   .tnum {
     font-variant-numeric: tabular-nums;
   }

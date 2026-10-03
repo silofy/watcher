@@ -1,0 +1,43 @@
+name: Deploy demos
+
+# Rebuilds the report UI on every push to main and publishes it to the
+# silofy/watcher-demos repo, whose GitHub Pages serves the public demos at
+# https://silofy.github.io/watcher-demos/. Keeps the demos matching the app
+# instead of drifting stale.
+#
+# One-time setup: add a secret DEMOS_DEPLOY_TOKEN — a fine-grained PAT (or
+# classic token with `repo`) that has Contents: write on silofy/watcher-demos.
+# (A deploy key via `deploy_key:` is the tighter, single-repo alternative.)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-demos
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build # vite base is "./", so it serves from the /watcher-demos/ subpath
+      - name: Publish to silofy/watcher-demos
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.DEMOS_DEPLOY_TOKEN }}
+          external_repository: silofy/watcher-demos
+          publish_branch: main
+          publish_dir: ./dist
+          # peaceiris adds .nojekyll automatically and replaces the branch contents
+          commit_message: "Redeploy demos from ${{ github.sha }}"
