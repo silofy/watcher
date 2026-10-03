@@ -27,8 +27,8 @@ describe("sections", () => {
     const md = findingsSection(findings);
     expect((md.match(/^### /gm) || []).length).toBe(findings.length);
     expect(md).toContain("**Severity**");
-    expect(md).toContain("**Steps to reproduce**");
-    expect(md).toContain("**Remediation**");
+    expect(md).toContain("#### Steps to reproduce");
+    expect(md).toContain("#### Remediation");
   });
 
   it("walkthrough groups by phase label", () => {

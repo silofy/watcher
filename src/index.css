@@ -111,10 +111,17 @@ body {
     color: var(--color-muted);
   }
   .md-report > :first-child { margin-top: 0; }
-  .md-report h1 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-fg); margin: 1.4em 0 0.5em; }
-  .md-report h2 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-fg); margin: 1.5em 0 0.5em; padding-bottom: 0.3em; border-bottom: 1px solid var(--color-edge); }
-  .md-report h3 { font-size: 0.9rem; font-weight: 600; color: var(--color-fg); margin: 1.2em 0 0.4em; }
-  .md-report p { margin: 0.6em 0; }
+  /* tier 1 — section headings: big, display, with a rule. The clear top of the hierarchy. */
+  .md-report h1 { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-fg); margin: 1.6em 0 0.5em; }
+  .md-report h2 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-fg); margin: 2.2em 0 0.7em; padding-bottom: 0.35em; border-bottom: 1px solid var(--color-edge-bright); }
+  .md-report h2:first-of-type { margin-top: 0; }
+  /* tier 2 — findings / sub-sections: a mint accent bar makes each one read as its own block. */
+  .md-report h3 { font-family: var(--font-display); font-size: 1.08rem; font-weight: 600; letter-spacing: -0.01em; color: var(--color-fg); margin: 2em 0 0.6em; padding-left: 0.65em; border-left: 3px solid var(--color-signal); }
+  /* tier 3 — field labels inside a finding (Description, Impact, Evidence, …) as mono sub-headers. */
+  .md-report h4 { font-family: var(--font-mono); font-weight: 500; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-faint); margin: 1.5em 0 0.4em; }
+  /* lead paragraph under a section heading: brighter + a touch larger */
+  .md-report h2 + p { font-size: 0.95rem; color: var(--color-fg); margin-bottom: 1em; }
+  .md-report p { margin: 0.7em 0; }
   .md-report strong { color: var(--color-fg); font-weight: 600; }
   .md-report a { color: var(--color-signal); text-decoration: underline; text-decoration-style: dotted; }
   .md-report ul, .md-report ol { margin: 0.6em 0; padding-left: 1.4em; }
@@ -129,7 +136,6 @@ body {
   .md-report th { text-align: left; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.65rem; color: var(--color-faint); padding: 0.5em 0.6em; border-bottom: 1px solid var(--color-edge); }
   .md-report td { padding: 0.5em 0.6em; border-bottom: 1px solid color-mix(in oklch, var(--color-edge) 50%, transparent); vertical-align: top; }
   .md-report blockquote { margin: 0.8em 0; padding-left: 1em; border-left: 2px solid var(--color-edge-bright); color: var(--color-faint); }
-  .md-report h3 { font-size: 0.95rem; margin-top: 1.6em; }
   /* inline severity badge rendered by ReportDraft's code override */
   .rpt-sev { display: inline-block; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.1em 0.5em; border: 1px solid; border-radius: 5px; vertical-align: 0.05em; }
 
