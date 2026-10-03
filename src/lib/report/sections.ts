@@ -71,13 +71,20 @@ export function methodologySection(report: WatcherReport): string {
 
 export function findingsSection(findings: ReportFinding[]): string {
   if (!findings.length) return "## Findings\n\nNo findings were derived from the run.";
+  // A scannable summary table up front, then the detailed write-ups. Severities are code-styled so
+  // they read cleanly in raw Markdown and render as colour badges in the app.
+  const summary = [
+    "| # | Finding | Severity | Weakness |",
+    "| --- | --- | --- | --- |",
+    ...findings.map((f, i) => `| ${i + 1} | ${f.title} | \`${severityLabel(f.severity)}\` | ${[f.cve, f.cwe].filter(Boolean).join(" · ") || "—"} |`),
+  ].join("\n");
   const blocks = findings.map((f, i) => {
     const idpart = [f.cve, f.cwe].filter(Boolean).join(" · ") || "—";
     const refs = f.references.length ? f.references.map((r) => `  - ${r}`).join("\n") : "  - —";
     return [
       `### ${i + 1}. ${f.title}`,
       "",
-      `**Severity**: ${severityLabel(f.severity)}  `,
+      `**Severity**: \`${severityLabel(f.severity)}\`  `,
       `**Weakness**: ${idpart}  `,
       `**Affected**: ${f.affected}`,
       "",
@@ -97,7 +104,7 @@ export function findingsSection(findings: ReportFinding[]): string {
       refs,
     ].join("\n");
   });
-  return "## Findings\n\n" + blocks.join("\n\n");
+  return "## Findings\n\n" + summary + "\n\n" + blocks.join("\n\n");
 }
 
 export function walkthroughSection(report: WatcherReport): string {
