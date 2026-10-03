@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { ACTOR_COLORS, ACTOR_LABELS, DETOUR_COLOR } from "../lib/scale";
 import type { ActorMode } from "../types/report";
 import { ChevronDown } from "./icons";
+import { Info } from "lucide-react";
 
 export interface SectionLead {
   value: ReactNode;
@@ -23,14 +24,25 @@ function Lead({ lead }: { lead: SectionLead }) {
   );
 }
 
-/** A subtitle demoted to help: an "i" with the text as tooltip + screen-reader text. */
+/** A subtitle demoted to help: a real info icon (lucide) that reveals the text in a styled hover
+ *  card on hover AND keyboard focus — not the browser's native `title` tooltip, which was slow and
+ *  invisible on touch/focus. The `<button>` is focusable so the tip is reachable without a mouse. */
 function InfoTip({ text }: { text: string }) {
   return (
-    <span className="inline-flex items-center">
-      <span aria-hidden="true" title={text} className="cursor-help select-none rounded-full border border-edge-bright px-[5px] font-mono text-[10px] leading-4 text-faint">
-        i
+    <span className="group/tip relative inline-flex align-middle">
+      <button
+        type="button"
+        aria-label={text}
+        className="inline-flex cursor-help items-center text-faint transition-colors hover:text-fg focus-visible:text-fg focus-visible:outline-none"
+      >
+        <Info size={13} strokeWidth={2.25} aria-hidden="true" />
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none invisible absolute left-1/2 top-full z-40 mt-2 w-56 -translate-x-1/2 rounded-lg border border-edge bg-panel p-2.5 text-left text-xs font-normal normal-case leading-relaxed tracking-normal text-muted opacity-0 shadow-xl transition-opacity duration-150 group-hover/tip:visible group-hover/tip:opacity-100 group-focus-within/tip:visible group-focus-within/tip:opacity-100"
+      >
+        {text}
       </span>
-      <span className="sr-only">{text}</span>
     </span>
   );
 }
