@@ -1,7 +1,7 @@
 import type { WatcherReport } from "../../types/report";
 import { deriveReportFindings, type ReportFinding } from "./findings";
 import {
-  headerSection, execSummarySection, scopeSection, methodologySection,
+  headerSection, execSummarySection, engagementSection, scopeSection, methodologySection,
   findingsSection, walkthroughSection, appendixSection,
 } from "./sections";
 
@@ -15,6 +15,7 @@ export function draftReport(report: WatcherReport, opts?: { findings?: ReportFin
   return [
     headerSection(report),
     execSummarySection(report, findings, opts?.summary),
+    engagementSection(report),
     scopeSection(report),
     methodologySection(report),
     findingsSection(findings),

@@ -3,6 +3,13 @@ import type { ReportFinding } from "./findings";
 import type { Severity } from "./library";
 import { fmtClock } from "../format";
 import { groupFindingsByKind } from "../findings-view";
+import { humanizeObjective } from "../audits";
+
+/** Join a list into prose: "a", "a and b", "a, b and c". */
+function listJoin(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+}
 
 export function severityLabel(s: Severity): string {
   return s === "unset" ? "unset (set severity)" : s[0].toUpperCase() + s.slice(1);
@@ -35,16 +42,53 @@ export function headerSection(report: WatcherReport): string {
 
 export function execSummarySection(report: WatcherReport, findings: ReportFinding[], summary?: string): string {
   if (summary) return `## Executive summary\n\n${summary}`;
+  const t = report.session?.target;
+  const name = t?.name ?? report.session?.target_scope ?? "The target";
   const counts = new Map<Severity, number>();
   for (const f of findings) counts.set(f.severity, (counts.get(f.severity) ?? 0) + 1);
   const parts = [...counts.entries()].filter(([, n]) => n > 0).map(([s, n]) => `${n} ${severityLabel(s).toLowerCase()}`);
   const rooted = report.golden_dag?.some((o) => /root/i.test(o.objective) && o.status === "proven");
+  const n = findings.length;
+  // the attack path in one plain sentence (no commands) — initial access → escalation
+  const path =
+    n === 0
+      ? ""
+      : n === 1
+        ? `The principal issue was **${findings[0].title}**.`
+        : `Initial access was gained through **${findings[0].title}**, which was escalated to full administrative control via **${findings[n - 1].title}**.`;
+  const outcome = rooted
+    ? `${name} was assessed end-to-end and **fully compromised** — root (administrative) access was achieved.`
+    : `${name} was assessed end-to-end; root access was **not** achieved during this engagement.`;
+  const risk = `The assessment surfaced ${n} finding${n === 1 ? "" : "s"}${parts.length ? ` (${parts.join(", ")})` : ""}.${rooted ? " Until these are remediated, the host should be treated as fully attacker-controlled." : ""}`;
+  return ["## Executive summary", "", outcome, "", risk, ...(path ? ["", path] : [])].join("\n");
+}
+
+/** A plain-language, command-free account of the engagement for a non-operator reader (the "CISO
+ *  view"): what was accomplished in each phase, derived from the objectives reached. */
+export function engagementSection(report: WatcherReport): string {
+  const reached = new Map<string, string[]>();
+  for (const o of report.golden_dag ?? []) {
+    if (o.status === "reached" || o.status === "proven") {
+      const arr = reached.get(o.tactic) ?? [];
+      arr.push(humanizeObjective(o.objective));
+      reached.set(o.tactic, arr);
+    }
+  }
+  const lines: string[] = [];
+  for (const p of report.phases ?? []) {
+    const objs = reached.get(p.mitre_tactic);
+    if (!objs?.length) continue;
+    const phrased = objs.map((o, i) => (i === 0 ? o : o.charAt(0).toLowerCase() + o.slice(1)));
+    lines.push(`- **${p.label}** — ${listJoin(phrased)}.`);
+  }
+  if (!lines.length) return "## What was done\n\nNo phased activity was recorded.";
   return [
-    "## Executive summary",
+    "## What was done",
     "",
-    `The engagement surfaced ${findings.length} finding${findings.length === 1 ? "" : "s"}${parts.length ? ` (${parts.join(", ")})` : ""}.`,
-    rooted ? "The target was fully compromised (root access achieved)." : "",
-  ].filter(Boolean).join("\n");
+    "A plain-language account of the engagement, phase by phase. Technical detail and evidence are in Findings and the Walkthrough below.",
+    "",
+    ...lines,
+  ].join("\n");
 }
 
 export function scopeSection(report: WatcherReport): string {
